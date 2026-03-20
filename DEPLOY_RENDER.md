@@ -12,10 +12,13 @@
 ## 3) Tạo Web Service
 1. Vào Render Dashboard -> **New** -> **Web Service**.
 2. Chọn repo GitHub của dự án.
+3. Chọn đúng branch có code (nếu bạn đang làm ở `master` thì chọn `master`, không để nhầm sang `main`).
 3. Cấu hình:
    - **Runtime**: Python
    - **Build Command**: `pip install -r requirements.txt && bash render-build.sh`
-   - **Start Command**: `gunicorn erp_tien_huong.wsgi:application --log-file -`
+   - **Start Command**: `gunicorn erp_tien_huong.wsgi:application --bind 0.0.0.0:$PORT --log-file -`
+
+> Nếu thấy lỗi `ModuleNotFoundError: No module named 'app'`, nghĩa là Start Command đang bị đặt sai kiểu `gunicorn app:app`. Hãy sửa lại đúng lệnh ở trên.
 
 ## 4) Khai báo Environment Variables
 Thêm các biến sau trong mục Environment:

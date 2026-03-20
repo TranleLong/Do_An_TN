@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: erp-tien-huong
+    env: python
+    plan: free
+    rootDir: .
+    buildCommand: pip install -r requirements.txt && bash render-build.sh
+    startCommand: gunicorn erp_tien_huong.wsgi:application --bind 0.0.0.0:$PORT --log-file -
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: PYTHON_VERSION
+        value: 3.11.2
