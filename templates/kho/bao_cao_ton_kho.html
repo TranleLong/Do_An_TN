@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card-title"><i class="fas fa-chart-bar text-warning"></i> Báo Cáo Nhập Xuất Tồn Kho</div>
+        <button class="btn btn-sm btn-secondary" onclick="window.print()"><i class="fas fa-print"></i> In báo cáo</button>
+    </div>
+    
+    <div class="card-body">
+        <form method="get" class="form-row mb-4 align-items-end p-3" style="background: rgba(0,0,0,0.04); border-radius: var(--radius-sm);">
+            <div class="col col-3 form-group mb-0">
+                <label class="form-label text-muted">Tháng báo cáo</label>
+                <input type="month" name="thang" class="form-control" value="{{ thang_hien_tai }}">
+            </div>
+            <div class="col col-3 form-group mb-0">
+                <label class="form-label text-muted">Chọn kho</label>
+                <select name="kho" class="form-control">
+                    <option value="">-- Tất cả các kho --</option>
+                    {% for k in kho_list %}
+                    <option value="{{ k.pk }}" {% if k.pk|stringformat:"s" == kho_filter %}selected{% endif %}>{{ k.ten_kho }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col col-4 form-group mb-0">
+                <label class="form-label text-muted">Tìm phụ tùng</label>
+                <input type="text" name="q" class="form-control" value="{{ q }}" placeholder="Mã hoặc tên phụ tùng...">
+            </div>
+            <div class="col col-2 form-group mb-0 text-right">
+                <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter"></i> Xem báo cáo</button>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <h5 class="mb-3 mt-2 text-center text-uppercase fw-bold" style="color: var(--accent-color); letter-spacing: 1px;">
+                TỔNG HỢP NHẬP XUẤT TỒN KHO THÁNG {{ thang_hien_tai|slice:"5:7" }} NĂM {{ thang_hien_tai|slice:"0:4" }}
+            </h5>
+            
+            <table class="table table-bordered">
+                <thead>
+                    <tr style="background: var(--bg-hover);">
+                        <th rowspan="2" class="text-center" style="vertical-align: middle;">Mã Phụ tùng</th>
+                        <th rowspan="2" class="text-center" style="vertical-align: middle;">Tên phụ tùng</th>
+                        <th rowspan="2" class="text-center" style="vertical-align: middle;">ĐVT</th>
+                        <th colspan="2" class="text-center border-bottom text-muted">TỒN ĐẦU KỲ</th>
+                        <th colspan="2" class="text-center border-bottom text-info">NHẬP TRONG KỲ</th>
+                        <th colspan="2" class="text-center border-bottom text-warning">XUẤT TRONG KỲ</th>
+                        <th colspan="2" class="text-center border-bottom text-success">TỒN CUỐI KỲ</th>
+                    </tr>
+                    <tr style="background: var(--bg-panel); font-size: 0.7rem;">
+                        <th class="text-right">SL</th><th class="text-right">Giá trị (đ)</th>
+                        <th class="text-right">SL</th><th class="text-right">Giá trị (đ)</th>
+                        <th class="text-right">SL</th><th class="text-right">Giá trị (đ)</th>
+                        <th class="text-right">SL</th><th class="text-right">Giá trị (đ)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in data %}
+                    <tr>
+                        <td><strong>{{ item.ma_hang }}</strong></td>
+                        <td>{{ item.ten_hang }}</td>
+                        <td class="text-center">{{ item.dvt }}</td>
+                        
+                        <!-- Đầu kỳ -->
+                        <td class="text-right bg-dark-alt">{{ item.sl_dau_ky }}</td>
+                        <td class="text-right bg-dark-alt text-muted">{{ item.gt_dau_ky|floatformat:0|intcomma }}</td>
+                        
+                        <!-- Nhập -->
+                        <td class="text-right text-info">+{{ item.sl_nhap }}</td>
+                        <td class="text-right text-info">{{ item.gt_nhap|floatformat:0|intcomma }}</td>
+                        
+                        <!-- Xuất -->
+                        <td class="text-right text-warning">-{{ item.sl_xuat }}</td>
+                        <td class="text-right text-warning">{{ item.gt_xuat|floatformat:0|intcomma }}</td>
+                        
+                        <!-- Cuối kỳ -->
+                        <td class="text-right text-success fw-bold">{{ item.sl_cuoi_ky }}</td>
+                        <td class="text-right text-success fw-bold">{{ item.gt_cuoi_ky|floatformat:0|intcomma }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="11" class="text-center py-4 text-muted">Không có dữ liệu phát sinh trong kỳ báo cáo.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table-bordered th, .table-bordered td { border: 1px solid rgba(0,0,0,0.05); }
+    .bg-dark-alt { background: rgba(0,0,0,0.1); }
+    
+    @media print {
+        body { background: white; color: black; }
+        .sidebar, .header, .btn, form { display: none !important; }
+        .main-wrapper { margin: 0; padding: 0; }
+        .card { box-shadow: none; border: none; }
+        .table-bordered th, .table-bordered td { border: 1px solid #ddd; color: black; }
+        .text-muted, .text-info, .text-success, .text-warning { color: black !important; }
+        .badge { border: 1px solid #ccc; color: black; background: transparent; }
+    }
+</style>
+{% endblock %}

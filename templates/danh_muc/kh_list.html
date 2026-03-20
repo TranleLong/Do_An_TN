@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-users text-success"></i> Danh sách khách hàng & Gara</div>
+        <a href="{% url 'kh_them' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Thêm khách hàng</a>
+    </div>
+    
+    <div class="card-body">
+        <form method="get" class="form-row mb-4 align-items-center">
+            <div class="col col-6">
+                <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Tìm kiếm theo mã, tên, SĐT...">
+            </div>
+            <div class="col col-2">
+                <button type="submit" class="btn btn-secondary"><i class="fas fa-search"></i> Lọc</button>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Mã KH</th>
+                        <th>Tên khách hàng / Gara</th>
+                        <th>Loại hình</th>
+                        <th>Số ĐT</th>
+                        <th class="text-right">Dư nợ hiện tại</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td><strong>{{ item.ma_kh }}</strong></td>
+                        <td>
+                            {{ item.ten_kh }}
+                            <div style="font-size: 11px; color: var(--text-muted);">{{ item.dia_chi|default:"Chưa có địa chỉ" }}</div>
+                        </td>
+                        <td>
+                            {% if item.loai_kh == 'gara' %}<span class="badge badge-warning">Gara/Xưởng</span>
+                            {% elif item.loai_kh == 'doanh_nghiep' %}<span class="badge badge-info">Doanh nghiệp</span>
+                            {% else %}<span class="badge badge-secondary">Cá nhân</span>{% endif %}
+                        </td>
+                        <td>{{ item.so_dien_thoai }}</td>
+                        <td class="text-right fw-semibold {% if item.get_cong_no > 0 %}text-danger{% endif %}">
+                            {{ item.get_cong_no|floatformat:0 }} đ
+                        </td>
+                        <td>
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'kh_sua' item.pk %}" class="btn btn-sm btn-secondary" title="Sửa"><i class="fas fa-edit"></i></a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted">Chưa có dữ liệu khách hàng.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

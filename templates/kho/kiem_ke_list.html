@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-clipboard-list text-warning"></i> Danh sách phiếu kiểm kê kho</div>
+        <a href="{% url 'kiem_ke_them' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Tạo phiếu kiểm kê</a>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Ngày kiểm kê</th>
+                        <th>Kho</th>
+                        <th>Người kiểm kê</th>
+                        <th class="text-center">Trạng thái</th>
+                        <th>Ghi chú</th>
+                        <th class="text-center">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td class="text-muted" style="font-size:0.85rem;">{{ forloop.counter }}</td>
+                        <td><strong>{{ item.ngay_kiem_ke|date:"d/m/Y" }}</strong></td>
+                        <td><i class="fas fa-warehouse text-primary me-1"></i>{{ item.kho.ten_kho }}</td>
+                        <td>{{ item.nguoi_kiem|default:"—" }}</td>
+                        <td class="text-center">
+                            {% if item.trang_thai == 'dang_kiem' %}
+                                <span class="badge badge-warning"><i class="fas fa-spinner me-1"></i>Đang kiểm</span>
+                            {% else %}
+                                <span class="badge badge-success"><i class="fas fa-check-circle me-1"></i>Đã duyệt</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted" style="font-size:0.9rem;">{{ item.ghi_chu|default:"—" }}</td>
+                        <td class="text-center">
+                            <a href="{% url 'kiem_ke_detail' item.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i> Chi tiết</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-5">
+                            <i class="fas fa-clipboard fa-2x mb-2 text-light"></i><br>Chưa có phiếu kiểm kê nào.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+
+<div class="card mb-4">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-balance-scale text-info"></i> Đối chiếu số liệu Kho – Kế toán</div>
+        <button class="btn btn-sm btn-secondary" onclick="window.print()"><i class="fas fa-print me-1"></i> In</button>
+    </div>
+
+    <div class="card-body">
+        <div class="alert alert-info" style="border-radius:10px; font-size:0.92rem; border-left:4px solid #3b82f6;">
+            <i class="fas fa-info-circle me-2"></i>
+            Màn hình này so sánh <strong>Tổng giá trị xuất kho (từ phiếu xuất)</strong> với <strong>Giá trị tồn kho thực tế</strong> theo từng mặt hàng.
+            Mục đích: phát hiện chênh lệch do sai sót nhập liệu, mất hàng, hoặc điều chỉnh tồn kho chưa được xử lý.
+        </div>
+
+        <form method="get" class="d-flex gap-3 mb-4 align-items-end flex-wrap">
+            <div>
+                <label class="form-label fw-semibold text-muted small">Từ ngày</label>
+                <input type="date" name="tu_ngay" class="form-control" value="{{ tu_ngay }}">
+            </div>
+            <div>
+                <label class="form-label fw-semibold text-muted small">Đến ngày</label>
+                <input type="date" name="den_ngay" class="form-control" value="{{ den_ngay }}">
+            </div>
+            <div>
+                <label class="form-label fw-semibold text-muted small">Kho</label>
+                <select name="kho" class="form-control" style="min-width:160px;">
+                    <option value="">-- Tất cả kho --</option>
+                    {% for k in kho_list %}
+                    <option value="{{ k.pk }}" {% if k.pk|stringformat:"s" == kho_filter %}selected{% endif %}>{{ k.ten_kho }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-search me-1"></i> Đối chiếu</button>
+            </div>
+        </form>
+
+        {# ─── 3 thẻ tóm tắt ─── #}
+        <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);">
+            <div class="kpi-card" style="border-left:4px solid #f59e0b;">
+                <div class="kpi-icon" style="background:#fef3c7;"><i class="fas fa-file-export" style="color:#f59e0b; font-size:1.4rem;"></i></div>
+                <div class="kpi-info">
+                    <h4>Tổng GV từ Phiếu Xuất</h4>
+                    <div class="kpi-value" style="color:#f59e0b; font-size:1.2rem;">{{ tong_gia_von_xuat|intcomma }} đ</div>
+                </div>
+            </div>
+            <div class="kpi-card" style="border-left:4px solid #10b981;">
+                <div class="kpi-icon" style="background:#d1fae5;"><i class="fas fa-boxes" style="color:#10b981; font-size:1.4rem;"></i></div>
+                <div class="kpi-info">
+                    <h4>Tổng GV Tồn Kho Hiện Tại</h4>
+                    <div class="kpi-value" style="color:#10b981; font-size:1.2rem;">{{ tong_ton_hien_tai|intcomma }} đ</div>
+                </div>
+            </div>
+            <div class="kpi-card" style="border-left:4px solid {% if chenh_lech_tong == 0 %}#10b981{% else %}#ef4444{% endif %};">
+                <div class="kpi-icon" style="background:{% if chenh_lech_tong == 0 %}#d1fae5{% else %}#fee2e2{% endif %};"><i class="fas fa-balance-scale" style="color:{% if chenh_lech_tong == 0 %}#10b981{% else %}#ef4444{% endif %}; font-size:1.4rem;"></i></div>
+                <div class="kpi-info">
+                    <h4>Chênh lệch tổng</h4>
+                    <div class="kpi-value" style="color:{% if chenh_lech_tong == 0 %}#10b981{% else %}#ef4444{% endif %}; font-size:1.2rem;">
+                        {% if chenh_lech_tong >= 0 %}+{% endif %}{{ chenh_lech_tong|intcomma }} đ
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# ─── Bảng chi tiết ─── #}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Mã hàng</th>
+                        <th>Tên hàng hóa</th>
+                        <th>Kho</th>
+                        <th class="text-end">Giá vốn xuất (phiếu)</th>
+                        <th class="text-end">Tổng GV hiện tại (tồn)</th>
+                        <th class="text-end">Chênh lệch</th>
+                        <th class="text-center">Đánh giá</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                    <tr>
+                        <td><code class="text-primary fw-bold">{{ row.ma_hang }}</code></td>
+                        <td>{{ row.ten_hang }}</td>
+                        <td><span class="text-muted" style="font-size:0.85rem;"><i class="fas fa-warehouse me-1"></i>{{ row.ten_kho }}</span></td>
+                        <td class="text-end fw-semibold" style="color:#f59e0b;">{{ row.gv_xuat|intcomma }} đ</td>
+                        <td class="text-end fw-semibold text-success">{{ row.gv_ton|intcomma }} đ</td>
+                        <td class="text-end fw-bold" style="color: {% if row.chenh_lech == 0 %}#10b981{% elif row.chenh_lech > 0 %}#3b82f6{% else %}#ef4444{% endif %};">
+                            {% if row.chenh_lech >= 0 %}+{% endif %}{{ row.chenh_lech|intcomma }} đ
+                        </td>
+                        <td class="text-center">
+                            {% if row.chenh_lech == 0 %}
+                                <span class="badge badge-success"><i class="fas fa-check me-1"></i>Khớp</span>
+                            {% elif row.chenh_lech > 0 %}
+                                <span class="badge badge-info"><i class="fas fa-arrow-up me-1"></i>Thừa</span>
+                            {% else %}
+                                <span class="badge badge-danger"><i class="fas fa-arrow-down me-1"></i>Thiếu</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted py-5">
+                        <i class="fas fa-search fa-2x mb-2 text-light"></i><br>Chọn ngày và bấm Đối chiếu để xem kết quả.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Danh sách kho</div>
+    </div>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Mã kho</th>
+                    <th>Tên kho</th>
+                    <th>Địa chỉ</th>
+                    <th>Trạng thái</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for kho in kho_list %}
+                <tr>
+                    <td>{{ kho.ma_kho }}</td>
+                    <td>{{ kho.ten_kho }}</td>
+                    <td>{{ kho.dia_chi }}</td>
+                    <td>
+                        {% if kho.trang_thai %}
+                            <span class="badge badge-success">Hoạt động</span>
+                        {% else %}
+                            <span class="badge badge-danger">Ngừng</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="4" class="text-center text-muted">Chưa có kho nào.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

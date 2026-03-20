@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-clipboard-list text-warning"></i> Tạo phiếu kiểm kê kho</div>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info" style="border-radius:10px; font-size:0.9rem;">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Sau khi tạo phiếu, hệ thống sẽ tự động tải danh sách <strong>tất cả mặt hàng</strong> đang có trong kho được chọn vào phiếu kiểm kê.
+                </div>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Kho cần kiểm kê <span class="text-danger">*</span></label>
+                        <select name="kho" class="form-control" required>
+                            <option value="">-- Chọn kho --</option>
+                            {% for k in kho_list %}
+                            <option value="{{ k.pk }}">{{ k.ten_kho }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Ngày kiểm kê</label>
+                        <input type="date" name="ngay" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Người phụ trách kiểm kê</label>
+                        <input type="text" name="nguoi_kiem" class="form-control" placeholder="Tên người kiểm kê...">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Ghi chú</label>
+                        <textarea name="ghi_chu" class="form-control" rows="3" placeholder="Ghi chú thêm về đợt kiểm kê..."></textarea>
+                    </div>
+                    <div class="d-flex gap-2 justify-content-end border-top pt-3 mt-4">
+                        <a href="{% url 'kiem_ke_list' %}" class="btn btn-secondary">Hủy</a>
+                        <button type="submit" class="btn btn-warning text-white fw-bold">
+                            <i class="fas fa-clipboard-check me-1"></i> Tạo phiếu kiểm kê
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

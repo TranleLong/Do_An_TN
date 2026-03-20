@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-shopping-cart text-success"></i> Danh sách Đơn bán hàng</div>
+        <a href="{% url 'don_ban_them' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Tạo đơn bán</a>
+    </div>
+    
+    <div class="card-body">
+        <form method="get" class="form-row mb-4 align-items-center">
+            <div class="col col-4">
+                <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Tìm theo số đơn, tên KH, SĐT...">
+            </div>
+            <div class="col col-3">
+                <select name="trang_thai" class="form-control">
+                    <option value="">-- Tất cả trạng thái --</option>
+                    <option value="nhap" {% if trang_thai_filter == 'nhap' %}selected{% endif %}>Nháp</option>
+                    <option value="da_xac_nhan" {% if trang_thai_filter == 'da_xac_nhan' %}selected{% endif %}>Đã xác nhận</option>
+                    <option value="huy" {% if trang_thai_filter == 'huy' %}selected{% endif %}>Đã hủy</option>
+                </select>
+            </div>
+            <div class="col col-2">
+                <button type="submit" class="btn btn-secondary"><i class="fas fa-search"></i> Lọc</button>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Số đơn</th>
+                        <th>Ngày bán</th>
+                        <th>Khách hàng</th>
+                        <th>Loại / PTTT</th>
+                        <th class="text-right">Tổng thanh toán</th>
+                        <th class="text-right">Còn nợ</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td><a href="{% url 'don_ban_detail' item.pk %}"><strong>{{ item.so_don }}</strong></a></td>
+                        <td>{{ item.ngay_ban|date:"d/m/Y" }}</td>
+                        <td>
+                            {{ item.ten_kh }}
+                            <div style="font-size: 11px; color: var(--text-muted);">{{ item.sdt_kh|default:"-" }}</div>
+                        </td>
+                        <td>
+                            <div style="font-size: 12px; margin-bottom: 3px;">{{ item.get_loai_ban_display }}</div>
+                            <span class="badge {% if item.phuong_thuc_tt == 'tien_mat' %}badge-success{% elif item.phuong_thuc_tt == 'no' %}badge-warning{% else %}badge-info{% endif %}">
+                                {{ item.get_phuong_thuc_tt_display }}
+                            </span>
+                        </td>
+                        <td class="text-right fw-semibold">{{ item.tong_thanh_toan|intcomma }} đ</td>
+                        <td class="text-right {% if item.con_no > 0 %}text-danger fw-bold{% endif %}">{{ item.con_no|intcomma }} đ</td>
+                        <td>
+                            {% if item.trang_thai == 'nhap' %}<span class="badge badge-warning">Nháp</span>
+                            {% elif item.trang_thai == 'da_xac_nhan' %}<span class="badge badge-success">Đã xác nhận</span>
+                            {% else %}<span class="badge badge-danger">Đã hủy</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">Không tìm thấy đơn bán nào.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="row mb-4 g-3">
+    {% for kho in kho_list %}
+    <div class="col-md-4 col-lg-3">
+        <div class="card h-100" style="border-top: 4px solid #3b82f6; transition: box-shadow 0.2s;">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <div style="width:42px; height:42px; border-radius:10px; background:linear-gradient(135deg,#3b82f6,#1d4ed8); display:flex; align-items:center; justify-content:center; margin-right:12px;">
+                        <i class="fas fa-warehouse" style="color:white; font-size:1.1rem;"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold" style="font-size:1rem;">{{ kho.ten_kho }}</div>
+                        <div class="text-muted" style="font-size:0.78rem;"><code>{{ kho.ma_kho }}</code></div>
+                    </div>
+                </div>
+                <hr class="my-2">
+                <div class="small text-muted mb-1"><i class="fas fa-boxes me-1"></i> Số mặt hàng đang tồn:</div>
+                <div class="fw-bold text-primary" style="font-size:1.4rem;">{{ kho.so_mat_hang }} <small class="text-muted fw-normal" style="font-size:0.75rem;">mặt hàng</small></div>
+                {% if kho.dia_chi %}
+                <div class="mt-2 small text-muted"><i class="fas fa-map-marker-alt me-1"></i>{{ kho.dia_chi }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center text-muted py-5">Chưa có kho nào được tạo.</div>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-map-marked-alt text-primary"></i> Sơ đồ hàng hóa trong kho</div>
+        <form method="get" class="d-flex gap-2">
+            <select name="kho_id" class="form-control" style="width:200px;" onchange="this.form.submit()">
+                <option value="">-- Tất cả kho --</option>
+                {% for k in kho_list %}
+                <option value="{{ k.pk }}" {% if k.pk|stringformat:"s" == kho_sel %}selected{% endif %}>{{ k.ten_kho }}</option>
+                {% endfor %}
+            </select>
+        </form>
+    </div>
+
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle text-center" style="min-width: 700px;">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width:130px;">Kho / Vị trí</th>
+                        <th>Mã hàng</th>
+                        <th>Tên hàng hóa</th>
+                        <th>Nhóm hàng</th>
+                        <th style="width:120px;">Số lượng tồn</th>
+                        <th style="width:130px;">Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td>
+                            <span class="badge" style="background:#dbeafe; color:#1e40af; font-size:0.78rem; padding:5px 10px; border-radius:6px;">
+                                <i class="fas fa-warehouse me-1"></i>{{ item.kho.ten_kho }}
+                            </span>
+                        </td>
+                        <td><code class="text-primary fw-bold">{{ item.hang_hoa.ma_hang }}</code></td>
+                        <td class="text-start">
+                            <div class="fw-semibold">{{ item.hang_hoa.ten_hang }}</div>
+                            <div class="text-muted" style="font-size:0.78rem;">{{ item.hang_hoa.thuong_hieu.ten|default:"" }}</div>
+                        </td>
+                        <td>{{ item.hang_hoa.nhom_hang.ten_nhom|default:"—" }}</td>
+                        <td>
+                            <span class="fw-bold {% if item.so_luong <= item.hang_hoa.ton_toi_thieu %}text-danger{% elif item.so_luong <= 0 %}text-muted{% else %}text-success{% endif %}" style="font-size:1.1rem;">
+                                {{ item.so_luong }}
+                            </span>
+                            <span class="text-muted" style="font-size:0.8rem;">{{ item.hang_hoa.don_vi_tinh.ten }}</span>
+                        </td>
+                        <td>
+                            {% if item.so_luong <= 0 %}
+                                <span class="badge badge-danger"><i class="fas fa-times me-1"></i>Hết hàng</span>
+                            {% elif item.so_luong <= item.hang_hoa.ton_toi_thieu %}
+                                <div style="width:100%; background:#fee2e2; border-radius:4px; height:8px; overflow:hidden;">
+                                    <div style="width:30%; background:#ef4444; height:8px;"></div>
+                                </div>
+                                <small class="text-danger">⚠ Sắp hết</small>
+                            {% else %}
+                                <div style="width:100%; background:#d1fae5; border-radius:4px; height:8px; overflow:hidden;">
+                                    <div style="width:80%; background:#10b981; height:8px;"></div>
+                                </div>
+                                <small class="text-success">Còn hàng</small>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted py-5">
+                        <i class="fas fa-box-open fa-2x mb-2 text-light"></i><br>Kho trống.
+                    </td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

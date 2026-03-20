@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-truck-loading text-success"></i> Danh sách phiếu nhập kho</div>
+        <a href="{% url 'phieu_nhap_them' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Tạo phiếu nhập</a>
+    </div>
+    
+    <div class="card-body">
+        <form method="get" class="form-row mb-4 align-items-center">
+            <div class="col col-3">
+                <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Tìm số phiếu...">
+            </div>
+            <div class="col col-3">
+                <select name="kho" class="form-control">
+                    <option value="">-- Tất cả kho --</option>
+                    {% for k in kho_list %}
+                    <option value="{{ k.pk }}" {% if k.pk|stringformat:"s" == kho_filter %}selected{% endif %}>{{ k.ten_kho }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col col-2">
+                <button type="submit" class="btn btn-secondary"><i class="fas fa-search"></i> Lọc</button>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Số phiếu</th>
+                        <th>Ngày nhập</th>
+                        <th>Loại nhập</th>
+                        <th>Kho nhận</th>
+                        <th>Người tạo</th>
+                        <th class="text-right">Tổng thanh toán</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td><a href="{% url 'phieu_nhap_detail' item.pk %}"><strong>{{ item.so_phieu }}</strong></a></td>
+                        <td>{{ item.ngay_nhap|date:"d/m/Y" }}</td>
+                        <td>{{ item.get_loai_nhap_display }}</td>
+                        <td>{{ item.kho.ten_kho }}</td>
+                        <td>{{ item.nguoi_tao.username }}</td>
+                        <td class="text-right fw-semibold">{{ item.tong_thanh_toan|intcomma }} đ</td>
+                        <td>
+                            {% if item.trang_thai == 'nhap' %}<span class="badge badge-warning">Nháp</span>
+                            {% elif item.trang_thai == 'hoan_thanh' %}<span class="badge badge-success">Đã nhập</span>
+                            {% else %}<span class="badge badge-danger">Đã hủy</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">Chưa có phiếu nhập kho.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

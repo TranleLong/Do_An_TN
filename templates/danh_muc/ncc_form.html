@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fas fa-edit text-info"></i> 
+            {% if obj %}Sửa thông tin NCC: {{ obj.ma_ncc }}{% else %}Thêm nhà cung cấp mới{% endif %}
+        </div>
+        <a href="{% url 'ncc_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
+    </div>
+
+    <form method="post" class="card-body">
+        {% csrf_token %}
+        <div class="form-row">
+            <div class="col col-4 form-group">
+                <label class="form-label">Mã NCC <span class="text-danger">*</span></label>
+                <input type="text" name="ma_ncc" class="form-control" value="{{ obj.ma_ncc }}" required autofocus>
+            </div>
+            <div class="col col-8 form-group">
+                <label class="form-label">Tên nhà cung cấp <span class="text-danger">*</span></label>
+                <input type="text" name="ten_ncc" class="form-control" value="{{ obj.ten_ncc }}" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="col col-4 form-group">
+                <label class="form-label">Loại NCC <span class="text-danger">*</span></label>
+                <select name="loai_ncc" class="form-control" required>
+                    <option value="dai_ly" {% if obj.loai_ncc == 'dai_ly' %}selected{% endif %}>Đại lý phân phối</option>
+                    <option value="nha_sx" {% if obj.loai_ncc == 'nha_sx' %}selected{% endif %}>Nhà sản xuất</option>
+                    <option value="nhap_khau" {% if obj.loai_ncc == 'nhap_khau' %}selected{% endif %}>Nhà nhập khẩu</option>
+                </select>
+            </div>
+            <div class="col col-4 form-group">
+                <label class="form-label">Số ĐT <span class="text-danger">*</span></label>
+                <input type="text" name="so_dien_thoai" class="form-control" value="{{ obj.so_dien_thoai }}" required>
+            </div>
+            <div class="col col-4 form-group">
+                <label class="form-label">Mã số thuế</label>
+                <input type="text" name="ma_so_thue" class="form-control" value="{{ obj.ma_so_thue }}">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Địa chỉ</label>
+            <input type="text" name="dia_chi" class="form-control" value="{{ obj.dia_chi }}">
+        </div>
+
+        <div class="form-row mt-4">
+            <div class="col col-4 form-group">
+                <label class="form-label">Người liên hệ</label>
+                <input type="text" name="nguoi_lien_he" class="form-control" value="{{ obj.nguoi_lien_he }}">
+            </div>
+            <div class="col col-4 form-group">
+                <label class="form-label">Ngân hàng</label>
+                <input type="text" name="ngan_hang" class="form-control" value="{{ obj.ngan_hang }}">
+            </div>
+            <div class="col col-4 form-group">
+                <label class="form-label">Số tài khoản</label>
+                <input type="text" name="so_tk_ngan_hang" class="form-control" value="{{ obj.so_tk_ngan_hang }}">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Ghi chú</label>
+            <textarea name="ghi_chu" class="form-control" rows="2">{{ obj.ghi_chu }}</textarea>
+        </div>
+
+        <div class="mt-4 pt-3 text-right" style="border-top: 1px solid rgba(0,0,0,0.05);">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Lưu thông tin</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

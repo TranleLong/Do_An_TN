@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fas fa-edit text-warning"></i> 
+            {% if hang %}Sửa phụ tùng: {{ hang.ma_hang }}{% else %}Thêm mới phụ tùng/hàng hóa{% endif %}
+        </div>
+        <a href="{% url 'hang_hoa_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
+    </div>
+
+    <form method="post" class="card-body">
+        {% csrf_token %}
+        <div class="form-row">
+            <div class="col col-4 form-group">
+                <label class="form-label">Mã hàng <span class="text-danger">*</span></label>
+                <input type="text" name="ma_hang" class="form-control" value="{{ hang.ma_hang }}" required autofocus>
+            </div>
+            <div class="col col-8 form-group">
+                <label class="form-label">Tên phụ tùng/hàng hóa <span class="text-danger">*</span></label>
+                <input type="text" name="ten_hang" class="form-control" value="{{ hang.ten_hang }}" required>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="col col-4 form-group">
+                <label class="form-label">Nhóm hàng <span class="text-danger">*</span></label>
+                <select name="nhom_hang" class="form-control" required>
+                    <option value="">-- Chọn nhóm --</option>
+                    {% for n in nhom_list %}
+                    <option value="{{ n.pk }}" {% if hang.nhom_hang_id == n.pk %}selected{% endif %}>{{ n.ten_nhom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col col-4 form-group">
+                <label class="form-label">Thương hiệu</label>
+                <select name="thuong_hieu" class="form-control">
+                    <option value="">-- Bỏ trống --</option>
+                    {% for t in thuong_hieu_list %}
+                    <option value="{{ t.pk }}" {% if hang.thuong_hieu_id == t.pk %}selected{% endif %}>{{ t.ten }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col col-4 form-group">
+                <label class="form-label">Đơn vị tính <span class="text-danger">*</span></label>
+                <select name="don_vi_tinh" class="form-control" required>
+                    <option value="">-- Chọn ĐVT --</option>
+                    {% for d in dvt_list %}
+                    <option value="{{ d.pk }}" {% if hang.don_vi_tinh_id == d.pk %}selected{% endif %}>{{ d.ten }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Dòng xe tương thích</label>
+            <input type="text" name="xe_tuong_thich" class="form-control" value="{{ hang.xe_tuong_thich }}" placeholder="VD: Toyota Vios 2018-2022, Kia Morning...">
+        </div>
+
+        <div class="form-row mt-4">
+            <div class="col col-6 form-group">
+                <label class="form-label">Giá bán lẻ (VNĐ) <span class="text-danger">*</span></label>
+                <input type="number" name="gia_ban_le" class="form-control" value="{{ hang.gia_ban_le|default:'0' }}" required min="0">
+            </div>
+            <div class="col col-6 form-group">
+                <label class="form-label">Giá bán buôn/Gara (VNĐ)</label>
+                <input type="number" name="gia_ban_buon" class="form-control" value="{{ hang.gia_ban_buon|default:'0' }}" min="0">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="col col-6 form-group">
+                <label class="form-label">Tồn kho tối thiểu (Cảnh báo)</label>
+                <input type="number" name="ton_toi_thieu" class="form-control" value="{{ hang.ton_toi_thieu|default:'0' }}" min="0">
+            </div>
+            <div class="col col-6 form-group">
+                <label class="form-label">Mã vạch / Barcode</label>
+                <input type="text" name="barcode" class="form-control" value="{{ hang.barcode }}">
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Ghi chú thêm</label>
+            <textarea name="ghi_chu" class="form-control" rows="3">{{ hang.ghi_chu }}</textarea>
+        </div>
+
+        <div class="mt-4 pt-3 text-right" style="border-top: 1px solid rgba(0,0,0,0.05);">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Lưu thông tin</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

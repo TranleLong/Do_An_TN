@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="row" style="display: flex; gap: 30px;">
+    <!-- Cột trái: Quản lý Công nợ Khách Hàng -->
+    <div style="flex: 1;" class="card">
+        <div class="card-header">
+            <div class="card-title"><i class="fas fa-hand-holding-dollar text-warning"></i> Sổ Theo Dõi Công Nợ Phải Thu (Khách Hàng)</div>
+            <a href="{% url 'phieu_thu_them' %}" class="btn btn-success btn-sm"><i class="fas fa-plus"></i> Thu nợ KH</a>
+        </div>
+        
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Khách hàng</th>
+                            <th class="text-right">Tổng phát sinh</th>
+                            <th class="text-right">Đã thu</th>
+                            <th class="text-right">Dư nợ hiện tại</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for kh in khach_hang_no %}
+                        <tr>
+                            <td>
+                                <strong>{{ kh.ma_kh }}</strong> - {{ kh.ten_kh }}
+                                <div style="font-size: 11px; color: var(--text-muted);">SĐT: {{ kh.so_dien_thoai }}</div>
+                            </td>
+                            <td class="text-right text-muted">{{ kh.tong_mua|default:0|floatformat:0|intcomma }} đ</td>
+                            <td class="text-right text-success">{{ kh.tong_da_tra|default:0|floatformat:0|intcomma }} đ</td>
+                            <td class="text-right fw-bold text-warning">{{ kh.get_cong_no|floatformat:0|intcomma }} đ</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center py-4 text-muted">Không có khách hàng nào đang nợ.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cột phải: Quản lý Công Nợ NCC -->
+    <div style="flex: 1;" class="card">
+        <div class="card-header">
+            <div class="card-title"><i class="fas fa-file-contract text-danger"></i> Sổ Theo Dõi Công Nợ Phải Trả (Nhà cung cấp)</div>
+            <a href="{% url 'phieu_chi_them' %}" class="btn btn-danger btn-sm"><i class="fas fa-minus"></i> Trả nợ NCC</a>
+        </div>
+        
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Nhà cung cấp</th>
+                            <th class="text-right">Tổng nhập hàng</th>
+                            <th class="text-right">Đã thanh toán</th>
+                            <th class="text-right">Còn phải trả</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ncc in ncc_no %}
+                        <tr>
+                            <td>
+                                <strong>{{ ncc.ma_ncc }}</strong> - {{ ncc.ten_ncc }}
+                                <div style="font-size: 11px; color: var(--text-muted);">SĐT: {{ ncc.so_dien_thoai }}</div>
+                            </td>
+                            <td class="text-right text-muted">{{ ncc.tong_nhap|default:0|floatformat:0|intcomma }} đ</td>
+                            <td class="text-right text-success">{{ ncc.tong_da_tra|default:0|floatformat:0|intcomma }} đ</td>
+                            <td class="text-right fw-bold text-danger">{{ ncc.get_cong_no|floatformat:0|intcomma }} đ</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center py-4 text-muted">Không nợ thẻ nhà cung cấp nào.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="row" style="display: flex; gap: 30px;">
+    <!-- Cột trái: Quản lý Thu Tiền -->
+    <div style="flex: 1;" class="card">
+        <div class="card-header">
+            <div class="card-title"><i class="fas fa-hand-holding-dollar text-success"></i> Sổ Quỹ Tiền Mặt & Tiền Gửi (Thu)</div>
+            <a href="{% url 'phieu_thu_them' %}" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> Lập phiếu thu</a>
+        </div>
+        
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Số PT</th>
+                            <th>Ngày thu</th>
+                            <th>Khách hàng</th>
+                            <th class="text-right">Số tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pt in phieu_thu_list %}
+                        <tr>
+                            <td><strong>{{ pt.so_phieu }}</strong></td>
+                            <td>{{ pt.ngay_thu|date:"d/m/Y" }}</td>
+                            <td>
+                                {{ pt.khach_hang.ten_kh|default:"Khách vãng lai" }}
+                                <div style="font-size: 11px; color: var(--text-muted);">{{ pt.get_hinh_thuc_tt_display }}</div>
+                            </td>
+                            <td class="text-right fw-bold text-success">+{{ pt.so_tien|floatformat:0|intcomma }} đ</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center py-4 text-muted">Chưa có dữ liệu phiếu thu tiền.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cột phải: Quản lý Chi Tiền -->
+    <div style="flex: 1;" class="card">
+        <div class="card-header">
+            <div class="card-title"><i class="fas fa-money-bill-transfer text-danger"></i> Sổ Quỹ Tiền Mặt & Tiền Gửi (Chi)</div>
+            <a href="{% url 'phieu_chi_them' %}" class="btn btn-danger btn-sm"><i class="fas fa-minus"></i> Lập phiếu chi</a>
+        </div>
+        
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Số PC</th>
+                            <th>Ngày chi</th>
+                            <th>Nhà cung cấp / Đối tượng</th>
+                            <th class="text-right">Số tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pc in phieu_chi_list %}
+                        <tr>
+                            <td><strong>{{ pc.so_phieu }}</strong></td>
+                            <td>{{ pc.ngay_chi|date:"d/m/Y" }}</td>
+                            <td>
+                                {{ pc.nha_cung_cap.ten_ncc|default:"Chi phí khác" }}
+                                <div style="font-size: 11px; color: var(--text-muted);">{{ pc.get_hinh_thuc_tt_display }}</div>
+                            </td>
+                            <td class="text-right fw-bold text-danger">-{{ pc.so_tien|floatformat:0|intcomma }} đ</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center py-4 text-muted">Chưa có dữ liệu phiếu chi tiền.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Báo cáo Doanh thu - Lợi nhuận -->
+<div class="card mt-4">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-chart-line text-warning"></i> Báo cáo tổng hợp Doanh thu - Giá vốn - Lợi nhuận gộp</div>
+    </div>
+    <div class="card-body">
+        <form method="get" class="form-row mb-4 align-items-end p-3" style="background: rgba(0,0,0,0.04); border-radius: var(--radius-sm);">
+            <div class="col col-3 form-group mb-0">
+                <label class="form-label text-muted">Từ ngày</label>
+                <input type="date" name="tu_ngay" class="form-control" value="{{ tu_ngay }}">
+            </div>
+            <div class="col col-3 form-group mb-0">
+                <label class="form-label text-muted">Đến ngày</label>
+                <input type="date" name="den_ngay" class="form-control" value="{{ den_ngay }}">
+            </div>
+            <div class="col col-2 form-group mb-0">
+                <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter"></i> Xem BC</button>
+            </div>
+        </form>
+
+        <div class="kpi-grid">
+            <div class="kpi-card" style="border-left: 4px solid var(--info);">
+                <div class="kpi-info" style="width: 100%;">
+                    <h4 class="mb-2">Tổng doanh thu bán hàng</h4>
+                    <div class="kpi-value text-info">{{ tong_doanh_thu|floatformat:0|default:"0"|intcomma }} đ</div>
+                </div>
+            </div>
+            <div class="kpi-card" style="border-left: 4px solid var(--warning);">
+                <div class="kpi-info" style="width: 100%;">
+                    <h4 class="mb-2">Chiết khấu thương mại</h4>
+                    <div class="kpi-value text-warning">{{ tong_chiet_khau|floatformat:0|default:"0"|intcomma }} đ</div>
+                </div>
+            </div>
+            <div class="kpi-card" style="border-left: 4px solid var(--danger);">
+                <div class="kpi-info" style="width: 100%;">
+                    <h4 class="mb-2">Giá vốn hàng bán</h4>
+                    <div class="kpi-value text-danger">{{ tong_gia_von|floatformat:0|default:"0"|intcomma }} đ</div>
+                </div>
+            </div>
+            <div class="kpi-card" style="border-left: 4px solid var(--success); background: rgba(16,185,129,0.05);">
+                <div class="kpi-info" style="width: 100%;">
+                    <h4 class="mb-2 text-success fw-bold">Lợi Nhuận Gộp (Gross Profit)</h4>
+                    <div class="kpi-value text-success">{{ loi_nhuan_gop|floatformat:0|default:"0"|intcomma }} đ</div>
+                    <div style="font-size: 11px; margin-top: 5px; color: var(--text-muted);">
+                        Biên lợi nhuận: <strong class="text-white">{{ bien_loi_nhuan|floatformat:1 }}%</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive mt-4">
+            <table class="table">
+                <thead>
+                    <tr style="background: rgba(0,0,0,0.04);">
+                        <th>Phụ tùng bán chạy</th>
+                        <th class="text-right">Số lượng bán</th>
+                        <th class="text-right">Doanh thu (đ)</th>
+                        <th class="text-right">Giá vốn xuất (đ)</th>
+                        <th class="text-right">Lợi nhuận gộp (đ)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sp in top_san_pham %}
+                    <tr>
+                        <td><strong>{{ sp.hang_hoa__ma_hang }}</strong> - {{ sp.hang_hoa__ten_hang }}</td>
+                        <td class="text-right">{{ sp.tong_sl }}</td>
+                        <td class="text-right text-info">{{ sp.doanh_thu|floatformat:0|intcomma }}</td>
+                        <td class="text-right text-muted">{{ sp.gia_von|floatformat:0|intcomma }}</td>
+                        <td class="text-right text-success fw-bold">{{ sp.loi_nhuan|floatformat:0|intcomma }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="5" class="text-center py-4 text-muted">Không có mặt hàng nào được bán trong khoảng thời gian này.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

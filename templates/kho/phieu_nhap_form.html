@@ -1,0 +1,166 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-truck-loading text-success"></i> Tạo Phiếu Nhập Kho</div>
+        <a href="{% url 'phieu_nhap_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
+    </div>
+
+    <form method="post" id="phieuNhapForm" class="card-body">
+        {% csrf_token %}
+        <div class="form-row">
+            <div class="col col-3 form-group">
+                <label class="form-label">Số phiếu <span class="text-danger">*</span></label>
+                <input type="text" name="so_phieu" class="form-control" value="{{ so_phieu_default }}" required>
+            </div>
+            <div class="col col-3 form-group">
+                <label class="form-label">Ngày nhập <span class="text-danger">*</span></label>
+                <input type="date" name="ngay_nhap" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+            </div>
+            <div class="col col-3 form-group">
+                <label class="form-label">Loại nhập <span class="text-danger">*</span></label>
+                <select name="loai_nhap" class="form-control" required>
+                    <option value="tu_ncc">Nhập từ Nhà cung cấp</option>
+                    <option value="khach_tra">Khách trả hàng</option>
+                    <option value="chuyen_kho">Nhận điều chuyển kho</option>
+                    <option value="khac">Nhập khác</option>
+                </select>
+            </div>
+            <div class="col col-3 form-group">
+                <label class="form-label">Kho nhận <span class="text-danger">*</span></label>
+                <select name="kho" class="form-control" required>
+                    {% for k in kho_list %}
+                    <option value="{{ k.pk }}">{{ k.ten_kho }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="col col-6 form-group">
+                <label class="form-label">Nhà cung cấp (nếu có)</label>
+                <select name="nha_cung_cap" class="form-control">
+                    <option value="">-- Chọn Nhà cung cấp --</option>
+                    {% for ncc in ncc_list %}
+                    <option value="{{ ncc.pk }}">{{ ncc.ma_ncc }} - {{ ncc.ten_ncc }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col col-6 form-group">
+                <label class="form-label">Lý do / Ghi chú</label>
+                <input type="text" name="ghi_chu" class="form-control" placeholder="Ghi chú thêm...">
+            </div>
+        </div>
+
+        <!-- Chi tiết phụ tùng nhập kho -->
+        <h5 class="mt-4 mb-3 border-top pt-4 text-warning">Chi tiết vật tư / phụ tùng nhập kho</h5>
+        
+        <div class="table-responsive">
+            <table class="table" id="chiTietTable">
+                <thead>
+                    <tr>
+                        <th style="width: 35%">Phụ tùng / Hàng hóa</th>
+                        <th style="width: 15%">Số lượng</th>
+                        <th style="width: 20%">Đơn giá nhập (VNĐ)</th>
+                        <th style="width: 25%" class="text-right">Thành tiền</th>
+                        <th style="width: 5%">Xóa</th>
+                    </tr>
+                </thead>
+                <tbody id="chiTietBody">
+                    <tr class="item-row">
+                        <td>
+                            <select name="hang_id[]" class="form-control hang-select" required>
+                                <option value="">-- Chọn vật tư --</option>
+                                {% for h in hang_list %}
+                                <option value="{{ h.pk }}" data-gia="{{ h.gia_ban_le|default:0 }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td><input type="number" name="so_luong[]" class="form-control so-luong calc-input" min="1" required></td>
+                        <td><input type="number" name="don_gia[]" class="form-control don-gia calc-input" min="0" required></td>
+                        <td><input type="text" class="form-control thanh-tien text-right text-success fw-bold" readonly></td>
+                        <td class="text-center"><button type="button" class="btn btn-sm btn-danger btn-remove text-white"><i class="fas fa-times"></i></button></td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5">
+                            <button type="button" class="btn btn-secondary btn-sm" id="btnAddRow"><i class="fas fa-plus"></i> Thêm vật tư</button>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="row mt-4 justify-content-end" style="display: flex;">
+            <div style="width: 350px; background: rgba(0,0,0,0.04); padding: 1.5rem; border-radius: var(--radius-md);">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span>Chi phí phát sinh:</span>
+                    <input type="number" name="chi_phi_phat_sinh" id="chiPhiKhac" class="form-control text-right" style="width: 120px;" value="0">
+                </div>
+                <div class="d-flex justify-content-between text-warning" style="font-size: 1.25rem;">
+                    <strong>Tổng thanh toán:</strong>
+                    <strong id="tongThanhToan">0 đ</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4 text-center">
+            <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem; font-size: 1rem;"><i class="fas fa-save"></i> LƯU PHIẾU NHÁP</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function fmtMoney(val) { return parseFloat(val).toLocaleString('vi-VN') + ' đ'; }
+
+    $(document).on('change', '.hang-select', function() {
+        let row = $(this).closest('tr');
+        if($(this).val()) {
+            if(!row.find('.so-luong').val()) row.find('.so-luong').val(1);
+            let giaDeXuat = $(this).find('option:selected').data('gia') * 0.7; // Tạm tính giá nhập = 70% giá bán
+            if(!row.find('.don-gia').val()) row.find('.don-gia').val(Math.round(giaDeXuat));
+            tinhTongRow(row);
+        } else {
+            row.find('.thanh-tien').val('');
+        }
+    });
+
+    function tinhTongRow(row) {
+        let sl = parseFloat(row.find('.so-luong').val()) || 0;
+        let gia = parseFloat(row.find('.don-gia').val()) || 0;
+        let thanh_tien = gia * sl;
+        row.find('.thanh-tien').val(fmtMoney(thanh_tien));
+        row.data('thanh_tien', thanh_tien);
+        tinhTongDH();
+    }
+
+    function tinhTongDH() {
+        let tong = 0;
+        $('.item-row').each(function() { tong += $(this).data('thanh_tien') || 0; });
+        let phi = parseFloat($('#chiPhiKhac').val()) || 0;
+        $('#tongThanhToan').text(fmtMoney(tong + phi));
+    }
+
+    $(document).on('input', '.calc-input, #chiPhiKhac', function() {
+        let row = $(this).closest('tr');
+        if(row.hasClass('item-row')) tinhTongRow(row);
+        else tinhTongDH();
+    });
+
+    $('#btnAddRow').click(function() {
+        let newRow = $('.item-row:first').clone();
+        newRow.find('input').val('');
+        newRow.find('.so-luong').val(1);
+        newRow.find('.thanh-tien').val(0);
+        $('#chiTietBody').append(newRow);
+    });
+
+    $(document).on('click', '.btn-remove', function() {
+        if($('.item-row').length > 1) { $(this).closest('tr').remove(); tinhTongDH(); }
+    });
+</script>
+{% endblock %}

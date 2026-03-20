@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card bg-white shadow-sm border-0 rounded-4">
+    <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+        <h5 class="card-title text-primary m-0 fw-bold">
+            <i class="fas fa-truck-loading me-2 text-primary"></i> Danh sách Phiếu xuất kho
+        </h5>
+        <a href="{% url 'phieu_xuat_them' %}" class="btn btn-primary rounded-pill px-4">
+            <i class="fas fa-plus me-1"></i> Tạo phiếu xuất
+        </a>
+    </div>
+    
+    <div class="card-body">
+        <form method="get" class="mb-4 d-flex gap-3 align-items-center">
+            <div style="position: relative; max-width: 320px; width: 100%;">
+                <i class="fas fa-search text-muted" style="position:absolute; left:12px; top:50%; transform:translateY(-50%);"></i>
+                <input
+                    type="text"
+                    name="q"
+                    value="{{ q }}"
+                    class="form-control"
+                    style="padding-left: 34px;"
+                    placeholder="Tìm số phiếu xuất..."
+                >
+            </div>
+            <button type="submit" class="btn btn-secondary px-4">Lọc</button>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light text-muted" style="font-size: 0.85rem; text-transform: uppercase;">
+                    <tr>
+                        <th class="fw-semibold">Số phiếu</th>
+                        <th class="fw-semibold">Ngày xuất</th>
+                        <th class="fw-semibold">Loại xuất</th>
+                        <th class="fw-semibold">Kho xuất</th>
+                        <th class="fw-semibold">Người tạo</th>
+                        <th class="text-end fw-semibold">Tổng giá vốn</th>
+                        <th class="text-center fw-semibold">Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody class="border-top-0">
+                    {% for item in items %}
+                    <tr>
+                        <td>
+                            <a href="#" class="fw-bold text-decoration-none text-primary">{{ item.so_phieu }}</a>
+                        </td>
+                        <td>{{ item.ngay_xuat|date:"d/m/Y" }}</td>
+                        <td>
+                            <span class="badge bg-light text-dark border"><i class="fas fa-tag me-1 text-muted"></i> {{ item.get_loai_xuat_display }}</span>
+                        </td>
+                        <td>{{ item.kho.ten_kho }}</td>
+                        <td>{{ item.nguoi_tao.username }}</td>
+                        <td class="text-end text-danger fw-bold">{{ item.tong_gia_von|intcomma }} đ</td>
+                        <td class="text-center">
+                            {% if item.trang_thai == 'nhap' %}
+                                <span class="badge bg-warning text-dark"><i class="fas fa-edit me-1"></i>Nháp</span>
+                            {% elif item.trang_thai == 'da_xuat' %}
+                                <span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Đã xuất</span>
+                            {% else %}
+                                <span class="badge bg-danger"><i class="fas fa-times-circle me-1"></i>Đã hủy</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-5">
+                            <i class="fas fa-box-open fs-1 text-light mb-3"></i>
+                            <p class="mb-0">Chưa có dữ liệu xuất kho.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

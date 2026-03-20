@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">{{ page_title }}</div>
+        {% if active_menu == 'phieu_thu' %}
+            <a href="{% url 'phieu_thu_them' %}" class="btn btn-primary btn-sm">Lập phiếu thu</a>
+        {% elif active_menu == 'phieu_chi' %}
+            <a href="{% url 'phieu_chi_them' %}" class="btn btn-primary btn-sm">Lập phiếu chi</a>
+        {% endif %}
+    </div>
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Số phiếu</th>
+                    <th>Ngày</th>
+                    <th>Đối tượng</th>
+                    <th class="text-right">Số tiền</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if items %}
+                    {% for row in items %}
+                    <tr>
+                        <td>{{ row.so_phieu }}</td>
+                        <td>{{ row.ngay_thu|default:row.ngay_chi|date:'d/m/Y' }}</td>
+                        <td>{{ row.khach_hang.ten_kh|default:row.nha_cung_cap.ten_ncc }}</td>
+                        <td class="text-right">{{ row.tong_thu|default:row.tong_chi|intcomma }} đ</td>
+                    </tr>
+                    {% endfor %}
+                {% elif phieu_chi_list %}
+                    {% for row in phieu_chi_list %}
+                    <tr>
+                        <td>{{ row.so_phieu }}</td>
+                        <td>{{ row.ngay_chi|date:'d/m/Y' }}</td>
+                        <td>{{ row.nha_cung_cap.ten_ncc }}</td>
+                        <td class="text-right">{{ row.tong_chi|intcomma }} đ</td>
+                    </tr>
+                    {% endfor %}
+                {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">Chưa có dữ liệu.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

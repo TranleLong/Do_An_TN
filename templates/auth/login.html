@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập - ERP Tiến Hương</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/style.css?v=4">
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f1f5f9;
+        }
+        .login-card {
+            width: 100%;
+            max-width: 400px;
+            padding: 3rem 2.5rem;
+            background-color: var(--bg-card);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+        .login-logo {
+            font-size: 1.75rem;
+            font-weight: 800;
+            margin-bottom: 2rem;
+            letter-spacing: -0.5px;
+            color: var(--text-main);
+        }
+        .login-logo i { color: var(--accent-color); font-size: 2.5rem; margin-bottom: 1rem; display: block; }
+        .login-logo span { color: var(--accent-color); }
+        .form-group { text-align: left; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="login-logo">
+            <i class="fas fa-tools"></i>
+            TIẾN <span>HƯƠNG</span> ERP
+        </div>
+        
+        {% if form.errors %}
+        <div class="alert alert-error" style="font-size: 13px;">
+            Tên đăng nhập hoặc mật khẩu không đúng.
+        </div>
+        {% endif %}
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label">Tên đăng nhập</label>
+                <div style="position: relative;">
+                    <i class="fas fa-user" style="position: absolute; left: 15px; top: 12px; color: var(--text-muted)"></i>
+                    <input type="text" name="username" class="form-control" style="padding-left: 40px;" required autofocus>
+                </div>
+            </div>
+            <div class="form-group mb-4">
+                <label class="form-label">Mật khẩu</label>
+                <div style="position: relative;">
+                    <i class="fas fa-lock" style="position: absolute; left: 15px; top: 12px; color: var(--text-muted)"></i>
+                    <input type="password" name="password" class="form-control" style="padding-left: 40px;" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 0.75rem; font-size: 1rem;">
+                ĐĂNG NHẬP <i class="fas fa-arrow-right"></i>
+            </button>
+        </form>
+        
+        <div class="mt-4 text-muted" style="font-size: 12px;">
+            Hệ thống quản lý phụ tùng ô tô &copy; 2026
+        </div>
+    </div>
+</body>
+</html>

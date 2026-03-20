@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-file-signature text-info"></i> Danh sách Đơn bán hàng & Đơn mua hàng</div>
+        <div>
+            <a href="{% url 'don_ban_them' %}" class="btn btn-primary btn-sm"><i class="fas fa-shopping-cart"></i> Tạo đơn KH</a>
+            <!-- Link giả lập đơn mua vì cấu trúc giống Đơn bán -->
+            <a href="{% url 'phieu_nhap_them' %}" class="btn btn-warning btn-sm"><i class="fas fa-truck-loading"></i> Nhập hàng NCC</a>
+        </div>
+    </div>
+    
+    <div class="card-body text-center py-5">
+        <i class="fas fa-tools text-muted mb-4" style="font-size: 4rem;"></i>
+        <h3 class="text-warning mb-3">Tính năng đang trong quá trình đồng bộ hóa!</h3>
+        <p class="text-muted mx-auto" style="max-width: 600px;">
+            Các module nghiệp vụ nâng cao (Đơn mua hàng tự động, Phiếu xuất kho nội bộ, Trả hàng NCC) được tích hợp trực tiếp chung vào luồng Phân hệ quản lý Kho.<br>
+            Vui lòng sử dụng <strong>Phiếu Nhập Kho</strong> và <strong>Phiếu Xuất Kho</strong> để thao tác.
+        </p>
+        
+        <div class="mt-4 pt-4 border-top">
+            <a href="{% url 'phieu_nhap_list' %}" class="btn btn-primary mx-2">Tới Quản lý Phiếu Nhập</a>
+            <a href="{% url 'don_ban_list' %}" class="btn btn-success mx-2">Tới Quản lý Đơn Bán</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

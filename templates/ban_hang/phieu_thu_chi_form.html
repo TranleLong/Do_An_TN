@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-hand-holding-dollar text-success"></i> {% if loai == 'thu' %}Lập Phiếu Thu Tiền{% else %}Lập Phiếu Chi Tiền{% endif %}</div>
+        <a href="javascript:history.back()" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
+    </div>
+
+    <form method="post" class="card-body">
+        {% csrf_token %}
+        <div class="form-row">
+            <div class="col col-6 form-group">
+                <label class="form-label">Số phiếu <span class="text-danger">*</span></label>
+                <input type="text" name="so_phieu" class="form-control" value="{{ so_phieu_default }}" required>
+            </div>
+            <div class="col col-6 form-group">
+                <label class="form-label">Ngày hiệu lực <span class="text-danger">*</span></label>
+                <input type="date" name="ngay" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+            </div>
+        </div>
+
+        {% if loai == 'thu' %}
+        <div class="form-group">
+            <label class="form-label">Người nộp tiền (Khách hàng)</label>
+            <select name="doi_tuong" class="form-control" id="kh_select">
+                <option value="">-- Thu khác / Khách vãng lai --</option>
+                {% for k in kh_list %}
+                <option value="{{ k.pk }}" data-no="{{ k.get_cong_no }}" {% if k.pk|stringformat:"s" == kh_id_default %}selected{% endif %}>{{ k.ma_kh }} - {{ k.ten_kh }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% else %}
+        <div class="form-group">
+            <label class="form-label">Người nhận tiền (Nhà cung cấp)</label>
+            <select name="doi_tuong" class="form-control" id="ncc_select">
+                <option value="">-- Chi phí khác / NV --</option>
+                {% for n in ncc_list %}
+                <option value="{{ n.pk }}" data-no="{{ n.get_cong_no }}">
+                    {{ n.ma_ncc }} - {{ n.ten_ncc }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <div id="congNoAlert" class="alert alert-warning mb-4" style="display: none; font-size: 13px;">
+            <i class="fas fa-info-circle"></i> Công nợ hiện tại: <strong id="soTienNo" class="text-danger">0 đ</strong>
+        </div>
+
+        <div class="form-row">
+            <div class="col col-6 form-group">
+                <label class="form-label">Hình thức thanh toán <span class="text-danger">*</span></label>
+                <select name="hinh_thuc" class="form-control" required>
+                    <option value="tien_mat">Tiền mặt</option>
+                    <option value="chuyen_khoan">Chuyển khoản</option>
+                    <option value="the">Quẹt thẻ</option>
+                </select>
+            </div>
+            <div class="col col-6 form-group">
+                <label class="form-label">Số tiền (VNĐ) <span class="text-danger">*</span></label>
+                <input type="number" name="so_tien" id="soTien" class="form-control text-right" style="font-size: 1.2rem; font-weight: bold; color: var(--{% if loai == 'thu'%}success{% else %}danger{% endif %});" value="0" min="1" required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Lý do {% if loai == 'thu' %}thu{% else %}chi{% endif %} / Ghi chú diễn giải <span class="text-danger">*</span></label>
+            <textarea name="ly_do" class="form-control" rows="3" required placeholder="VD: Thu tiền đơn hàng #DB001, Chi trả tiền hàng tháng 3..."></textarea>
+        </div>
+
+        <div class="mt-4 pt-3 text-center" style="border-top: 1px solid rgba(0,0,0,0.05);">
+            <button type="submit" class="btn btn-{% if loai == 'thu' %}success{% else %}danger{% endif %}" style="padding: 0.75rem 2rem; font-size: 1rem;">
+                <i class="fas fa-save"></i> LƯU PHIẾU {% if loai == 'thu' %}THU{% else %}CHI{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Xử lý hiển thị công nợ
+        function updateCongNo(selectId) {
+            const select = document.getElementById(selectId);
+            if(!select) return;
+            
+            select.addEventListener('change', function() {
+                const opt = this.options[this.selectedIndex];
+                const no = parseFloat(opt.getAttribute('data-no')) || 0;
+                
+                const alertDiv = document.getElementById('congNoAlert');
+                const noText = document.getElementById('soTienNo');
+                
+                if(this.value && no > 0) {
+                    alertDiv.style.display = 'block';
+                    noText.innerText = no.toLocaleString('vi-VN') + ' đ';
+                    
+                    // Tự động gán số tiền nếu chưa điền
+                    const inputTien = document.getElementById('soTien');
+                    if(inputTien.value == '0' || inputTien.value === '') {
+                        inputTien.value = no;
+                    }
+                } else {
+                    alertDiv.style.display = 'none';
+                }
+            });
+            
+            // Trigger 1 lần lúc load (nếu có default params)
+            if(select.value) {
+                var event = new Event('change');
+                select.dispatchEvent(event);
+            }
+        }
+        
+        updateCongNo('kh_select');
+        updateCongNo('ncc_select');
+    });
+</script>
+{% endblock %}

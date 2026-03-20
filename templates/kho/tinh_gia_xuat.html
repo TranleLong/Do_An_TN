@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+
+<div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);">
+    <div class="kpi-card" style="border-left:4px solid #3b82f6;">
+        <div class="kpi-icon" style="background:#eff6ff;"><i class="fas fa-file-export" style="color:#3b82f6; font-size:1.4rem;"></i></div>
+        <div class="kpi-info">
+            <h4>Phiếu xuất tháng {{ thang }}</h4>
+            <div class="kpi-value" style="color:#3b82f6;">{{ tong_phieu_xuat }}</div>
+        </div>
+    </div>
+    <div class="kpi-card" style="border-left:4px solid #f59e0b;">
+        <div class="kpi-icon" style="background:#fef3c7;"><i class="fas fa-hand-holding-usd" style="color:#f59e0b; font-size:1.4rem;"></i></div>
+        <div class="kpi-info">
+            <h4>Tổng giá vốn hàng xuất</h4>
+            <div class="kpi-value" style="color:#f59e0b; font-size:1.2rem;">{{ tong_gia_von_xuat|intcomma }} đ</div>
+        </div>
+    </div>
+    <div class="kpi-card" style="border-left:4px solid #10b981;">
+        <div class="kpi-icon" style="background:#d1fae5;"><i class="fas fa-coins" style="color:#10b981; font-size:1.4rem;"></i></div>
+        <div class="kpi-info">
+            <h4>Tổng giá trị tồn kho</h4>
+            <div class="kpi-value" style="color:#10b981; font-size:1.2rem;">{{ tong_ton_kho|intcomma }} đ</div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fas fa-calculator text-primary"></i> Kiểm Tra & Xác Nhận Giá Xuất Kho
+        </div>
+    </div>
+    <div class="card-body">
+
+        <div class="alert alert-info" style="border-radius:10px; font-size:0.92rem; border-left:4px solid #3b82f6;">
+            <i class="fas fa-info-circle me-2"></i>
+            Hệ thống sử dụng phương pháp <strong>Bình quân gia quyền (WA)</strong>. Giá vốn được tính lại tự động mỗi khi có nhập/xuất kho.
+            Bảng dưới đây hiển thị giá vốn trung bình hiện tại của từng mặt hàng để kế toán kiểm tra.
+        </div>
+
+        <form method="get" class="d-flex gap-3 mb-4 align-items-center">
+            <div>
+                <label class="form-label fw-semibold text-muted small mb-1">Chọn kho</label>
+                <select name="kho" class="form-control" style="min-width:180px;">
+                    <option value="">-- Tất cả kho --</option>
+                    {% for k in kho_list %}
+                    <option value="{{ k.pk }}" {% if k.pk|stringformat:"s" == kho_filter %}selected{% endif %}>{{ k.ten_kho }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="form-label fw-semibold text-muted small mb-1">&nbsp;</label>
+                <button type="submit" class="btn btn-primary d-block"><i class="fas fa-filter me-1"></i> Lọc kho</button>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Mã hàng</th>
+                        <th>Tên hàng hóa</th>
+                        <th>Kho</th>
+                        <th class="text-center">Tồn kho (SL)</th>
+                        <th class="text-end">Giá vốn TB / đơn vị</th>
+                        <th class="text-end">Tổng giá trị tồn</th>
+                        <th class="text-center">Cập nhật lần cuối</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td><code class="text-primary fw-bold">{{ item.hang_hoa.ma_hang }}</code></td>
+                        <td>
+                            <div class="fw-semibold">{{ item.hang_hoa.ten_hang }}</div>
+                            <div class="text-muted" style="font-size:0.78rem;">{{ item.hang_hoa.nhom_hang.ten_nhom|default:"" }}</div>
+                        </td>
+                        <td><i class="fas fa-warehouse text-muted me-1" style="font-size:0.8rem;"></i>{{ item.kho.ten_kho }}</td>
+                        <td class="text-center fw-bold text-primary">{{ item.so_luong }} <span class="text-muted fw-normal" style="font-size:0.8rem;">{{ item.hang_hoa.don_vi_tinh.ten }}</span></td>
+                        <td class="text-end fw-semibold" style="color:#f59e0b;">{{ item.gia_von_tb|intcomma }} đ</td>
+                        <td class="text-end fw-bold text-success">
+                            {% widthratio item.gia_von_tb 1 item.so_luong as tong %}
+                            {{ tong|default:"0"|intcomma }} đ
+                        </td>
+                        <td class="text-center text-muted" style="font-size:0.82rem;">{{ item.ngay_cap_nhat|date:"d/m/Y H:i" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted py-5">Không có dữ liệu tồn kho.</td></tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light fw-bold">
+                    <tr>
+                        <td colspan="5" class="text-end">Tổng giá trị tồn kho:</td>
+                        <td class="text-end text-success fw-bold fs-6">{{ tong_gia_tri_ton|intcomma }} đ</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

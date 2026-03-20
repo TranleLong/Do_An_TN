@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Lập phiếu thu</div>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-row">
+                <div class="col">
+                    <label>Số phiếu</label>
+                    <input type="text" name="so_phieu" class="form-control" value="{{ so_phieu_default }}">
+                </div>
+                <div class="col">
+                    <label>Ngày thu</label>
+                    <input type="date" name="ngay_thu" class="form-control" value="{{ today|date:'Y-m-d' }}">
+                </div>
+            </div>
+
+            <div class="form-row" style="margin-top:12px;">
+                <div class="col">
+                    <label>Khách hàng</label>
+                    <select name="khach_hang" class="form-control" required>
+                        <option value="">-- Chọn khách hàng --</option>
+                        {% for kh in kh_list %}
+                            <option value="{{ kh.id }}" {% if don_selected and don_selected.khach_hang_id == kh.id %}selected{% endif %}>{{ kh.ma_kh }} - {{ kh.ten_kh }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col">
+                    <label>Đơn bán liên kết</label>
+                    <select name="don_ban" class="form-control">
+                        <option value="">-- Không liên kết --</option>
+                        {% for don in don_ban_list %}
+                            <option value="{{ don.id }}" {% if don_selected and don_selected.id == don.id %}selected{% endif %}>{{ don.so_don }} - Còn nợ: {{ don.con_no|intcomma }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row" style="margin-top:12px;">
+                <div class="col">
+                    <label>Hình thức thu</label>
+                    <select name="hinh_thuc_thu" class="form-control">
+                        <option value="tien_mat">Tiền mặt</option>
+                        <option value="chuyen_khoan">Chuyển khoản</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <label>Số tiền thu</label>
+                    <input type="number" name="tong_thu" class="form-control" min="0" step="1" required>
+                </div>
+            </div>
+
+            <div class="form-row" style="margin-top:12px;">
+                <div class="col">
+                    <label>Mã tham chiếu</label>
+                    <input type="text" name="so_tham_chieu" class="form-control">
+                </div>
+            </div>
+
+            <div class="form-row" style="margin-top:12px;">
+                <div class="col">
+                    <label>Ghi chú</label>
+                    <textarea name="ghi_chu" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+
+            <div style="margin-top:16px;">
+                <button class="btn btn-primary" type="submit">Lưu phiếu thu</button>
+                <a href="{% url 'phieu_thu_list' %}" class="btn btn-secondary">Quay lại</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

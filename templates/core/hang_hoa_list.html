@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-box text-warning"></i> Danh sách hàng hóa/phụ tùng</div>
+        <a href="{% url 'hang_hoa_them' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Thêm mới</a>
+    </div>
+    
+    <div class="card-body">
+        <form method="get" class="form-row mb-4 align-items-center">
+            <div class="col col-4">
+                <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Tìm theo mã, tên, xe tương thích...">
+            </div>
+            <div class="col col-3">
+                <select name="nhom" class="form-control">
+                    <option value="">-- Tất cả nhóm hàng --</option>
+                    {% for n in nhom_list %}
+                    <option value="{{ n.pk }}" {% if n.pk|stringformat:"s" == nhom_filter %}selected{% endif %}>{{ n.ten_nhom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col col-2">
+                <button type="submit" class="btn btn-secondary"><i class="fas fa-search"></i> Lọc</button>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Mã HH</th>
+                        <th>Tên phụ tùng</th>
+                        <th>Nhóm</th>
+                        <th>Xe tương thích</th>
+                        <th class="text-right">Giá bán lẻ</th>
+                        <th class="text-right">Tồn kho</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in hang_list %}
+                    <tr>
+                        <td><strong>{{ item.hang.ma_hang }}</strong></td>
+                        <td>
+                            {{ item.hang.ten_hang }}
+                            <div style="font-size: 11px; color: var(--text-muted);">ĐVT: {{ item.hang.don_vi_tinh.ten|default:"-" }}</div>
+                        </td>
+                        <td>{{ item.hang.nhom_hang.ten_nhom|default:"-" }}</td>
+                        <td>{{ item.hang.xe_tuong_thich }}</td>
+                        <td class="text-right text-success fw-semibold">{{ item.hang.gia_ban_le|floatformat:0 }} đ</td>
+                        <td class="text-right">
+                            <span class="badge {% if item.ton <= item.hang.ton_toi_thieu %}badge-danger{% else %}badge-info{% endif %}">
+                                {{ item.ton }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="d-flex gap-2">
+                                <a href="{% url 'hang_hoa_sua' item.hang.pk %}" class="btn btn-sm btn-secondary" title="Sửa"><i class="fas fa-edit"></i></a>
+                                <form action="{% url 'hang_hoa_xoa' item.hang.pk %}" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc muốn ngừng kinh doanh mặt hàng này?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-danger" title="Xóa"><i class="fas fa-trash"></i></button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">Không tìm thấy hàng hóa nào.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

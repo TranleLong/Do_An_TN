@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fas fa-file-invoice text-success"></i> Chi tiết Phiếu Nhập Kho: {{ phieu_nhap.so_phieu }}
+            
+            {% if phieu_nhap.trang_thai == 'nhap' %}
+            <span class="badge badge-warning ml-2">Đang chờ duyệt nhập</span>
+            {% elif phieu_nhap.trang_thai == 'hoan_thanh' %}
+            <span class="badge badge-success ml-2">Đã nhập kho thành công</span>
+            {% else %}
+            <span class="badge badge-danger ml-2">Đã hủy</span>
+            {% endif %}
+        </div>
+        <div>
+            {% if phieu_nhap.trang_thai == 'nhap' %}
+            <form action="{% url 'phieu_nhap_xac_nhan' phieu_nhap.pk %}" method="post" style="display:inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-check-double"></i> Xác nhận Nhập Kho & Tính Giá Vốn</button>
+            </form>
+            {% endif %}
+            <a href="{% url 'phieu_nhap_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <div class="row" style="display: flex; gap: 30px; margin-bottom: 2rem;">
+            <div style="flex: 1;">
+                <h6 class="text-muted text-uppercase mb-3" style="font-size: 0.75rem; font-weight: 600;">Thông tin nhập kho</h6>
+                <table class="table" style="background: transparent;">
+                    <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Ngày nhập:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu_nhap.ngay_nhap|date:"d/m/Y" }}</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Loại nhập:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu_nhap.get_loai_nhap_display }}</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Kho nhận:</th><td style="border:none; padding: 0.5rem 0; color: var(--info); font-weight: bold;">{{ phieu_nhap.kho.ten_kho }}</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Ghi chú:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu_nhap.ghi_chu|default:"-" }}</td></tr>
+                </table>
+            </div>
+            
+            <div style="flex: 1;">
+                <h6 class="text-muted text-uppercase mb-3" style="font-size: 0.75rem; font-weight: 600;">Thông tin đối tác / Thanh toán</h6>
+                <table class="table" style="background: transparent;">
+                    <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Nhà cung cấp:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu_nhap.nha_cung_cap.ten_ncc|default:"-" }}</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Người tạo:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu_nhap.nguoi_tao.username }}</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Phí phát sinh:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu_nhap.chi_phi_phat_sinh|floatformat:0|intcomma }} đ</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Tổng giá trị:</th><td style="border:none; padding: 0.5rem 0; color: var(--warning); font-weight: bold; font-size: 1.1em;">{{ phieu_nhap.tong_thanh_toan|floatformat:0|intcomma }} đ</td></tr>
+                </table>
+            </div>
+        </div>
+
+        <h6 class="text-muted text-uppercase mb-3 mt-4" style="font-size: 0.75rem; font-weight: 600;">Chi tiết vật tư/phụ tùng nhập kho</h6>
+        
+        {% if phieu_nhap.trang_thai == 'nhap' %}
+        <div class="alert alert-warning">
+            <i class="fas fa-info-circle"></i> Phiếu nhập chưa được xác nhận. Tồn kho và Giá vốn bình quân chưa được cập nhật. Vui lòng kiểm tra kỹ chi tiết trước khi xác nhận Nhập kho.
+        </div>
+        {% endif %}
+
+        <div class="table-responsive mt-3">
+            <table class="table">
+                <thead>
+                    <tr style="background: rgba(0,0,0,0.04);">
+                        <th>STT</th>
+                        <th>Mã phụ tùng</th>
+                        <th>Tên phụ tùng</th>
+                        <th class="text-center">ĐVT</th>
+                        <th class="text-right">Số lượng nhập</th>
+                        <th class="text-right">Đơn giá nhập</th>
+                        <th class="text-right">Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ct in chi_tiet %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td><strong>{{ ct.hang_hoa.ma_hang }}</strong></td>
+                        <td>{{ ct.hang_hoa.ten_hang }}</td>
+                        <td class="text-center">{{ ct.hang_hoa.don_vi_tinh.ten|default:"-" }}</td>
+                        <td class="text-right fw-semibold text-success">+{{ ct.so_luong }}</td>
+                        <td class="text-right">{{ ct.don_gia|floatformat:0|intcomma }} đ</td>
+                        <td class="text-right fw-bold">{{ ct.thanh_tien|floatformat:0|intcomma }} đ</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">Không có chi tiết mặt hàng.</td></tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr style="background: rgba(0,0,0,0.04);">
+                        <td colspan="4" class="text-right fw-semibold">Tổng cộng:</td>
+                        <td class="text-right fw-bold text-success">{{ chi_tiet|length }} Loại</td>
+                        <td></td>
+                        <td class="text-right fw-bold text-warning" style="font-size: 1.1rem;">
+                            {{ phieu_nhap.tong_thanh_toan|floatformat:0|intcomma }} đ
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

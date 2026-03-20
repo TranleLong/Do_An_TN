@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ page_title }} - ERP Tiến Hương{% endblock %}</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css?v=5">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% if messages %}
+    <div class="messages">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }}">
+            <i class="fas fa-{% if message.tags == 'success' %}check-circle{% elif message.tags == 'error' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="app-container">
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="{% url 'dashboard' %}" class="logo">
+                    <i class="fas fa-car-side" style="color: var(--accent-color);"></i>
+                    TIẾN <span>HƯƠNG</span> ERP
+                </a>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-group">
+                    <a href="{% url 'dashboard' %}" class="nav-link {% if active_menu == 'dashboard' %}active{% endif %}">
+                        <i class="fas fa-chart-pie"></i> Tổng quan
+                    </a>
+                </div>
+
+                <div class="nav-item {% if active_menu in 'don_ban,phieu_thu,cong_no_kh,bao_cao_bh' %}open{% endif %}">
+                    <a href="#" class="nav-link dropdown-toggle" onclick="toggleSubmenu(event, this)">
+                        <i class="fas fa-shopping-cart"></i> Phân hệ Bán Hàng
+                        <i class="fas fa-chevron-down ms-auto"></i>
+                    </a>
+                    <div class="submenu">
+                        <div class="submenu-title">Bán hàng</div>
+                        <a href="{% url 'don_ban_list' %}" class="submenu-link {% if active_menu == 'don_ban' %}active{% endif %}">Đơn bán hàng</a>
+                        <a href="{% url 'don_ban_them' %}" class="submenu-link">Tạo đơn bán</a>
+                        
+                        <div class="submenu-title">Kế toán bán hàng</div>
+                        <a href="{% url 'phieu_thu_list' %}" class="submenu-link {% if active_menu == 'phieu_thu' %}active{% endif %}">Phiếu thu tiền</a>
+                        <a href="{% url 'cong_no_kh' %}" class="submenu-link {% if active_menu == 'cong_no_kh' %}active{% endif %}">Công nợ khách hàng</a>
+                        <a href="{% url 'bao_cao_doanh_thu' %}" class="submenu-link {% if active_menu == 'bao_cao_bh' %}active{% endif %}">Báo cáo doanh thu</a>
+                    </div>
+                </div>
+
+                <div class="nav-item {% if active_menu in 'ton_kho,phieu_xuat,kiem_ke,bao_cao_kho,tinh_gia_xuat,doi_chieu_kho,so_do_kho' %}open{% endif %}">
+                    <a href="#" class="nav-link dropdown-toggle" onclick="toggleSubmenu(event, this)">
+                        <i class="fas fa-boxes"></i> Phân hệ Kho
+                        <i class="fas fa-chevron-down ms-auto"></i>
+                    </a>
+                    <div class="submenu">
+                        <div class="submenu-title">Quản lý kho</div>
+                        <a href="{% url 'phieu_xuat_list' %}" class="submenu-link {% if active_menu == 'phieu_xuat' %}active{% endif %}">Phiếu xuất kho</a>
+                        <a href="{% url 'ton_kho_list' %}" class="submenu-link {% if active_menu == 'ton_kho' %}active{% endif %}">Tồn kho hiện tại</a>
+                        <a href="{% url 'kiem_ke_list' %}" class="submenu-link {% if active_menu == 'kiem_ke' %}active{% endif %}">Kiểm kê kho</a>
+                        <a href="{% url 'so_do_kho' %}" class="submenu-link {% if active_menu == 'so_do_kho' %}active{% endif %}">Sơ đồ kho</a>
+                        
+                        <div class="submenu-title">Kế toán kho</div>
+                        <a href="{% url 'tinh_gia_xuat' %}" class="submenu-link {% if active_menu == 'tinh_gia_xuat' %}active{% endif %}">Tính giá xuất kho</a>
+                        <a href="{% url 'doi_chieu_so_lieu' %}" class="submenu-link {% if active_menu == 'doi_chieu_kho' %}active{% endif %}">Đối chiếu số liệu</a>
+                        
+                        <div class="submenu-title">Báo cáo & Phân tích</div>
+                        <a href="{% url 'bao_cao_ton_kho' %}" class="submenu-link {% if active_menu == 'bao_cao_kho' %}active{% endif %}">Báo cáo tồn kho</a>
+                    </div>
+                </div>
+
+                <div class="nav-item {% if active_menu in 'hang_hoa,khach_hang,nha_cung_cap' %}open{% endif %}">
+                    <a href="#" class="nav-link dropdown-toggle" onclick="toggleSubmenu(event, this)">
+                        <i class="fas fa-database"></i> Danh mục hệ thống
+                        <i class="fas fa-chevron-down ms-auto"></i>
+                    </a>
+                    <div class="submenu">
+                        <a href="{% url 'hang_hoa_list' %}" class="submenu-link {% if active_menu == 'hang_hoa' %}active{% endif %}">Hàng hóa & Phụ tùng</a>
+                        <a href="{% url 'kh_list' %}" class="submenu-link {% if active_menu == 'khach_hang' %}active{% endif %}">Khách hàng & Gara</a>
+                        <a href="{% url 'ncc_list' %}" class="submenu-link {% if active_menu == 'nha_cung_cap' %}active{% endif %}">Nhà cung cấp</a>
+                    </div>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- MAIN LAYOUT -->
+        <main class="main-wrapper">
+            <header class="header">
+                <div class="header-title">{{ page_title }}</div>
+                
+                <div class="header-right">
+                    <span class="text-muted"><i class="far fa-clock"></i> {% now "d/m/Y H:i" %}</span>
+                    <div class="user-menu">
+                        <div class="avatar">
+                            {{ user.username|make_list|first|upper|default:"A" }}
+                        </div>
+                        <div>
+                            <div class="fw-semibold">{{ user.username }}</div>
+                            <div style="font-size: 11px; color: var(--text-muted);">
+                                <form action="{% url 'logout' %}" method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" style="background:none; border:none; color:var(--accent-color); cursor:pointer;">Đăng xuất</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="content">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Cần jQuery cho một số form tính toán tự động -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Auto hide alerts
+        setTimeout(function() {
+            $('.alert').fadeOut();
+        }, 3000);
+
+        // Sidebar Submenu Toggle
+        function toggleSubmenu(event, element) {
+            event.preventDefault();
+            element.parentElement.classList.toggle('open');
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

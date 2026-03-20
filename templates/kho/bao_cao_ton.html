@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-body">
+        <form method="get" class="form-row">
+            <div class="col">
+                <label>Kho</label>
+                <select class="form-control" name="kho">
+                    <option value="">Tất cả kho</option>
+                    {% for kho in kho_list %}
+                        <option value="{{ kho.id }}" {% if kho_filter|stringformat:'s' == kho.id|stringformat:'s' %}selected{% endif %}>{{ kho.ma_kho }} - {{ kho.ten_kho }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col" style="display:flex;align-items:end;">
+                <button type="submit" class="btn btn-primary">Lọc</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Báo cáo tồn kho</div>
+        <div class="text-muted">Tổng giá trị tồn: {{ tong_gia_tri|intcomma }} đ</div>
+    </div>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Mã hàng</th>
+                    <th>Tên hàng</th>
+                    <th>Kho</th>
+                    <th class="text-right">Số lượng</th>
+                    <th class="text-right">Giá vốn TB</th>
+                    <th class="text-right">Giá trị tồn</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in items %}
+                <tr>
+                    <td>{{ t.hang_hoa.ma_hang }}</td>
+                    <td>{{ t.hang_hoa.ten_hang }}</td>
+                    <td>{{ t.kho.ten_kho }}</td>
+                    <td class="text-right">{{ t.so_luong|intcomma }}</td>
+                    <td class="text-right">{{ t.gia_von_tb|intcomma }}</td>
+                    <td class="text-right">-</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted">Chưa có dữ liệu tồn kho.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

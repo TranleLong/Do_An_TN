@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-file-export text-info"></i> Lập phiếu xuất kho</div>
+        <a href="{% url 'phieu_xuat_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
+    </div>
+
+    <form method="post" action="{% url 'phieu_xuat_them' %}" id="phieuXuatForm" class="card-body">
+        {% csrf_token %}
+
+        <div class="form-row">
+            <div class="col col-3 form-group">
+                <label class="form-label">Số phiếu xuất</label>
+                <input type="text" name="so_phieu" class="form-control" value="{{ so_phieu_default }}" readonly>
+            </div>
+            <div class="col col-3 form-group">
+                <label class="form-label">Ngày xuất <span class="text-danger">*</span></label>
+                <input type="date" name="ngay_xuat" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+            </div>
+            <div class="col col-3 form-group">
+                <label class="form-label">Loại xuất</label>
+                <select name="loai_xuat" class="form-control">
+                    <option value="ban_hang">Xuất bán hàng</option>
+                    <option value="noi_bo">Xuất nội bộ</option>
+                    <option value="tra_ncc">Trả nhà cung cấp</option>
+                    <option value="hu_hong">Xuất hao hụt/Hư hỏng</option>
+                </select>
+            </div>
+            <div class="col col-3 form-group">
+                <label class="form-label">Kho xuất hàng <span class="text-danger">*</span></label>
+                <select name="kho" class="form-control" required>
+                    <option value="">-- Chọn kho xuất --</option>
+                    {% for k in kho_list %}
+                    <option value="{{ k.pk }}">{{ k.ten_kho }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="col col-12 form-group">
+                <label class="form-label">Ghi chú (Lý do xuất)</label>
+                <input type="text" name="ghi_chu" class="form-control" placeholder="Ví dụ: Xuất hàng cho vận đơn XYZ...">
+            </div>
+        </div>
+
+        <h5 class="mt-4 mb-3 border-top pt-4">Chi tiết hàng hóa xuất kho</h5>
+
+        <div class="table-responsive">
+            <table class="table" id="chiTietTable">
+                <thead>
+                    <tr>
+                        <th style="width: 65%">Mặt hàng</th>
+                        <th style="width: 20%" class="text-right">Số lượng xuất</th>
+                        <th style="width: 15%" class="text-center">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody id="chiTietBody">
+                    <tr class="item-row">
+                        <td>
+                            <select name="hang_id[]" class="form-control" required>
+                                <option value="">-- Chọn hàng hóa --</option>
+                                {% for h in hang_list %}
+                                <option value="{{ h.pk }}">{{ h.ma_hang }} - {{ h.ten_hang }}{% if h.don_vi_tinh %} ({{ h.don_vi_tinh }}){% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" name="so_luong[]" class="form-control text-right" min="1" required>
+                        </td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-danger btn-remove"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3">
+                            <button type="button" class="btn btn-secondary btn-sm" id="btnAddRow"><i class="fas fa-plus"></i> Thêm dòng</button>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="mt-4 text-center">
+            <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem;"><i class="fas fa-check-circle"></i> Xác nhận xuất kho</button>
+        </div>
+    </form>
+</div>
+
+<template id="rowTemplate">
+    <tr class="item-row">
+        <td>
+            <select name="hang_id[]" class="form-control" required>
+                <option value="">-- Chọn hàng hóa --</option>
+                {% for h in hang_list %}
+                <option value="{{ h.pk }}">{{ h.ma_hang }} - {{ h.ten_hang }}{% if h.don_vi_tinh %} ({{ h.don_vi_tinh }}){% endif %}</option>
+                {% endfor %}
+            </select>
+        </td>
+        <td>
+            <input type="number" name="so_luong[]" class="form-control text-right" min="1" required>
+        </td>
+        <td class="text-center">
+            <button type="button" class="btn btn-sm btn-danger btn-remove"><i class="fas fa-trash"></i></button>
+        </td>
+    </tr>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.getElementById('btnAddRow').addEventListener('click', function() {
+        const template = document.getElementById('rowTemplate');
+        const clone = template.content.cloneNode(true);
+        document.getElementById('chiTietBody').appendChild(clone);
+    });
+
+    document.addEventListener('click', function(event) {
+        if (event.target.closest('.btn-remove')) {
+            const rows = document.querySelectorAll('#chiTietBody .item-row');
+            if (rows.length > 1) {
+                event.target.closest('tr').remove();
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <div class="kpi-icon" style="color: var(--info); background: rgba(59,130,246,0.15)">
+            <i class="fas fa-boxes"></i>
+        </div>
+        <div class="kpi-info">
+            <h4>Tổng mã phụ tùng</h4>
+            <div class="kpi-value">{{ tong_hang_hoa|intcomma }}</div>
+        </div>
+    </div>
+    
+    <div class="kpi-card">
+        <div class="kpi-icon" style="color: var(--success); background: rgba(16,185,129,0.15)">
+            <i class="fas fa-money-bill-wave"></i>
+        </div>
+        <div class="kpi-info">
+            <h4>Doanh thu tháng này</h4>
+            <div class="kpi-value">{{ doanh_thu_thang|intcomma }} đ</div>
+        </div>
+    </div>
+    
+    <div class="kpi-card">
+        <div class="kpi-icon" style="color: var(--warning); background: rgba(245,158,11,0.15)">
+            <i class="fas fa-shopping-cart"></i>
+        </div>
+        <div class="kpi-info">
+            <h4>Đơn bán hôm nay</h4>
+            <div class="kpi-value">{{ don_ban_hom_nay|intcomma }}</div>
+        </div>
+    </div>
+    
+    <div class="kpi-card">
+        <div class="kpi-icon" style="color: var(--danger); background: rgba(239,68,68,0.15)">
+            <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <div class="kpi-info">
+            <h4>Hàng sắp hết tồn</h4>
+            <div class="kpi-value">{{ hang_sap_het|length }}</div>
+        </div>
+    </div>
+</div>
+
+<div class="form-row">
+    <!-- Cột trái: Biểu đồ & Đơn gần đây -->
+    <div class="col col-8" style="flex: 2;">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-chart-area text-info"></i> Doanh thu 7 ngày gần nhất</div>
+            </div>
+            <div class="card-body">
+                <canvas id="doanhThuChart" height="100"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-receipt text-success"></i> Đơn bán hàng mới nhất</div>
+                <a href="{% url 'don_ban_list' %}" class="btn btn-sm btn-secondary">Xem tất cả</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Số đơn</th>
+                            <th>Khách hàng</th>
+                            <th class="text-right">Tổng tiền</th>
+                            <th>Trạng thái</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for don in don_ban_gan_day %}
+                        <tr>
+                            <td><a href="{% url 'don_ban_detail' don.pk %}"><strong>{{ don.so_don }}</strong></a><br><small class="text-muted">{{ don.ngay_ban|date:"d/m/Y" }}</small></td>
+                            <td>{{ don.ten_kh }}</td>
+                            <td class="text-right fw-semibold text-warning">{{ don.tong_thanh_toan|intcomma }} đ</td>
+                            <td>
+                                {% if don.trang_thai == 'nhap' %}<span class="badge badge-warning">Nháp</span>
+                                {% elif don.trang_thai == 'da_xac_nhan' %}<span class="badge badge-success">Đã XN</span>
+                                {% else %}<span class="badge badge-danger">Hủy</span>{% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-center text-muted">Chưa có đơn hàng nào.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Cột phải: Cảnh báo hàng hết -->
+    <div class="col col-4" style="flex: 1;">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title"><i class="fas fa-exclamation-circle text-danger"></i> Cảnh báo sắp hết hàng</div>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Mã phụ tùng</th>
+                            <th class="text-right">Tồnkho</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in hang_sap_het %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'hang_hoa_sua' item.hang.pk %}">{{ item.hang.ma_hang }}</a>
+                                <div style="font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px;" class="text-muted" title="{{ item.hang.ten_hang }}">{{ item.hang.ten_hang }}</div>
+                            </td>
+                            <td class="text-right">
+                                <span class="badge badge-danger">{{ item.ton }}</span>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="2" class="text-center text-muted" style="padding: 2rem;">Tuyệt vời! Không có phụ tùng nào dưới định mức tối thiểu.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    var ctx = document.getElementById('doanhThuChart').getContext('2d');
+    
+    // Gradient cho biểu đồ (màu giống theme --accent-color)
+    var gradientFill = ctx.createLinearGradient(0, 0, 0, 300);
+    gradientFill.addColorStop(0, "rgba(245, 158, 11, 0.4)");
+    gradientFill.addColorStop(1, "rgba(245, 158, 11, 0.0)");
+
+    var myChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [{{ chart_labels|safe }}],
+            datasets: [{
+                label: 'Doanh thu (VNĐ)',
+                data: [{{ chart_data }}],
+                backgroundColor: gradientFill,
+                borderColor: '#f59e0b',
+                pointBackgroundColor: '#121212',
+                pointBorderColor: '#f59e0b',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                fill: true,
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(0, 0, 0, 0.05)', drawBorder: false },
+                    ticks: { color: '#9ca3af' }
+                },
+                y: {
+                    grid: { color: 'rgba(0, 0, 0, 0.05)', drawBorder: false },
+                    ticks: { 
+                        color: '#9ca3af',
+                        callback: function(value) { return value.toLocaleString('vi-VN'); }
+                    },
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
