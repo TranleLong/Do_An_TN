@@ -8,12 +8,16 @@ from django.db import transaction
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'erp_tien_huong.settings')
 django.setup()
 
+from django.contrib.auth.models import User
+
 from apps.ban_hang.models import DonBan, DonBan_CT, PhieuThu
 from apps.danh_muc.models import (DonViTinh, HangHoa, KhachHang, Kho,
                                   NhaCungCap, NhomHang, ThuongHieu, ViTriKho)
 from apps.kho.models import (KiemKe, KiemKe_CT, PhieuNhap, PhieuNhap_CT,
                              PhieuXuat, PhieuXuat_CT, TonKho)
-from django.contrib.auth.models import User
+
+GIA_BAN_LE_BUGI = Decimal('250000')
+GIA_BAN_BUON_MA_PHANH = Decimal('780000')
 
 
 def create_users():
@@ -61,8 +65,6 @@ def create_master_data():
             'nhom_hang': nh_dong_co,
             'thuong_hieu': th_denso,
             'don_vi_tinh': dvt_cai,
-            'gia_ban_le': Decimal('250000'),
-            'gia_ban_buon': Decimal('220000'),
             'xe_tuong_thich': 'Toyota Vios 2018-2022',
         },
     )
@@ -74,8 +76,6 @@ def create_master_data():
             'nhom_hang': nh_gam_may,
             'thuong_hieu': th_bosch,
             'don_vi_tinh': dvt_bo,
-            'gia_ban_le': Decimal('850000'),
-            'gia_ban_buon': Decimal('780000'),
             'xe_tuong_thich': 'Honda City, Civic',
         },
     )
@@ -84,7 +84,7 @@ def create_master_data():
         ma_kh='KH001',
         defaults={
             'ten_kh': 'Khách lẻ mẫu',
-            'loai_kh': 'ca_nhan',
+            'loai_kh': '1',
             'so_dien_thoai': '0901234567',
         },
     )
@@ -93,7 +93,7 @@ def create_master_data():
         ma_kh='GR001',
         defaults={
             'ten_kh': 'Gara Thành Đạt',
-            'loai_kh': 'gara',
+            'loai_kh': '2',
             'so_dien_thoai': '0988777666',
             'chiet_khau_mac_dinh': Decimal('5'),
             'han_muc_cong_no': Decimal('50000000'),
@@ -136,7 +136,7 @@ def create_opening_stock(data, user):
     phieu_nhap = PhieuNhap.objects.create(
         so_phieu='PN-DEMO-001',
         ngay_nhap=date.today(),
-        loai_nhap='mua_ncc',
+        loai_nhap='1',
         nha_cung_cap=data['ncc'],
         kho=data['kho'],
         nguoi_tao=user,
@@ -186,7 +186,7 @@ def create_retail_sale(data, user):
         don_ban=don,
         hang_hoa=data['hh_bugi'],
         so_luong=1,
-        don_gia=data['hh_bugi'].gia_ban_le,
+        don_gia=GIA_BAN_LE_BUGI,
         chiet_khau=Decimal('0'),
         thue_vat=Decimal('10'),
     )
@@ -217,7 +217,7 @@ def create_wholesale_sale(data, user):
         don_ban=don,
         hang_hoa=data['hh_ma_phanh'],
         so_luong=3,
-        don_gia=data['hh_ma_phanh'].gia_ban_buon,
+        don_gia=GIA_BAN_BUON_MA_PHANH,
         chiet_khau=Decimal('3'),
         thue_vat=Decimal('10'),
     )
