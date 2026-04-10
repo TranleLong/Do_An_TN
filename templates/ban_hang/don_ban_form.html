@@ -79,6 +79,25 @@
         border-radius: 10px;
         padding: 14px;
     }
+    #chiTietTable {
+        min-width: 1180px;
+    }
+    #chiTietTable .don-gia,
+    #chiTietTable .thanh-tien {
+        min-width: 120px;
+    }
+    #chiTietTable .chiet-khau,
+    #chiTietTable .thue-vat {
+        min-width: 78px;
+    }
+    #chiTietTable input[type=number]::-webkit-outer-spin-button,
+    #chiTietTable input[type=number]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    #chiTietTable input[type=number] {
+        -moz-appearance: textfield;
+    }
 </style>
 {% endblock %}
 
@@ -144,8 +163,17 @@
                 <input type="text" name="mst_kh" id="mst_kh" class="form-control" value="{{ don.mst_kh|default:'' }}">
             </div>
             <div class="col-md-3">
-                <label class="form-label">Mã NV bán hàng</label>
-                <input type="text" name="ma_nv_ban_hang" class="form-control" value="{{ don.ma_nv_ban_hang|default:'' }}">
+                <label class="form-label">Mã NV bán hàng <span class="text-danger">*</span></label>
+                <div class="lookup-box">
+                    <input type="text" id="nv_display" class="form-control lookup-input lookup-display" value="{{ don.ma_nv_ban_hang|default:'' }}" readonly placeholder="Chọn NV bán hàng bằng kính lúp" required>
+                    <button type="button" class="lookup-icon-btn" id="btnSearchNv" title="Tra cứu nhân viên"><i class="fas fa-search"></i></button>
+                </div>
+                <select name="nv_ban_id" id="nv_ban_id" style="display:none;" required>
+                    <option value="">-- Chọn --</option>
+                    {% for nv in nv_list %}
+                    <option value="{{ nv.pk }}" data-ma="{{ nv.ma_kh }}" data-ten="{{ nv.ten_kh }}" {% if don.ma_nv_ban_hang == nv.ma_kh %}selected{% endif %}>{{ nv.ma_kh }} - {{ nv.ten_kh }}</option>
+                    {% endfor %}
+                </select>
             </div>
             <div class="col-md-3">
                 <label class="form-label">Trạng thái</label>
@@ -187,7 +215,7 @@
                         <th style="width: 8%">CK %</th>
                         <th style="width: 8%">Thuế %</th>
                         <th style="width: 12%">Ngày giao <span class="text-danger">*</span></th>
-                        <th style="width: 12%" class="text-right">Tiền hàng</th>
+                        <th style="width: 12%">Tiền hàng</th>
                         <th style="width: 3%"></th>
                     </tr>
                 </thead>
@@ -254,10 +282,7 @@
             <div class="summary-box">
                 <div class="d-flex justify-content-between mb-2"><span>Tiền hàng</span><strong id="tongTienHang">0 đ</strong></div>
                 <div class="d-flex justify-content-between mb-2"><span>Tiền thuế</span><strong id="tongThue">0 đ</strong></div>
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <span>Tổng chiết khấu</span>
-                    <input type="number" name="chiet_khau_dh" id="ckDonHang" class="form-control text-end" style="width:120px" value="{{ don.chiet_khau_dh|default:'0' }}">
-                </div>
+                <div class="d-flex justify-content-between mb-2"><span>Tổng chiết khấu (dòng hàng)</span><strong id="tongChietKhau">0 đ</strong></div>
                 <div class="d-flex justify-content-between fs-5"><strong>Tổng cộng</strong><strong id="tongThanhToan">0 đ</strong></div>
             </div>
         </div>
@@ -297,6 +322,21 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalNhanVien" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tra cứu nhân viên bán hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="nvSearchInput" class="form-control mb-2" placeholder="Nhập mã hoặc tên nhân viên...">
+                <div class="lookup-scroll" id="nvSearchResults"></div>
+            </div>
+        </div>
+    </div>
+</div>
 {% if copy_data %}{{ copy_data|json_script:"copyDonData" }}{% endif %}
 {% endblock %}
 
@@ -304,6 +344,7 @@
 <script>
     let khModal = null;
     let hangModal = null;
+    let nvModal = null;
     let currentHangSelect = null;
 
     function fmtMoney(val) {
@@ -328,6 +369,15 @@
         }
     }
 
+    function bindNvDisplay() {
+        const nv = $('#nv_ban_id option:selected');
+        if (nv.val()) {
+            $('#nv_display').val((nv.data('ma') || '') + ' - ' + (nv.data('ten') || ''));
+        } else {
+            $('#nv_display').val('');
+        }
+    }
+
     function applyDonCopyData() {
         const node = document.getElementById('copyDonData');
         if (!node) return;
@@ -339,7 +389,15 @@
         if (data.sdt_kh !== undefined) $('#sdt_kh').val(data.sdt_kh || '');
         if (data.mst_kh !== undefined) $('#mst_kh').val(data.mst_kh || '');
         if (data.nguoi_mua_hang !== undefined) $('#nguoi_mua_hang').val(data.nguoi_mua_hang || '');
-        if (data.ma_nv_ban_hang !== undefined) $('input[name="ma_nv_ban_hang"]').val(data.ma_nv_ban_hang || '');
+        if (data.ma_nv_ban_hang !== undefined) {
+            const maNv = String(data.ma_nv_ban_hang || '').trim();
+            if (maNv) {
+                const opt = $('#nv_ban_id option').filter(function() { return String($(this).data('ma') || '') === maNv; }).first();
+                if (opt.length) {
+                    $('#nv_ban_id').val(String(opt.val())).trigger('change');
+                }
+            }
+        }
         if (data.kho_id) $('select[name="kho"]').val(String(data.kho_id));
         if (data.dia_chi_kh !== undefined) $('#dia_chi_kh').val(data.dia_chi_kh || '');
         if (data.ghi_chu !== undefined) $('textarea[name="ghi_chu"]').val(data.ghi_chu || '');
@@ -363,6 +421,26 @@
                 $body.append($row);
             });
         }
+    }
+
+    function loadNvResults() {
+        const q = $('#nvSearchInput').val().trim();
+        $.get('{% url "khach_hang_api_lookup" %}', { q: q, role: 'nhan_vien', page: 1, page_size: 20 }, function(resp) {
+            const rows = resp.results || [];
+            if (!rows.length) {
+                $('#nvSearchResults').html('<div class="p-3 text-muted text-center">Không tìm thấy nhân viên</div>');
+                return;
+            }
+            let html = '<div class="lookup-result-head"><span>Mã NV</span><span>Tên nhân viên</span><span>SĐT</span></div>';
+            rows.forEach(function(r) {
+                html += '<button type="button" class="lookup-result-row btn-nv-select" data-id="' + r.id + '" data-ma="' + escapeHtml(r.ma_kh) + '" data-ten="' + escapeHtml(r.ten_kh) + '">'
+                    + '<span><strong>' + escapeHtml(r.ma_kh) + '</strong></span>'
+                    + '<span>' + escapeHtml(r.ten_kh) + '</span>'
+                    + '<span class="text-end">' + escapeHtml(r.so_dien_thoai || '') + '</span>'
+                    + '</button>';
+            });
+            $('#nvSearchResults').html(html);
+        });
     }
 
     function loadKhResults() {
@@ -410,23 +488,28 @@
         const gia = parseFloat($row.find('.don-gia').val()) || 0;
         const ck = parseFloat($row.find('.chiet-khau').val()) || 0;
         const vat = parseFloat($row.find('.thue-vat').val()) || 0;
-        const tienHang = sl * gia * (1 - ck / 100);
+        const goc = sl * gia;
+        const tienCk = goc * ck / 100;
+        const tienHang = goc - tienCk;
         const tienThue = tienHang * vat / 100;
         const tong = tienHang + tienThue;
+        $row.data('tien_ck', tienCk);
         $row.data('tien_hang', tienHang);
         $row.data('tien_thue', tienThue);
         $row.find('.thanh-tien').val(fmtMoney(tong));
     }
 
     function tinhTongDon() {
+        let tongCk = 0;
         let tongHang = 0;
         let tongThue = 0;
         $('#chiTietBody .item-row').each(function() {
+            tongCk += parseFloat($(this).data('tien_ck') || 0);
             tongHang += parseFloat($(this).data('tien_hang') || 0);
             tongThue += parseFloat($(this).data('tien_thue') || 0);
         });
-        const ckDon = parseFloat($('#ckDonHang').val()) || 0;
-        const tong = tongHang + tongThue - ckDon;
+        const tong = tongHang + tongThue;
+        $('#tongChietKhau').text(fmtMoney(tongCk));
         $('#tongTienHang').text(fmtMoney(tongHang));
         $('#tongThue').text(fmtMoney(tongThue));
         $('#tongThanhToan').text(fmtMoney(tong));
@@ -483,7 +566,7 @@
         capNhatGiaBan($row);
     });
 
-    $(document).on('input', '.calc-input, #ckDonHang', function() {
+    $(document).on('input', '.calc-input', function() {
         const $row = $(this).closest('tr');
         if ($row.hasClass('item-row')) {
             tinhTongRow($row);
@@ -531,6 +614,27 @@
         }
     });
 
+    $('#btnSearchNv').on('click', function() {
+        if (!nvModal) {
+            nvModal = new bootstrap.Modal(document.getElementById('modalNhanVien'));
+        }
+        nvModal.show();
+        $('#nvSearchInput').val('');
+        loadNvResults();
+    });
+
+    $('#nvSearchInput').on('input', loadNvResults);
+
+    $(document).on('click', '.btn-nv-select', function() {
+        const id = String($(this).data('id'));
+        $('#nv_ban_id').val(id).trigger('change');
+        if (nvModal) {
+            nvModal.hide();
+        }
+    });
+
+    $('#nv_ban_id').on('change', bindNvDisplay);
+
     $(document).on('click', '.btn-search-hang', function() {
         currentHangSelect = $(this).closest('tr').find('.hang-select');
         if (!hangModal) {
@@ -564,6 +668,7 @@
     $(document).ready(function() {
         applyDonCopyData();
         bindKhDisplay();
+        bindNvDisplay();
         $('#chiTietBody .item-row').each(function() {
             capNhatTonKho($(this));
             capNhatGiaBan($(this));

@@ -226,6 +226,7 @@ def kh_form(request, pk=None):
         obj.ten_kh = data.get('ten_kh', '').strip()
         obj.la_khach_hang = data.get('la_khach_hang') == 'on'
         obj.la_nha_cung_cap = data.get('la_nha_cung_cap') == 'on'
+        obj.la_nhan_vien = data.get('la_nhan_vien') == 'on'
         obj.loai_kh = data.get('loai_kh', '1')
         obj.nhom_kh_id = data.get('nhom_kh') or None
         obj.ma_so_thue = data.get('ma_so_thue', '').strip()
@@ -244,6 +245,7 @@ def kh_form(request, pk=None):
         ma_so_thue = obj.ma_so_thue
         la_khach_hang = obj.la_khach_hang
         la_nha_cung_cap = obj.la_nha_cung_cap
+        la_nhan_vien = obj.la_nhan_vien
 
         # Kiểm tra trường bắt buộc
         if not ten_kh or not so_dien_thoai:
@@ -255,8 +257,8 @@ def kh_form(request, pk=None):
             messages.error(request, 'Số điện thoại không đúng định dạng (bắt đầu bằng 0 hoặc +84, 10-11 chữ số)')
             return _render_kh_form(request, obj, pk)
 
-        if not la_khach_hang and not la_nha_cung_cap:
-            messages.error(request, 'Vui lòng chọn ít nhất 1 vai trò: Khách hàng hoặc Nhà cung cấp')
+        if not la_khach_hang and not la_nha_cung_cap and not la_nhan_vien:
+            messages.error(request, 'Vui lòng chọn ít nhất 1 vai trò: Khách hàng, Nhà cung cấp hoặc Nhân viên')
             return _render_kh_form(request, obj, pk)
 
         # Mã số thuế bắt buộc khi chọn Nhà cung cấp hoặc loại 2/3
@@ -287,6 +289,7 @@ def kh_form(request, pk=None):
         obj.ten_kh = ten_kh
         obj.la_khach_hang = la_khach_hang
         obj.la_nha_cung_cap = la_nha_cung_cap
+        obj.la_nhan_vien = la_nhan_vien
         obj.loai_kh = loai_kh
         obj.nhom_kh_id = data.get('nhom_kh') or None
         obj.ma_so_thue = ma_so_thue

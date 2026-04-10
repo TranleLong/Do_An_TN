@@ -43,8 +43,12 @@
                         <input type="checkbox" name="la_nha_cung_cap" {% if obj.la_nha_cung_cap %}checked{% endif %}>
                         <span>2 - Nhà cung cấp</span>
                     </label>
+                    <label class="d-flex align-items-center" style="gap: 0.4rem; margin-bottom: 0;">
+                        <input type="checkbox" name="la_nhan_vien" {% if obj.la_nhan_vien %}checked{% endif %}>
+                        <span>3 - Nhân viên</span>
+                    </label>
                 </div>
-                <small class="text-muted">Có thể chọn 1 mục hoặc chọn cả 2.</small>
+                <small class="text-muted">Có thể chọn một hoặc nhiều vai trò.</small>
             </div>
             <div class="col col-4 form-group">
                 <label class="form-label">Loại khách hàng <span class="text-danger">*</span></label>
@@ -139,6 +143,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const loaiKhSelect = document.getElementById('loai_kh');
     const khCheckbox = document.querySelector('input[name="la_khach_hang"]');
     const nccCheckbox = document.querySelector('input[name="la_nha_cung_cap"]');
+    const nvCheckbox = document.querySelector('input[name="la_nhan_vien"]');
     const maSoThueInput = document.getElementById('ma_so_thue');
     const maSoThueRequired = document.getElementById('ma_so_thue_required');
     const maSoThueHint = document.getElementById('ma_so_thue_hint');
@@ -185,6 +190,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loaiKhSelect.addEventListener('change', updateDiaChiRequired);
     if (khCheckbox) khCheckbox.addEventListener('change', updateMaSoThueRequired);
     if (nccCheckbox) nccCheckbox.addEventListener('change', updateMaSoThueRequired);
+    if (nvCheckbox) nvCheckbox.addEventListener('change', updateMaSoThueRequired);
 
     // Handle Enter key trên mã số thuế
     maSoThueInput.addEventListener('keypress', function(e) {

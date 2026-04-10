@@ -303,10 +303,16 @@ def don_ban_them(request):
         data = request.POST
         kh_id = data.get('khach_hang') or None
         kh = KhachHang.objects.filter(pk=kh_id).first() if kh_id else None
+        nv_ban_id = data.get('nv_ban_id') or None
+        nv_ban = KhachHang.objects.filter(pk=nv_ban_id, trang_thai=True, la_nhan_vien=True).first() if nv_ban_id else None
         loai_ban = data.get('loai_ban', 'ban_le')
         phuong_thuc_tt = data.get('phuong_thuc_tt')
         if not phuong_thuc_tt:
             phuong_thuc_tt = 'tien_mat' if loai_ban == 'ban_le' else 'no'
+
+        if not nv_ban:
+            messages.error(request, 'Mã NV bán hàng là bắt buộc')
+            return redirect('don_ban_them')
 
         don = DonBan.objects.create(
             so_don=data.get('so_don') or _gen_so_don('BH'),
@@ -316,6 +322,7 @@ def don_ban_them(request):
             ten_kh=data.get('ten_kh') or (kh.ten_kh if kh else 'Khách lẻ'),
             sdt_kh=data.get('sdt_kh', ''),
             xe_kh=data.get('xe_kh', ''),
+            ma_nv_ban_hang=nv_ban.ma_kh,
             kho_id=data.get('kho'),
             nhan_vien_ban=request.user,
             phuong_thuc_tt=phuong_thuc_tt,
@@ -367,6 +374,7 @@ def don_ban_them(request):
 
     context = {
         'kh_list': KhachHang.objects.filter(trang_thai=True),
+        'nv_list': KhachHang.objects.filter(trang_thai=True, la_nhan_vien=True).order_by('ma_kh'),
         'kho_list': Kho.objects.filter(trang_thai=True),
         'hang_list': HangHoa.objects.filter(trang_thai='dang_ban'),
         'so_don_default': _gen_so_don('BH'),
@@ -698,7 +706,14 @@ def _view_not_ready(feature_name):
 
 def khach_hang_api_lookup(request):
     query = (request.GET.get('q') or request.GET.get('term') or '').strip()
+    role = (request.GET.get('role') or '').strip().lower()
     items = KhachHang.objects.filter(trang_thai=True)
+    if role == 'khach_hang':
+        items = items.filter(la_khach_hang=True)
+    elif role == 'nha_cung_cap':
+        items = items.filter(la_nha_cung_cap=True)
+    elif role == 'nhan_vien':
+        items = items.filter(la_nhan_vien=True)
     if query:
         items = items.filter(
             Q(ma_kh__icontains=query)
@@ -714,6 +729,7 @@ def khach_hang_api_lookup(request):
             'ten_kh': kh.ten_kh,
             'so_dien_thoai': kh.so_dien_thoai,
             'dia_chi': kh.dia_chi,
+            'la_nhan_vien': kh.la_nhan_vien,
         }
         for kh in items[:20]
     ]
@@ -1358,9 +1374,11 @@ def gia_ban_xoa(request, pk):
 
 
 def _get_active_phieu_gia_for_hang(hang):
+    # Tương thích dữ liệu cũ: trước đây trạng thái lưu bằng chuỗi duyệt.
+    active_statuses = ['1', 'da_duyet', 'cho_duyet']
     return (
         PhieuGiaBan.objects
-        .filter(trang_thai_duyet='1', ngay_hieu_luc__lte=date.today(), chi_tiet__hang_hoa=hang)
+        .filter(trang_thai_duyet__in=active_statuses, ngay_hieu_luc__lte=date.today(), chi_tiet__hang_hoa=hang)
         .select_related('nhom_hang')
         .prefetch_related('chi_tiet', 'bang_chiet_khau')
         .order_by('-ngay_hieu_luc', '-ngay_cap_nhat', '-id')

@@ -27,6 +27,7 @@ class KhachHang(models.Model):
     ten_kh = models.CharField(max_length=200, verbose_name="Tên khách hàng")
     la_khach_hang = models.BooleanField(default=True, verbose_name="Khách hàng")
     la_nha_cung_cap = models.BooleanField(default=False, verbose_name="Nhà cung cấp")
+    la_nhan_vien = models.BooleanField(default=False, verbose_name="Nhân viên bán hàng")
     loai_kh = models.CharField(max_length=20, choices=LOAI_KH, default="1", verbose_name="Loại khách hàng")
     ma_so_thue = models.CharField(max_length=20, blank=True, verbose_name="Mã số thuế")
     dia_chi = models.CharField(max_length=300, blank=True, verbose_name="Địa chỉ")
