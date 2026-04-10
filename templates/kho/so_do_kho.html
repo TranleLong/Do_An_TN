@@ -1,38 +1,165 @@
 {% extends 'base.html' %}
 {% load humanize %}
 
-{% block content %}
-<div class="row mb-4 g-3">
-    {% for kho in kho_list %}
-    <div class="col-md-4 col-lg-3">
-        <div class="card h-100" style="border-top: 4px solid #3b82f6; transition: box-shadow 0.2s;">
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-2">
-                    <div style="width:42px; height:42px; border-radius:10px; background:linear-gradient(135deg,#3b82f6,#1d4ed8); display:flex; align-items:center; justify-content:center; margin-right:12px;">
-                        <i class="fas fa-warehouse" style="color:white; font-size:1.1rem;"></i>
-                    </div>
-                    <div>
-                        <div class="fw-bold" style="font-size:1rem;">{{ kho.ten_kho }}</div>
-                        <div class="text-muted" style="font-size:0.78rem;"><code>{{ kho.ma_kho }}</code></div>
-                    </div>
-                </div>
-                <hr class="my-2">
-                <div class="small text-muted mb-1"><i class="fas fa-boxes me-1"></i> Số mặt hàng đang tồn:</div>
-                <div class="fw-bold text-primary" style="font-size:1.4rem;">{{ kho.so_mat_hang }} <small class="text-muted fw-normal" style="font-size:0.75rem;">mặt hàng</small></div>
-                {% if kho.dia_chi %}
-                <div class="mt-2 small text-muted"><i class="fas fa-map-marker-alt me-1"></i>{{ kho.dia_chi }}</div>
-                {% endif %}
-            </div>
-        </div>
-    </div>
-    {% empty %}
-    <div class="col-12 text-center text-muted py-5">Chưa có kho nào được tạo.</div>
-    {% endfor %}
-</div>
+{% block extra_css %}
+<style>
+    .warehouse-floor {
+        background: #eceff3;
+        border: 2px solid #9ca3af;
+        border-radius: 10px;
+        padding: 12px;
+    }
+    .floor-top {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        gap: 10px;
+        align-items: start;
+    }
+    .returns-zone {
+        background: #f9fafb;
+        border: 2px solid #9ca3af;
+        border-radius: 6px;
+        min-height: 280px;
+        padding: 10px;
+        font-weight: 700;
+        color: #374151;
+        display: grid;
+        place-items: center;
+        text-align: center;
+    }
+    .rack-areas {
+        display: block;
+        min-width: 0;
+    }
+    .rack-zone {
+        background: #f3f4f6;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 8px;
+    }
+    .zone-title {
+        font-weight: 700;
+        color: #4b5563;
+        text-align: center;
+        margin: 4px 0 8px;
+    }
+    .lane-wrap {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 8px;
+        min-width: 0;
+    }
+    .lane {
+        border: 1px dashed #9ca3af;
+        border-radius: 6px;
+        background: #fff;
+        padding: 6px;
+        min-width: 0;
+    }
+    .lane-head {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #1f2937;
+        margin-bottom: 6px;
+        text-align: center;
+    }
+    .shelf-mini {
+        border: 1px solid #d1d5db;
+        border-radius: 5px;
+        padding: 4px;
+        margin-bottom: 4px;
+        background: #f9fafb;
+    }
+    .shelf-mini.pick {
+        border-color: #fca5a5;
+        background: #fff1f2;
+    }
+    .shelf-mini-title {
+        font-size: 0.68rem;
+        font-weight: 700;
+        color: #374151;
+        margin-bottom: 3px;
+    }
+    .level-chip {
+        border: 1px solid #bbf7d0;
+        background: #ecfdf3;
+        color: #065f46;
+        border-radius: 4px;
+        padding: 3px 4px;
+        margin-bottom: 3px;
+        font-size: 0.68rem;
+        line-height: 1.2;
+    }
+    .level-chip.empty {
+        border-color: #d1d5db;
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+    .level-chip.clickable {
+        cursor: pointer;
+    }
+    .level-chip.clickable:hover {
+        filter: brightness(0.98);
+    }
+    .floor-bottom {
+        margin-top: 10px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    .dock-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+    .dock-box {
+        border: 1px solid #fed7aa;
+        background: #fff7ed;
+        border-radius: 8px;
+        padding: 8px;
+        text-align: center;
+        font-size: 0.78rem;
+        color: #9a3412;
+    }
+    .slot-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.35);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 999;
+    }
+    .slot-modal.show {
+        display: flex;
+    }
+    .slot-modal-card {
+        width: min(760px, 92vw);
+        max-height: 80vh;
+        overflow: auto;
+        background: #fff;
+        border-radius: 10px;
+        border: 1px solid #cbd5e1;
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+    }
+    .slot-modal-head {
+        padding: 12px 16px;
+        border-bottom: 1px solid #e5e7eb;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+    }
+    .slot-modal-body {
+        padding: 14px 16px;
+    }
+</style>
+{% endblock %}
 
+{% block content %}
 <div class="card">
     <div class="card-header">
-        <div class="card-title"><i class="fas fa-map-marked-alt text-primary"></i> Sơ đồ hàng hóa trong kho</div>
+        <div class="card-title"><i class="fas fa-map-marked-alt text-primary"></i> Sơ đồ nhà kho (chỉ hiển thị vị trí có hàng)</div>
         <form method="get" class="d-flex gap-2">
             <select name="kho_id" class="form-control" style="width:200px;" onchange="this.form.submit()">
                 <option value="">-- Tất cả kho --</option>
@@ -40,66 +167,210 @@
                 <option value="{{ k.pk }}" {% if k.pk|stringformat:"s" == kho_sel %}selected{% endif %}>{{ k.ten_kho }}</option>
                 {% endfor %}
             </select>
+            <select name="hien_thi" class="form-control" style="width:220px;" onchange="this.form.submit()">
+                <option value="tat_ca" {% if hien_thi == 'tat_ca' %}selected{% endif %}>Hiển thị tất cả vị trí</option>
+                <option value="co_hang" {% if hien_thi == 'co_hang' %}selected{% endif %}>Chỉ hiển thị vị trí có hàng</option>
+            </select>
         </form>
     </div>
 
     <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-bordered align-middle text-center" style="min-width: 700px;">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width:130px;">Kho / Vị trí</th>
-                        <th>Mã hàng</th>
-                        <th>Tên hàng hóa</th>
-                        <th>Nhóm hàng</th>
-                        <th style="width:120px;">Số lượng tồn</th>
-                        <th style="width:130px;">Trạng thái</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in items %}
-                    <tr>
-                        <td>
-                            <span class="badge" style="background:#dbeafe; color:#1e40af; font-size:0.78rem; padding:5px 10px; border-radius:6px;">
-                                <i class="fas fa-warehouse me-1"></i>{{ item.kho.ten_kho }}
-                            </span>
-                        </td>
-                        <td><code class="text-primary fw-bold">{{ item.hang_hoa.ma_hang }}</code></td>
-                        <td class="text-start">
-                            <div class="fw-semibold">{{ item.hang_hoa.ten_hang }}</div>
-                            <div class="text-muted" style="font-size:0.78rem;">{{ item.hang_hoa.thuong_hieu.ten|default:"" }}</div>
-                        </td>
-                        <td>{{ item.hang_hoa.nhom_hang.ten_nhom|default:"—" }}</td>
-                        <td>
-                            <span class="fw-bold {% if item.so_luong <= item.hang_hoa.ton_toi_thieu %}text-danger{% elif item.so_luong <= 0 %}text-muted{% else %}text-success{% endif %}" style="font-size:1.1rem;">
-                                {{ item.so_luong }}
-                            </span>
-                            <span class="text-muted" style="font-size:0.8rem;">{{ item.hang_hoa.don_vi_tinh.ten }}</span>
-                        </td>
-                        <td>
-                            {% if item.so_luong <= 0 %}
-                                <span class="badge badge-danger"><i class="fas fa-times me-1"></i>Hết hàng</span>
-                            {% elif item.so_luong <= item.hang_hoa.ton_toi_thieu %}
-                                <div style="width:100%; background:#fee2e2; border-radius:4px; height:8px; overflow:hidden;">
-                                    <div style="width:30%; background:#ef4444; height:8px;"></div>
+        <div class="alert alert-info" style="margin-bottom: 16px;">
+            <i class="fas fa-info-circle"></i>
+            {% if hien_thi == 'co_hang' %}
+            Chế độ hiển thị: chỉ ô vị trí đang có hàng mới xuất hiện. Ô trống sẽ ẩn đi.
+            {% else %}
+            Chế độ hiển thị: hiển thị toàn bộ vị trí, kể cả ô trống (vị trí mới tạo sẽ thấy ngay).
+            {% endif %}
+        </div>
+
+        {% for block in kho_maps %}
+        <div class="card" style="margin-bottom: 14px; border: 1px solid rgba(37, 99, 235, 0.15);">
+            <div class="card-header" style="background: rgba(37, 99, 235, 0.05);">
+                <div class="card-title">
+                    <i class="fas fa-warehouse text-primary"></i>
+                    {{ block.kho.ma_kho }} - {{ block.kho.ten_kho }}
+                </div>
+                <div class="text-muted" style="font-size: 0.85rem;">
+                    Tổng vị trí thiết kế: {{ block.total_slot_count }} | Vị trí đang có hàng: {{ block.occupied_count }} | Đang hiển thị: {{ block.displayed_count }} | Tổng số lượng: {{ block.tong_so_luong|intcomma }}
+                </div>
+            </div>
+            <div class="card-body">
+                {% if block.display_side_blocks %}
+                <div class="warehouse-floor">
+                    <div class="floor-top">
+                        <div class="returns-zone">Hàng trả về &amp;<br>Xử lý lại</div>
+
+                        <div class="rack-areas">
+                            <div class="rack-zone">
+                                <div class="zone-title">Kệ pallet</div>
+                                <div class="lane-wrap">
+                                    {% for side in block.display_side_blocks %}
+                                            {% for day in side.day_blocks %}
+                                            <div class="lane">
+                                                <div class="lane-head">Bên {{ side.side }} - Dãy {{ day.day }}</div>
+                                                {% for ke in day.ke_blocks %}
+                                                <div class="shelf-mini">
+                                                    <div class="shelf-mini-title">Kệ {{ ke.ke }}</div>
+                                                    {% for lv in ke.levels %}
+                                                    <div class="level-chip {% if not lv.ton %}empty{% endif %} {% if lv.vi_tri_id %}clickable js-vi-tri-chip{% endif %}" {% if lv.vi_tri_id %}data-vi-tri-id="{{ lv.vi_tri_id }}" data-ma-vi-tri="{{ lv.ma_vi_tri }}"{% endif %}>
+                                                        {% if lv.ton %}
+                                                        T{{ lv.tang }} • {{ lv.ton.hang_hoa.ma_hang }} ({{ lv.ton.so_luong|intcomma }})
+                                                        {% else %}
+                                                        T{{ lv.tang }} • Trống
+                                                        {% endif %}
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                                {% endfor %}
+                                                {% if not day.ke_blocks %}
+                                                <div class="level-chip empty">Chưa có hàng trong dãy này</div>
+                                                {% endif %}
+                                            </div>
+                                            {% endfor %}
+                                    {% endfor %}
                                 </div>
-                                <small class="text-danger">⚠ Sắp hết</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="floor-bottom">
+                        <div class="dock-row">
+                            <div class="dock-box"><i class="fas fa-truck-loading"></i> Nhập hàng</div>
+                            <div class="dock-box"><i class="fas fa-dolly"></i> Xuất hàng</div>
+                        </div>
+                        <div class="text-muted" style="font-size:0.78rem; align-self:center; text-align:right;">
+                            {% if hien_thi == 'co_hang' %}
+                            Chỉ hiển thị kệ/tầng đang có hàng
                             {% else %}
-                                <div style="width:100%; background:#d1fae5; border-radius:4px; height:8px; overflow:hidden;">
-                                    <div style="width:80%; background:#10b981; height:8px;"></div>
-                                </div>
-                                <small class="text-success">Còn hàng</small>
+                            Đang hiển thị cả ô trống
                             {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="6" class="text-center text-muted py-5">
-                        <i class="fas fa-box-open fa-2x mb-2 text-light"></i><br>Kho trống.
-                    </td></tr>
+                        </div>
+                    </div>
+                </div>
+
+                {% if block.non_standard %}
+                <div class="alert alert-warning" style="margin-bottom: 10px;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Có {{ block.non_standard|length }} mã vị trí không theo chuẩn SIDE-Dxx-Kxx-Txx.
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                    {% for vt in block.non_standard %}
+                    <span class="badge" style="background:#fff7ed; color:#9a3412; border:1px solid #fed7aa;">{{ vt.ma_vi_tri }}</span>
                     {% endfor %}
-                </tbody>
-            </table>
+                </div>
+                {% endif %}
+                {% else %}
+                <div class="text-muted" style="margin-bottom: 12px;">Kho này chưa có vị trí hiển thị. Bạn tạo sơ đồ vị trí rồi nhập/xuất để phát sinh dữ liệu.</div>
+                {% endif %}
+
+                {% if block.overflow_items %}
+                <div class="alert alert-warning" style="margin-top:10px; margin-bottom:10px;">
+                    <i class="fas fa-exclamation-circle"></i>
+                    Có {{ block.overflow_items|length }} mặt hàng chưa gán được vào vị trí (do thiếu slot theo sơ đồ).
+                </div>
+                {% endif %}
+
+                {% if block.ton_items %}
+                <div style="display:flex; flex-wrap:wrap; gap:8px;">
+                    {% for tk in block.ton_items %}
+                    <span class="badge" style="background:#f3f4f6; color:#1f2937; border:1px solid #e5e7eb;">
+                        {{ tk.hang_hoa.ma_hang }}: {{ tk.so_luong }} {{ tk.hang_hoa.don_vi_tinh.ten|default:'' }}
+                    </span>
+                    {% endfor %}
+                </div>
+                {% if block.ton_items_total > 12 %}
+                <div class="text-muted" style="font-size: 0.82rem; margin-top: 8px;">+ {{ block.ton_items_total|add:'-12' }} mặt hàng khác</div>
+                {% endif %}
+                {% else %}
+                <div class="text-muted">Kho này chưa có tồn kho.</div>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="text-center text-muted py-5">
+            <i class="fas fa-box-open fa-2x mb-2 text-light"></i><br>Không có dữ liệu kho.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="slot-modal" id="slotModal">
+    <div class="slot-modal-card">
+        <div class="slot-modal-head">
+            <strong id="slotModalTitle">Chi tiết vị trí</strong>
+            <button type="button" class="btn btn-sm btn-light" id="slotModalClose">Đóng</button>
+        </div>
+        <div class="slot-modal-body" id="slotModalBody">
+            Đang tải...
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('slotModal');
+    const modalBody = document.getElementById('slotModalBody');
+    const modalTitle = document.getElementById('slotModalTitle');
+    const closeBtn = document.getElementById('slotModalClose');
+    const detailUrlTemplate = "{% url 'chi_tiet_vi_tri' 0 %}";
+
+    function closeModal() {
+        modal.classList.remove('show');
+    }
+
+    function renderDetail(data) {
+        const statusColor = data.trang_thai === 'DA_DAY' ? '#ef4444' : (data.trang_thai === 'GAN_DAY' ? '#f59e0b' : '#10b981');
+        let html = `
+            <div style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin-bottom:12px;">
+                <div><strong>Mã vị trí:</strong> ${data.ma_vi_tri}</div>
+                <div><strong>Kho:</strong> ${data.ten_kho}</div>
+                <div><strong>Sức chứa tối đa:</strong> ${data.suc_chua_toi_da}</div>
+                <div><strong>Đã dùng:</strong> ${data.dung_luong_da_dung}</div>
+                <div><strong>Còn lại:</strong> ${data.dung_luong_con_lai}</div>
+                <div><strong>Trạng thái:</strong> <span style="color:${statusColor}; font-weight:700;">${data.trang_thai}</span></div>
+            </div>
+        `;
+
+        if (!data.items || data.items.length === 0) {
+            html += '<div class="text-muted">Vị trí đang trống.</div>';
+        } else {
+            html += '<div class="table-responsive"><table class="table"><thead><tr><th>Mã hàng</th><th>Tên hàng</th><th>Số lượng</th><th>Mức chiếm chỗ</th><th>Dung lượng sử dụng</th></tr></thead><tbody>';
+            data.items.forEach(function(item) {
+                html += `<tr><td>${item.ma_hang}</td><td>${item.ten_hang}</td><td>${item.so_luong}</td><td>${item.muc_chiem_cho}</td><td>${item.dung_luong_su_dung}</td></tr>`;
+            });
+            html += '</tbody></table></div>';
+        }
+
+        modalBody.innerHTML = html;
+        modalTitle.textContent = `Chi tiết vị trí ${data.ma_vi_tri}`;
+    }
+
+    document.querySelectorAll('.js-vi-tri-chip').forEach(function(chip) {
+        chip.addEventListener('click', function() {
+            const viTriId = chip.getAttribute('data-vi-tri-id');
+            if (!viTriId) {
+                return;
+            }
+            modal.classList.add('show');
+            modalBody.innerHTML = 'Đang tải...';
+
+            const url = detailUrlTemplate.replace('/0/', `/${viTriId}/`);
+            fetch(url)
+                .then(function(resp) { return resp.json(); })
+                .then(function(data) { renderDetail(data); })
+                .catch(function() {
+                    modalBody.innerHTML = '<span class="text-danger">Không tải được dữ liệu vị trí.</span>';
+                });
+        });
+    });
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeModal();
+        }
+    });
+});
+</script>
 {% endblock %}

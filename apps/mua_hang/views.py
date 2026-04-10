@@ -1,7 +1,11 @@
-from apps.mua_hang.models import PhieuChi
+from datetime import date
+from decimal import Decimal, InvalidOperation
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
+
+from apps.mua_hang.models import PhieuChi
 
 
 @login_required
@@ -63,9 +67,10 @@ def phieu_chi_list(request):
         request,
         'ban_hang/phieu_thu_list.html',
         {
-            'phieu_chi_list': items,
+            'items': items,
             'page_title': 'Phiếu chi tiền',
             'active_menu': 'phieu_chi',
+            'loai': 'chi',
         },
     )
 
@@ -75,8 +80,34 @@ def phieu_chi_them(request):
     from apps.danh_muc.models import NhaCungCap
 
     if request.method == 'POST':
-        messages.success(request, 'Đã lưu phiếu chi thành công!')
-        return redirect('don_mua_list')
+        data = request.POST
+        try:
+            tong_chi = Decimal(data.get('so_tien', '0') or '0')
+        except InvalidOperation:
+            messages.error(request, 'Số tiền chi không hợp lệ')
+            return redirect('phieu_chi_them')
+
+        if tong_chi <= 0:
+            messages.error(request, 'Số tiền chi phải lớn hơn 0')
+            return redirect('phieu_chi_them')
+
+        ncc_id = data.get('doi_tuong') or None
+        if not ncc_id:
+            messages.error(request, 'Vui lòng chọn nhà cung cấp cho phiếu chi')
+            return redirect('phieu_chi_them')
+
+        so_phieu = data.get('so_phieu') or f"PC-{date.today().strftime('%Y%m%d')}"
+        phieu = PhieuChi.objects.create(
+            so_phieu=so_phieu,
+            ngay_chi=data.get('ngay') or date.today(),
+            nha_cung_cap_id=ncc_id,
+            hinh_thuc=data.get('hinh_thuc', 'tien_mat'),
+            tong_chi=tong_chi,
+            ghi_chu=data.get('ly_do', ''),
+            nguoi_tao=request.user,
+        )
+        messages.success(request, f'Đã lưu phiếu chi {phieu.so_phieu} thành công!')
+        return redirect('phieu_chi_list')
 
     return render(
         request,
@@ -85,7 +116,34 @@ def phieu_chi_them(request):
             'loai': 'chi',
             'ncc_list': NhaCungCap.objects.filter(trang_thai=True),
             'page_title': 'Lập Phiếu Chi',
-            'so_phieu_default': 'PC-1111',
+            'so_phieu_default': f"PC-{date.today().strftime('%Y%m%d')}",
+            'today': date.today(),
             'active_menu': 'phieu_chi',
         },
     )
+
+
+@login_required
+def phieu_chi_xac_nhan(request, pk):
+    phieu = get_object_or_404(PhieuChi, pk=pk)
+    if request.method == 'POST':
+        if phieu.trang_thai == '1':
+            phieu.trang_thai = '2'
+            phieu.save(update_fields=['trang_thai'])
+            messages.success(request, f'Đã ghi nhận nghiệp vụ phiếu chi {phieu.so_phieu}')
+        else:
+            messages.error(request, 'Chỉ phiếu chi ở bước 1 mới xác nhận được')
+    return redirect('phieu_chi_list')
+
+
+@login_required
+def phieu_chi_chuyen_so_cai(request, pk):
+    phieu = get_object_or_404(PhieuChi, pk=pk)
+    if request.method == 'POST':
+        if phieu.trang_thai == '2':
+            phieu.trang_thai = '3'
+            phieu.save(update_fields=['trang_thai'])
+            messages.success(request, f'Đã chuyển phiếu chi {phieu.so_phieu} sang Sổ cái')
+        else:
+            messages.error(request, 'Phiếu chi phải ở bước 2 mới chuyển được Sổ cái')
+    return redirect('phieu_chi_list')

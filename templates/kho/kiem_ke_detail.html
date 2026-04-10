@@ -9,10 +9,12 @@
             Kiểm kê kho: <strong>{{ kk.kho.ten_kho }}</strong> — {{ kk.ngay_kiem_ke|date:"d/m/Y" }}
         </div>
         <div class="d-flex gap-2">
-            {% if kk.trang_thai == 'dang_kiem' %}
-                <span class="badge badge-warning align-self-center"><i class="fas fa-spinner me-1"></i>Đang kiểm kê</span>
+            {% if kk.trang_thai == '1' %}
+                <span class="badge badge-warning align-self-center"><i class="fas fa-file-alt me-1"></i>1 - Lập phiếu</span>
+            {% elif kk.trang_thai == '2' %}
+                <span class="badge badge-success align-self-center"><i class="fas fa-boxes me-1"></i>2 - Nhập kho</span>
             {% else %}
-                <span class="badge badge-success align-self-center"><i class="fas fa-check-circle me-1"></i>Đã duyệt</span>
+                <span class="badge badge-info align-self-center"><i class="fas fa-book me-1"></i>3 - Sổ cái</span>
             {% endif %}
         </div>
     </div>
@@ -33,10 +35,10 @@
             </div>
         </div>
 
-        {% if kk.trang_thai == 'dang_kiem' %}
+        {% if kk.trang_thai == '1' %}
         <div class="alert alert-warning" style="border-radius:10px; font-size:0.9rem;">
             <i class="fas fa-exclamation-triangle me-2"></i>
-            Nhập số lượng <strong>thực tế</strong> đếm được vào cột "SL Thực tế". Bấm <strong>Lưu số liệu</strong> sau khi hoàn tất.
+            Nhập số lượng <strong>thực tế</strong> đếm được vào cột "SL Thực tế".
         </div>
         {% endif %}
 
@@ -62,7 +64,7 @@
                             <td>{{ ct.hang_hoa.ten_hang }}</td>
                             <td class="text-center fw-bold text-primary">{{ ct.so_luong_so_sach }}</td>
                             <td class="text-center">
-                                {% if kk.trang_thai == 'dang_kiem' %}
+                                {% if kk.trang_thai == '1' %}
                                     <input type="number" name="sl_thuc_te[]" class="form-control form-control-sm text-center text-warning fw-bold" value="{{ ct.so_luong_thuc_te }}" style="width: 90px; margin: 0 auto;">
                                 {% else %}
                                     <span class="fw-bold text-warning">{{ ct.so_luong_thuc_te }}</span>
@@ -87,16 +89,14 @@
                     </tbody>
                 </table>
             </div>
-            {% if kk.trang_thai == 'dang_kiem' %}
+            {% if kk.trang_thai == '1' %}
             <div class="d-flex justify-content-end gap-2 border-top pt-3 mt-3">
                 <a href="{% url 'kiem_ke_list' %}" class="btn btn-secondary">Quay lại</a>
-                <button type="submit" class="btn btn-warning text-white fw-bold">
+                {% if kk.trang_thai == '1' %}
+                <button type="submit" name="action" value="save" class="btn btn-warning text-white fw-bold">
                     <i class="fas fa-save me-1"></i> Lưu số liệu kiểm kê
                 </button>
-            </div>
-            {% else %}
-            <div class="text-end pt-3">
-                <a href="{% url 'kiem_ke_list' %}" class="btn btn-secondary">Quay lại danh sách</a>
+                {% endif %}
             </div>
             {% endif %}
         </form>

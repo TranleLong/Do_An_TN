@@ -8,8 +8,60 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="/static/css/style.css?v=5">
+    <link rel="stylesheet" href="/static/css/style.css?v=6">
+    <style>
+        .erp-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            padding: 4px 8px;
+            background: linear-gradient(180deg, #f8fbff 0%, #edf4fb 100%);
+            border: 1px solid #cfdced;
+            border-radius: 3px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.85);
+            width: fit-content;
+            flex-wrap: wrap;
+        }
+        .erp-toolbar-btn {
+            width: 28px;
+            height: 28px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid transparent;
+            border-radius: 2px;
+            background: transparent;
+            color: #2f4f79;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all .12s ease;
+        }
+        .erp-toolbar-btn:hover {
+            background: #e6f0fb;
+            border-color: #9fb8d7;
+            color: #0f4f93;
+        }
+        .erp-toolbar-sep {
+            width: 1px;
+            height: 20px;
+            background: #c7d3e0;
+            margin: 0 2px;
+        }
+        .erp-toolbar-btn.disabled,
+        .erp-toolbar-btn:disabled {
+            opacity: .45;
+            pointer-events: none;
+        }
+        .erp-row-select {
+            width: 14px;
+            height: 14px;
+            accent-color: #2f66eb;
+            cursor: pointer;
+        }
+    </style>
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -41,7 +93,7 @@
                     </a>
                 </div>
 
-                <div class="nav-item {% if active_menu in 'don_ban,phieu_thu,cong_no_kh,bao_cao_bh' %}open{% endif %}">
+                <div class="nav-item {% if active_menu == 'don_ban' or active_menu == 'hoa_don_ban' or active_menu == 'gia_ban' or active_menu == 'phieu_thu' or active_menu == 'cong_no_kh' or active_menu == 'bao_cao_bh' %}open{% endif %}">
                     <a href="#" class="nav-link dropdown-toggle" onclick="toggleSubmenu(event, this)">
                         <i class="fas fa-shopping-cart"></i> Phân hệ Bán Hàng
                         <i class="fas fa-chevron-down ms-auto"></i>
@@ -49,7 +101,8 @@
                     <div class="submenu">
                         <div class="submenu-title">Bán hàng</div>
                         <a href="{% url 'don_ban_list' %}" class="submenu-link {% if active_menu == 'don_ban' %}active{% endif %}">Đơn bán hàng</a>
-                        <a href="{% url 'don_ban_them' %}" class="submenu-link">Tạo đơn bán</a>
+                        <a href="{% url 'hoa_don_ban_list' %}" class="submenu-link {% if active_menu == 'hoa_don_ban' %}active{% endif %}">Hóa đơn bán hàng</a>
+                        <a href="{% url 'gia_ban_list' %}" class="submenu-link {% if active_menu == 'gia_ban' %}active{% endif %}">Quản lý giá bán</a>
                         
                         <div class="submenu-title">Kế toán bán hàng</div>
                         <a href="{% url 'phieu_thu_list' %}" class="submenu-link {% if active_menu == 'phieu_thu' %}active{% endif %}">Phiếu thu tiền</a>
@@ -58,13 +111,14 @@
                     </div>
                 </div>
 
-                <div class="nav-item {% if active_menu in 'ton_kho,phieu_xuat,kiem_ke,bao_cao_kho,tinh_gia_xuat,doi_chieu_kho,so_do_kho' %}open{% endif %}">
+                <div class="nav-item {% if active_menu == 'ton_kho' or active_menu == 'phieu_nhap' or active_menu == 'phieu_xuat' or active_menu == 'kiem_ke' or active_menu == 'bao_cao_kho' or active_menu == 'tinh_gia_xuat' or active_menu == 'doi_chieu_kho' or active_menu == 'so_do_kho' %}open{% endif %}">
                     <a href="#" class="nav-link dropdown-toggle" onclick="toggleSubmenu(event, this)">
                         <i class="fas fa-boxes"></i> Phân hệ Kho
                         <i class="fas fa-chevron-down ms-auto"></i>
                     </a>
                     <div class="submenu">
                         <div class="submenu-title">Quản lý kho</div>
+                        <a href="{% url 'phieu_nhap_list' %}" class="submenu-link {% if active_menu == 'phieu_nhap' %}active{% endif %}">Phiếu nhập kho</a>
                         <a href="{% url 'phieu_xuat_list' %}" class="submenu-link {% if active_menu == 'phieu_xuat' %}active{% endif %}">Phiếu xuất kho</a>
                         <a href="{% url 'ton_kho_list' %}" class="submenu-link {% if active_menu == 'ton_kho' %}active{% endif %}">Tồn kho hiện tại</a>
                         <a href="{% url 'kiem_ke_list' %}" class="submenu-link {% if active_menu == 'kiem_ke' %}active{% endif %}">Kiểm kê kho</a>
@@ -79,15 +133,19 @@
                     </div>
                 </div>
 
-                <div class="nav-item {% if active_menu in 'hang_hoa,khach_hang,nha_cung_cap' %}open{% endif %}">
+                <div class="nav-item {% if active_menu == 'hang_hoa' or active_menu == 'khach_hang' or active_menu == 'kho' or active_menu == 'vi_tri_kho' or active_menu == 'danh_muc' or active_menu == 'tai_khoan_ke_toan' %}open{% endif %}">
                     <a href="#" class="nav-link dropdown-toggle" onclick="toggleSubmenu(event, this)">
                         <i class="fas fa-database"></i> Danh mục hệ thống
                         <i class="fas fa-chevron-down ms-auto"></i>
                     </a>
                     <div class="submenu">
-                        <a href="{% url 'hang_hoa_list' %}" class="submenu-link {% if active_menu == 'hang_hoa' %}active{% endif %}">Hàng hóa & Phụ tùng</a>
-                        <a href="{% url 'kh_list' %}" class="submenu-link {% if active_menu == 'khach_hang' %}active{% endif %}">Khách hàng & Gara</a>
-                        <a href="{% url 'ncc_list' %}" class="submenu-link {% if active_menu == 'nha_cung_cap' %}active{% endif %}">Nhà cung cấp</a>
+                        <a href="{% url 'kh_list' %}" class="submenu-link {% if active_menu == 'khach_hang' %}active{% endif %}">Khách hàng</a>
+                        <a href="{% url 'hang_hoa_list' %}" class="submenu-link {% if active_menu == 'hang_hoa' %}active{% endif %}">Hàng hóa</a>
+                        <a href="{% url 'kho_list' %}" class="submenu-link {% if active_menu == 'kho' %}active{% endif %}">Kho</a>
+                        <a href="{% url 'nhom_hang_list' %}" class="submenu-link {% if active_menu == 'danh_muc' %}active{% endif %}">Nhóm hàng</a>
+                        <a href="{% url 'don_vi_tinh_list' %}" class="submenu-link {% if active_menu == 'danh_muc' %}active{% endif %}">Đơn vị tính</a>
+                        <a href="{% url 'tai_khoan_ke_toan_list' %}" class="submenu-link {% if active_menu == 'tai_khoan_ke_toan' %}active{% endif %}">Tài khoản kế toán</a>
+                        <a href="{% url 'vi_tri_kho_list' %}" class="submenu-link {% if active_menu == 'vi_tri_kho' %}active{% endif %}">Vị trí kho</a>
                     </div>
                 </div>
             </nav>
@@ -125,6 +183,8 @@
 
     <!-- Cần jQuery cho một số form tính toán tự động -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <!-- Bootstrap 5 JS -->
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         // Auto hide alerts
         setTimeout(function() {

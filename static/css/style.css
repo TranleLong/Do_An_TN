@@ -229,6 +229,17 @@ a:hover {
 }
 .content { padding: 2rem; flex: 1; overflow-y: auto; }
 
+.erp-form-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.erp-required-note {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 0.9rem;
+}
+
 /* COMPONENTS */
 .card {
   background-color: var(--bg-card);
@@ -277,6 +288,46 @@ a:hover {
 .col-6 { width: 50%; padding: 0 0.75rem; }
 .col-4 { width: 33.333%; padding: 0 0.75rem; }
 .col-3 { width: 25%; padding: 0 0.75rem; }
+
+/* LOOKUP (kính lúp) - style dùng chung toàn hệ thống */
+.lookup-wrap,
+.lookup-box {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+}
+
+.lookup-wrap > .form-control,
+.lookup-box > .form-control,
+.lookup-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.lookup-btn,
+.lookup-icon-btn {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #334155;
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.lookup-btn:hover,
+.lookup-icon-btn:hover {
+  background: #eaf2fd;
+  border-color: #93b2d6;
+  color: #0f4f93;
+}
 
 /* TABLES */
 .table-responsive { overflow-x: auto; width: 100%; }
@@ -330,6 +381,27 @@ a:hover {
 .justify-content-end { justify-content: flex-end; }
 .gap-2 { gap: 0.5rem; }
 .gap-3 { gap: 1rem; }
+
+.pagination-bar {
+  margin-top: 1rem;
+  border-top: 1px solid var(--border-color);
+  padding-top: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.pagination-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.badge-secondary {
+  background-color: #e2e8f0;
+  color: #334155;
+}
 
 /* COMPATIBILITY UTILITIES (for templates using bootstrap-like classes) */
 .row { display: flex; flex-wrap: wrap; margin: 0 -0.75rem; }
@@ -407,6 +479,16 @@ tfoot.table-light td {
   background-color: #f59e0b;
   color: #fff;
   border-color: #f59e0b;
+}
+.btn-info {
+  background-color: #dbeafe;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
+.btn-info:hover {
+  background-color: #1d4ed8;
+  color: #fff;
+  border-color: #1d4ed8;
 }
 .btn-outline-primary {
   background-color: transparent;

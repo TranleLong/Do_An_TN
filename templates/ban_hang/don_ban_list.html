@@ -4,70 +4,206 @@
 {% block content %}
 <div class="card">
     <div class="card-header">
-        <div class="card-title"><i class="fas fa-shopping-cart text-success"></i> Danh sách Đơn bán hàng</div>
-        <a href="{% url 'don_ban_them' %}" class="btn btn-primary"><i class="fas fa-plus"></i> Tạo đơn bán</a>
+        <div class="card-title"><i class="fas fa-shopping-cart text-success"></i> Danh sách Đơn hàng bán</div>
     </div>
-    
-    <div class="card-body">
-        <form method="get" class="form-row mb-4 align-items-center">
-            <div class="col col-4">
-                <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Tìm theo số đơn, tên KH, SĐT...">
-            </div>
-            <div class="col col-3">
-                <select name="trang_thai" class="form-control">
-                    <option value="">-- Tất cả trạng thái --</option>
-                    <option value="nhap" {% if trang_thai_filter == 'nhap' %}selected{% endif %}>Nháp</option>
-                    <option value="da_xac_nhan" {% if trang_thai_filter == 'da_xac_nhan' %}selected{% endif %}>Đã xác nhận</option>
-                    <option value="huy" {% if trang_thai_filter == 'huy' %}selected{% endif %}>Đã hủy</option>
-                </select>
-            </div>
-            <div class="col col-2">
-                <button type="submit" class="btn btn-secondary"><i class="fas fa-search"></i> Lọc</button>
-            </div>
-        </form>
 
+    <div class="px-3 pt-3">
+        <div class="erp-toolbar" role="toolbar" aria-label="Thanh thao tác đơn hàng">
+            <a href="{% url 'don_ban_them' %}" class="erp-toolbar-btn" title="Thêm mới" aria-label="Thêm mới"><i class="fas fa-plus"></i></a>
+            <button type="button" class="erp-toolbar-btn" id="btnDonEdit" title="Sửa" aria-label="Sửa"><i class="fas fa-pen-to-square"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnDonDelete" title="Xóa" aria-label="Xóa"><i class="fas fa-trash"></i></button>
+            <span class="erp-toolbar-sep"></span>
+            <button type="button" class="erp-toolbar-btn" id="btnDonCopy" title="Chép dữ liệu" aria-label="Chép dữ liệu"><i class="fas fa-copy"></i></button>
+            <a href="{% url 'don_ban_export_data' %}?{{ request.GET.urlencode }}" class="erp-toolbar-btn" title="Kết xuất dữ liệu" aria-label="Kết xuất dữ liệu"><i class="fas fa-file-export"></i></a>
+            <a href="{% url 'don_ban_export_template' %}" class="erp-toolbar-btn" title="Tải tệp xuống (mẫu)" aria-label="Tải tệp xuống (mẫu)"><i class="fas fa-file-arrow-down"></i></a>
+            <button type="button" class="erp-toolbar-btn" id="btnDonImport" title="Đẩy dữ liệu lên" aria-label="Đẩy dữ liệu lên"><i class="fas fa-file-import"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnDonSearch" title="Tìm kiếm" aria-label="Tìm kiếm"><i class="fas fa-magnifying-glass"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnDonView" title="Xem" aria-label="Xem"><i class="fas fa-eye"></i></button>
+            <div class="btn-group">
+                <button type="button" class="erp-toolbar-btn dropdown-toggle" data-bs-toggle="dropdown" title="In" aria-label="In"><i class="fas fa-print"></i></button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><button class="dropdown-item" type="button" id="btnDonPrintPdf">In PDF</button></li>
+                    <li><button class="dropdown-item" type="button" id="btnDonPrintExcel">Xuất Excel</button></li>
+                </ul>
+            </div>
+            <button type="button" class="erp-toolbar-btn" id="btnDonQuery" title="Truy vấn" aria-label="Truy vấn"><i class="fas fa-filter"></i></button>
+            <button type="button" class="erp-toolbar-btn" onclick="window.location.reload()" title="Làm mới" aria-label="Làm mới"><i class="fas fa-rotate-right"></i></button>
+        </div>
+    </div>
+
+    <div class="card-body">
         <div class="table-responsive">
             <table class="table">
                 <thead>
                     <tr>
-                        <th>Số đơn</th>
-                        <th>Ngày bán</th>
-                        <th>Khách hàng</th>
-                        <th>Loại / PTTT</th>
-                        <th class="text-right">Tổng thanh toán</th>
-                        <th class="text-right">Còn nợ</th>
+                        <th style="width:42px;">Chọn</th>
+                        <th>Ngày lập</th>
+                        <th>Số đơn hàng</th>
+                        <th>Mã khách</th>
+                        <th>Tên khách</th>
+                        <th class="text-right">Tiền hàng</th>
+                        <th>Mã ngoại tệ</th>
+                        <th>Diễn giải</th>
                         <th>Trạng thái</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in items %}
                     <tr>
+                        <td class="text-center"><input type="checkbox" name="selected_don" class="erp-row-select" value="{{ item.pk }}" data-detail-url="{% url 'don_ban_detail' item.pk %}" data-edit-url="{% url 'don_ban_sua' item.pk %}" data-delete-url="{% url 'don_ban_xoa' item.pk %}" data-trang-thai="{{ item.trang_thai }}"></td>
+                        <td>{{ item.ngay_chung_tu|date:"d/m/Y" }}</td>
                         <td><a href="{% url 'don_ban_detail' item.pk %}"><strong>{{ item.so_don }}</strong></a></td>
-                        <td>{{ item.ngay_ban|date:"d/m/Y" }}</td>
+                        <td>{{ item.khach_hang.ma_kh|default:"-" }}</td>
+                        <td>{{ item.ten_kh }}</td>
+                        <td class="text-right fw-semibold">{{ item.tong_tien_hang|intcomma }}</td>
+                        <td>{{ item.ma_ngoai_te }}</td>
+                        <td>{{ item.ghi_chu|default:"-"|truncatechars:40 }}</td>
                         <td>
-                            {{ item.ten_kh }}
-                            <div style="font-size: 11px; color: var(--text-muted);">{{ item.sdt_kh|default:"-" }}</div>
-                        </td>
-                        <td>
-                            <div style="font-size: 12px; margin-bottom: 3px;">{{ item.get_loai_ban_display }}</div>
-                            <span class="badge {% if item.phuong_thuc_tt == 'tien_mat' %}badge-success{% elif item.phuong_thuc_tt == 'no' %}badge-warning{% else %}badge-info{% endif %}">
-                                {{ item.get_phuong_thuc_tt_display }}
-                            </span>
-                        </td>
-                        <td class="text-right fw-semibold">{{ item.tong_thanh_toan|intcomma }} đ</td>
-                        <td class="text-right {% if item.con_no > 0 %}text-danger fw-bold{% endif %}">{{ item.con_no|intcomma }} đ</td>
-                        <td>
-                            {% if item.trang_thai == 'nhap' %}<span class="badge badge-warning">Nháp</span>
-                            {% elif item.trang_thai == 'da_xac_nhan' %}<span class="badge badge-success">Đã xác nhận</span>
-                            {% else %}<span class="badge badge-danger">Đã hủy</span>{% endif %}
+                            {% if item.trang_thai == '1' %}
+                            <span class="badge badge-warning">1 - Lập chứng từ</span>
+                            {% elif item.trang_thai == '2' %}
+                            <span class="badge badge-secondary">2 - Chờ duyệt</span>
+                            {% elif item.trang_thai == '3' %}
+                            <span class="badge badge-success">3 - Duyệt</span>
+                            {% else %}
+                            <span class="badge badge-danger">4 - Treo</span>
+                            {% endif %}
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="7" class="text-center text-muted">Không tìm thấy đơn bán nào.</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted">Không tìm thấy đơn hàng bán phù hợp.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalDonLoc" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Điều kiện lọc đơn hàng bán</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="get" class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Ngày từ</label>
+                        <input type="date" class="form-control" name="tu_ngay" value="{{ tu_ngay }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Ngày đến</label>
+                        <input type="date" class="form-control" name="den_ngay" value="{{ den_ngay }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Trạng thái</label>
+                        <select name="trang_thai" class="form-control">
+                            <option value="">-- Tất cả --</option>
+                            <option value="1" {% if trang_thai_filter == '1' %}selected{% endif %}>1 - Lập chứng từ</option>
+                            <option value="2" {% if trang_thai_filter == '2' %}selected{% endif %}>2 - Chờ duyệt</option>
+                            <option value="3" {% if trang_thai_filter == '3' %}selected{% endif %}>3 - Duyệt</option>
+                            <option value="4" {% if trang_thai_filter == '4' %}selected{% endif %}>4 - Treo</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Số đơn từ</label>
+                        <input type="text" class="form-control" name="so_don_tu" value="{{ so_don_tu }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Số đơn đến</label>
+                        <input type="text" class="form-control" name="so_don_den" value="{{ so_don_den }}">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Mã khách</label>
+                        <input type="text" class="form-control" name="ma_kh" value="{{ ma_kh }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Mã hàng</label>
+                        <input type="text" class="form-control" name="ma_hang" value="{{ ma_hang }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Tìm nhanh</label>
+                        <input type="text" class="form-control" name="q" value="{{ q }}" placeholder="Số đơn, mã khách, tên khách...">
+                    </div>
+                </div>
+                <div class="d-flex justify-content-end gap-2 mt-4">
+                    <a href="{% url 'don_ban_list' %}" class="btn btn-light border">Bỏ lọc</a>
+                    <button type="submit" class="btn btn-primary">Lọc</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<form method="post" id="formDonDelete" style="display:none;">{% csrf_token %}</form>
+
+<script>
+    function getSelectedDonInputs() {
+        return Array.from(document.querySelectorAll('input[name="selected_don"]:checked'));
+    }
+
+    function getSelectedSingleDon() {
+        const selected = getSelectedDonInputs();
+        return selected.length === 1 ? selected[0] : null;
+    }
+
+    document.getElementById('btnDonEdit').addEventListener('click', function() {
+        const input = getSelectedSingleDon();
+        if (!input) {
+            alert('Vui lòng chọn đúng 1 đơn hàng để sửa.');
+            return;
+        }
+        window.location.href = input.dataset.editUrl;
+    });
+
+    document.getElementById('btnDonDelete').addEventListener('click', function() {
+        const input = getSelectedSingleDon();
+        if (!input) {
+            alert('Vui lòng chọn đúng 1 đơn hàng để xóa.');
+            return;
+        }
+        if (!confirm('Bạn chắc chắn muốn xóa đơn hàng đã chọn?')) return;
+        const form = document.getElementById('formDonDelete');
+        form.action = input.dataset.deleteUrl;
+        form.submit();
+    });
+
+    document.getElementById('btnDonCopy').addEventListener('click', function() {
+        const input = getSelectedSingleDon();
+        if (!input) {
+            alert('Vui lòng chọn đúng 1 đơn hàng để chép dữ liệu.');
+            return;
+        }
+        window.location.href = '{% url "don_ban_them" %}?copy_from=' + encodeURIComponent(input.value);
+    });
+
+    document.getElementById('btnDonView').addEventListener('click', function() {
+        const selected = getSelectedDonInputs();
+        if (selected.length !== 1) {
+            alert('Vui lòng chọn đúng 1 đơn hàng để xem.');
+            return;
+        }
+        window.location.href = selected[0].dataset.detailUrl;
+    });
+
+    document.getElementById('btnDonPrint').addEventListener('click', function() {
+        const selected = getSelectedDonInputs();
+        if (selected.length !== 1) {
+            alert('Vui lòng chọn đúng 1 đơn hàng để in.');
+            return;
+        }
+        window.open(selected[0].dataset.detailUrl, '_blank');
+    });
+
+    document.getElementById('btnDonSearch').addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('modalDonLoc'));
+        modal.show();
+    });
+
+    document.getElementById('btnDonQuery').addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('modalDonLoc'));
+        modal.show();
+    });
+</script>
 {% endblock %}

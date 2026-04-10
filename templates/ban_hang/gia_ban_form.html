@@ -1,0 +1,455 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<style>
+    .lookup-box {
+        position: relative;
+        display: block;
+        width: 100%;
+    }
+    .lookup-box > .form-control,
+    .lookup-box > .lookup-input {
+        width: 100%;
+        padding-right: 40px;
+    }
+    .lookup-box > .lookup-icon-btn {
+        position: absolute;
+        top: 50%;
+        right: 10px;
+        transform: translateY(-50%);
+        width: 24px;
+        height: 24px;
+        min-width: 24px;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: #6b7d94;
+        padding: 0;
+        z-index: 2;
+    }
+    .lookup-box > .lookup-icon-btn:hover {
+        background: #eaf2fd;
+        color: #1d5ea8;
+    }
+    .lookup-display {
+        background: #fff !important;
+        color: #334155 !important;
+        cursor: default !important;
+    }
+    .lookup-scroll {
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        max-height: 320px;
+        overflow-y: auto;
+    }
+    .lookup-head, .lookup-row {
+        display: grid;
+        grid-template-columns: 120px 1fr 120px;
+        gap: 10px;
+        padding: 8px 12px;
+        width: 100%;
+        text-align: left;
+    }
+    .lookup-head {
+        background: #eff6ff;
+        color: #1e3a8a;
+        font-size: 13px;
+        font-weight: 700;
+        border-bottom: 1px solid #dbeafe;
+    }
+    .lookup-row {
+        border: 0;
+        border-bottom: 1px solid #e2e8f0;
+        background: #fff;
+    }
+    .lookup-row:hover { background: #f8fafc; }
+</style>
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-file-signature text-success"></i> {{ page_title }}</div>
+        <a href="{% url 'gia_ban_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
+    </div>
+
+    <form method="post" id="giaBanForm" class="card-body">
+        {% csrf_token %}
+
+        <h5 class="mb-3 text-warning">Thông tin chung</h5>
+        <div class="row">
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Mã phiếu giá bán <span class="text-danger">*</span></label>
+                <input type="text" name="ma_phieu" class="form-control" value="{% if editing %}{{ phieu.ma_phieu }}{% else %}{{ ma_phieu_default }}{% endif %}" {% if editing %}readonly{% endif %} required>
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Ngày lập <span class="text-danger">*</span></label>
+                <input type="date" name="ngay_lap" class="form-control" value="{% if editing %}{{ phieu.ngay_lap|date:'Y-m-d' }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}" {% if editing %}readonly{% endif %} required>
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Ngày hiệu lực <span class="text-danger">*</span></label>
+                <input type="date" name="ngay_hieu_luc" class="form-control" value="{% if editing %}{{ phieu.ngay_hieu_luc|date:'Y-m-d' }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}" required>
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Trạng thái</label>
+                <input type="text" class="form-control" value="{% if editing %}{{ phieu.get_trang_thai_duyet_display }}{% else %}Chờ duyệt{% endif %}" readonly>
+            </div>
+        </div>
+
+        <h5 class="mt-4 mb-3 text-info">Thông tin áp dụng</h5>
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Nhóm hàng <span class="text-danger">*</span></label>
+                <div class="lookup-box">
+                    <input type="text" id="nhomDisplay" class="form-control lookup-input lookup-display" value="{% if editing and phieu.nhom_hang %}{{ phieu.nhom_hang.ma_nhom }} - {{ phieu.nhom_hang.ten_nhom }}{% endif %}" readonly placeholder="Chọn nhóm hàng bằng kính lúp">
+                    <button type="button" class="lookup-icon-btn" id="btnSearchNhom" title="Tra cứu nhóm hàng"><i class="fas fa-search"></i></button>
+                </div>
+                <select name="nhom_hang" id="nhomHang" style="display:none;" required>
+                    <option value="">-- Chọn nhóm hàng --</option>
+                    {% for nhom in nhom_list %}
+                    <option value="{{ nhom.pk }}" data-bien-do="{{ nhom.bien_do_loi_nhuan|default:10 }}" {% if editing and phieu.nhom_hang_id == nhom.pk %}selected{% endif %}>{{ nhom.ma_nhom }} - {{ nhom.ten_nhom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Biên độ lợi nhuận (%) <span class="text-danger">*</span></label>
+                <input type="number" name="bien_do_loi_nhuan" id="bienDo" class="form-control" step="0.01" min="0" value="{% if editing %}{{ phieu.bien_do_loi_nhuan }}{% else %}10{% endif %}" required>
+            </div>
+            <div class="col-md-4 mb-3">
+                <label class="form-label">Loại tiền tệ <span class="text-danger">*</span></label>
+                <select name="loai_tien_te" class="form-control" required>
+                    <option value="VND" {% if not editing or phieu.loai_tien_te == 'VND' %}selected{% endif %}>VND</option>
+                    <option value="USD" {% if editing and phieu.loai_tien_te == 'USD' %}selected{% endif %}>USD</option>
+                </select>
+            </div>
+        </div>
+
+        <h5 class="mt-4 mb-3 border-top pt-4">Chi tiết mặt hàng</h5>
+        <div class="table-responsive">
+            <table class="table" id="chiTietTable">
+                <thead>
+                    <tr>
+                        <th style="width: 30%;">Mã hàng <span class="text-danger">*</span></th>
+                        <th style="width: 25%;">Tên mặt hàng</th>
+                        <th style="width: 10%;">ĐVT</th>
+                        <th style="width: 15%;" class="text-right">Giá vốn <span class="text-danger">*</span></th>
+                        <th style="width: 15%;" class="text-right">Giá bán chuẩn <span class="text-danger">*</span></th>
+                        <th style="width: 5%;">Xóa</th>
+                    </tr>
+                </thead>
+                <tbody id="chiTietBody">
+                    {% if editing and chi_tiet %}
+                        {% for ct in chi_tiet %}
+                        <tr class="item-row">
+                            <td>
+                                <select name="hang_id[]" class="form-control hang-select" required>
+                                    <option value="">-- Chọn --</option>
+                                    {% for h in hang_list %}
+                                    <option value="{{ h.pk }}" data-nhom="{{ h.nhom_hang_id|default:'' }}" {% if ct.hang_hoa_id == h.pk %}selected{% endif %}>{{ h.ma_hang }} - {{ h.ten_hang }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><input type="text" class="form-control ten-hang" value="{{ ct.hang_hoa.ten_hang }}" readonly></td>
+                            <td><input type="text" class="form-control dvt" value="{{ ct.hang_hoa.don_vi_tinh.ten|default:'' }}" readonly></td>
+                            <td><input type="number" name="gia_von[]" class="form-control gia-von text-right" value="{{ ct.gia_von|floatformat:0 }}" readonly></td>
+                            <td><input type="number" name="gia_ban_chuan[]" class="form-control gia-ban text-right" min="0" value="{{ ct.gia_ban_chuan|floatformat:0 }}" required></td>
+                            <td class="text-center"><button type="button" class="btn btn-sm btn-danger btn-remove text-white"><i class="fas fa-times"></i></button></td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr class="item-row">
+                            <td>
+                                <select name="hang_id[]" class="form-control hang-select" required>
+                                    <option value="">-- Chọn --</option>
+                                    {% for h in hang_list %}
+                                    <option value="{{ h.pk }}" data-nhom="{{ h.nhom_hang_id|default:'' }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td><input type="text" class="form-control ten-hang" readonly></td>
+                            <td><input type="text" class="form-control dvt" readonly></td>
+                            <td><input type="number" name="gia_von[]" class="form-control gia-von text-right" readonly></td>
+                            <td><input type="number" name="gia_ban_chuan[]" class="form-control gia-ban text-right" min="0" required></td>
+                            <td class="text-center"><button type="button" class="btn btn-sm btn-danger btn-remove text-white"><i class="fas fa-times"></i></button></td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="6">
+                            <button type="button" class="btn btn-secondary btn-sm" id="btnAddRow"><i class="fas fa-plus"></i> Thêm mặt hàng</button>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <h5 class="mt-4 mb-3">Bảng chiết khấu theo số lượng</h5>
+        <div class="table-responsive">
+            <table class="table" id="chietKhauTable">
+                <thead>
+                    <tr>
+                        <th style="width: 10%;">STT</th>
+                        <th style="width: 30%;">Từ số lượng <span class="text-danger">*</span></th>
+                        <th style="width: 30%;">Đến số lượng <span class="text-danger">*</span></th>
+                        <th style="width: 25%;">% Chiết khấu <span class="text-danger">*</span></th>
+                        <th style="width: 5%;">Xóa</th>
+                    </tr>
+                </thead>
+                <tbody id="chietKhauBody">
+                    {% if editing and bang_ck %}
+                        {% for ck in bang_ck %}
+                        <tr class="ck-row">
+                            <td class="stt">{{ forloop.counter }}</td>
+                            <td><input type="number" name="ck_tu[]" class="form-control ck-tu" min="1" value="{{ ck.tu_so_luong }}"></td>
+                            <td><input type="number" name="ck_den[]" class="form-control ck-den" min="1" value="{{ ck.den_so_luong }}"></td>
+                            <td><input type="number" name="ck_pt[]" class="form-control ck-pt" min="0" max="100" step="0.01" value="{{ ck.phan_tram_chiet_khau }}"></td>
+                            <td class="text-center"><button type="button" class="btn btn-sm btn-danger btn-remove-ck text-white"><i class="fas fa-times"></i></button></td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr class="ck-row">
+                            <td class="stt">1</td>
+                            <td><input type="number" name="ck_tu[]" class="form-control ck-tu" min="1"></td>
+                            <td><input type="number" name="ck_den[]" class="form-control ck-den" min="1"></td>
+                            <td><input type="number" name="ck_pt[]" class="form-control ck-pt" min="0" max="100" step="0.01"></td>
+                            <td class="text-center"><button type="button" class="btn btn-sm btn-danger btn-remove-ck text-white"><i class="fas fa-times"></i></button></td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="5">
+                            <button type="button" class="btn btn-secondary btn-sm" id="btnAddDiscount"><i class="fas fa-plus"></i> Thêm khoảng chiết khấu</button>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="mb-3 mt-3">
+            <label class="form-label">Ghi chú</label>
+            <textarea name="ghi_chu" class="form-control" rows="2">{% if editing %}{{ phieu.ghi_chu }}{% endif %}</textarea>
+        </div>
+
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem;"><i class="fas fa-save"></i> Lưu</button>
+            <a href="{% url 'gia_ban_list' %}" class="btn btn-light border" style="padding: 0.75rem 2rem;">Hủy</a>
+        </div>
+    </form>
+</div>
+
+<div class="modal fade" id="modalNhomHang" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tra cứu nhóm hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="nhomSearchInput" class="form-control mb-2" placeholder="Nhập mã nhóm hoặc tên nhóm..." autocomplete="off">
+                <div class="lookup-scroll" id="nhomSearchResults">
+                    <div class="lookup-head"><span>Mã nhóm</span><span>Tên nhóm</span><span>Biên độ</span></div>
+                    {% for nhom in nhom_list %}
+                    <button type="button" class="lookup-row btn-nhom-select" data-id="{{ nhom.pk }}" data-display="{{ nhom.ma_nhom }} - {{ nhom.ten_nhom }}" data-bien-do="{{ nhom.bien_do_loi_nhuan|default:10 }}">
+                        <span><strong>{{ nhom.ma_nhom }}</strong></span>
+                        <span>{{ nhom.ten_nhom }}</span>
+                        <span class="text-end">{{ nhom.bien_do_loi_nhuan|default:10 }}%</span>
+                    </button>
+                    {% empty %}
+                    <div class="p-3 text-center text-muted">Chưa có nhóm hàng.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function roundVnd(v) {
+    return Math.round(parseFloat(v || 0));
+}
+
+function renumberDiscountRows() {
+    $('#chietKhauBody .ck-row').each(function(index) {
+        $(this).find('.stt').text(index + 1);
+    });
+}
+
+function tinhGiaBanRow(row) {
+    const bienDo = parseFloat($('#bienDo').val() || 0);
+    const giaVon = parseFloat(row.find('.gia-von').val() || 0);
+    const giaBan = roundVnd(giaVon * (1 + bienDo / 100));
+    row.find('.gia-ban').val(giaBan);
+}
+
+function applyGroupFilter() {
+    const nhom = $('#nhomHang').val();
+    $('.hang-select').each(function() {
+        const current = $(this).val();
+        $(this).find('option').each(function() {
+            const dataNhom = $(this).data('nhom');
+            if (!$(this).val()) {
+                $(this).show();
+                return;
+            }
+            if (!nhom || String(dataNhom || '') === String(nhom)) {
+                $(this).show();
+            } else {
+                if ($(this).val() === current) {
+                    $(this).prop('selected', false);
+                }
+                $(this).hide();
+            }
+        });
+    });
+}
+
+function validateDiscountRanges() {
+    const ranges = [];
+    let ok = true;
+    $('#chietKhauBody .ck-row').each(function() {
+        const from = parseInt($(this).find('.ck-tu').val() || '0', 10);
+        const to = parseInt($(this).find('.ck-den').val() || '0', 10);
+        const pt = parseFloat($(this).find('.ck-pt').val() || '0');
+        if (!from && !to && !pt) {
+            return;
+        }
+        if (from <= 0 || to <= 0 || from > to) {
+            ok = false;
+            return;
+        }
+        for (const ex of ranges) {
+            if (!(to < ex.from || ex.to < from)) {
+                ok = false;
+                return;
+            }
+        }
+        ranges.push({from: from, to: to});
+    });
+    return ok;
+}
+
+function syncSelectedGroup() {
+    const selected = $('#nhomHang option:selected');
+    const display = selected.val() ? (selected.text() || '') : '';
+    $('#nhomDisplay').val(display);
+}
+
+function filterNhomRows() {
+    const q = $('#nhomSearchInput').val().trim().toLowerCase();
+    $('#nhomSearchResults .btn-nhom-select').each(function() {
+        const text = String($(this).data('display') || '').toLowerCase();
+        const biendo = String($(this).data('bien-do') || '').toLowerCase();
+        if (!q || text.includes(q) || biendo.includes(q)) {
+            $(this).show();
+        } else {
+            $(this).hide();
+        }
+    });
+}
+
+$(document).on('change', '.hang-select', function() {
+    const row = $(this).closest('tr');
+    const hangId = $(this).val();
+    if (!hangId) {
+        row.find('.ten-hang, .dvt, .gia-von, .gia-ban').val('');
+        return;
+    }
+    $.get('{% url "gia_ban_hang_hoa_api" %}', {hang_id: hangId}, function(resp) {
+        row.find('.ten-hang').val(resp.ten_hang || '');
+        row.find('.dvt').val(resp.don_vi_tinh || '');
+        row.find('.gia-von').val(roundVnd(resp.gia_von || 0));
+        tinhGiaBanRow(row);
+    });
+});
+
+$('#nhomHang').on('change', function() {
+    const selected = $('#nhomHang option:selected');
+    const bienDo = selected.data('bien-do');
+    if (bienDo !== undefined && bienDo !== null && bienDo !== '') {
+        $('#bienDo').val(bienDo);
+    }
+    syncSelectedGroup();
+    applyGroupFilter();
+    $('.item-row').each(function() {
+        if ($(this).find('.gia-von').val()) {
+            tinhGiaBanRow($(this));
+        }
+    });
+});
+
+$('#bienDo').on('input', function() {
+    $('.item-row').each(function() {
+        if ($(this).find('.gia-von').val()) {
+            tinhGiaBanRow($(this));
+        }
+    });
+});
+
+$('#btnAddRow').on('click', function() {
+    const row = $('#chiTietBody .item-row:first').clone();
+    row.find('input').val('');
+    row.find('select').val('');
+    $('#chiTietBody').append(row);
+    applyGroupFilter();
+});
+
+$(document).on('click', '.btn-remove', function() {
+    if ($('#chiTietBody .item-row').length > 1) {
+        $(this).closest('tr').remove();
+    }
+});
+
+$('#btnAddDiscount').on('click', function() {
+    const row = $('#chietKhauBody .ck-row:first').clone();
+    row.find('input').val('');
+    $('#chietKhauBody').append(row);
+    renumberDiscountRows();
+});
+
+$(document).on('click', '.btn-remove-ck', function() {
+    if ($('#chietKhauBody .ck-row').length > 1) {
+        $(this).closest('tr').remove();
+        renumberDiscountRows();
+    }
+});
+
+$('#giaBanForm').on('submit', function(e) {
+    if (!validateDiscountRanges()) {
+        e.preventDefault();
+        alert('Khoảng số lượng chiết khấu không hợp lệ');
+    }
+});
+
+$('#btnSearchNhom').on('click', function() {
+    const modal = new bootstrap.Modal(document.getElementById('modalNhomHang'));
+    modal.show();
+    setTimeout(function() {
+        $('#nhomSearchInput').val('');
+        filterNhomRows();
+        $('#nhomSearchInput').trigger('focus');
+    }, 150);
+});
+
+$('#nhomSearchInput').on('input', function() {
+    filterNhomRows();
+});
+
+$(document).on('click', '.btn-nhom-select', function() {
+    const id = $(this).data('id');
+    const display = $(this).data('display');
+    const bienDo = $(this).data('bien-do');
+    $('#nhomHang').val(String(id)).trigger('change');
+    if (bienDo !== undefined && bienDo !== null && bienDo !== '') {
+        $('#bienDo').val(bienDo);
+    }
+    $('#nhomDisplay').val(display || '');
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalNhomHang')).hide();
+});
+
+renumberDiscountRows();
+applyGroupFilter();
+$('#nhomHang').trigger('change');
+</script>
+{% endblock %}

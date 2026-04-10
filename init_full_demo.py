@@ -9,9 +9,8 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'erp_tien_huong.settings')
 django.setup()
 
 from apps.ban_hang.models import DonBan, DonBan_CT, PhieuThu
-from apps.core.models import (DonViTinh, HangHoa, Kho, NhomHang, ThuongHieu,
-                              ViTriKho)
-from apps.danh_muc.models import KhachHang, NhaCungCap
+from apps.danh_muc.models import (DonViTinh, HangHoa, KhachHang, Kho,
+                                  NhaCungCap, NhomHang, ThuongHieu, ViTriKho)
 from apps.kho.models import (KiemKe, KiemKe_CT, PhieuNhap, PhieuNhap_CT,
                              PhieuXuat, PhieuXuat_CT, TonKho)
 from django.contrib.auth.models import User
@@ -270,5 +269,4 @@ def run():
 
 
 if __name__ == '__main__':
-    run()
     run()

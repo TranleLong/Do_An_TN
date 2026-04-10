@@ -1,21 +1,16 @@
-"""
-Models cho app Mua Hàng: DonMua, HoaDonMuaVao, PhieuChi
-"""
-from django.db import models
-from django.contrib.auth.models import User
-from apps.core.models import HangHoa, Kho
-from apps.danh_muc.models import NhaCungCap
 import datetime
+
+from django.contrib.auth.models import User
+from django.db import models
+
+from apps.danh_muc.models import HangHoa, Kho, NhaCungCap
 
 
 class DonMua(models.Model):
     TRANG_THAI = [
-        ('nhap', 'Nháp'),
-        ('cho_duyet', 'Chờ duyệt'),
-        ('da_duyet', 'Đã duyệt'),
-        ('nhan_1_phan', 'Nhận một phần'),
-        ('hoan_thanh', 'Hoàn thành'),
-        ('huy', 'Đã hủy'),
+        ('1', '1 - Lập phiếu'),
+        ('2', '2 - Nhập kho'),
+        ('3', '3 - Sổ cái'),
     ]
     so_don = models.CharField(max_length=30, unique=True, verbose_name='Số đơn mua')
     ngay_dat = models.DateField(default=datetime.date.today, verbose_name='Ngày đặt')
@@ -26,7 +21,7 @@ class DonMua(models.Model):
     ly_do = models.CharField(max_length=200, blank=True, verbose_name='Lý do đặt hàng')
     tong_tien = models.DecimalField(max_digits=18, decimal_places=0, default=0,
                                      verbose_name='Tổng tiền')
-    trang_thai = models.CharField(max_length=20, choices=TRANG_THAI, default='nhap',
+    trang_thai = models.CharField(max_length=20, choices=TRANG_THAI, default='1',
                                    verbose_name='Trạng thái')
     nguoi_lap = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
                                    related_name='don_mua_lap', verbose_name='Người lập')
@@ -37,6 +32,7 @@ class DonMua(models.Model):
     ngay_tao = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = 'mua_hang_donmua'
         verbose_name = 'Đơn đặt mua hàng'
         ordering = ['-ngay_dat', '-ngay_tao']
 
@@ -60,6 +56,10 @@ class DonMua_CT(models.Model):
                                     verbose_name='VAT (%)')
     thanh_tien = models.DecimalField(max_digits=18, decimal_places=0, default=0)
 
+    class Meta:
+        db_table = 'mua_hang_donmua_ct'
+        verbose_name = 'Chi tiết đơn mua'
+
     @property
     def con_can_nhan(self):
         return self.so_luong_dat - self.so_luong_da_nhan
@@ -68,9 +68,6 @@ class DonMua_CT(models.Model):
         vat = self.don_gia * self.so_luong_dat * self.thue_vat / 100
         self.thanh_tien = round(self.don_gia * self.so_luong_dat + vat, 0)
         super().save(*args, **kwargs)
-
-    class Meta:
-        verbose_name = 'Chi tiết đơn mua'
 
 
 class HoaDonMuaVao(models.Model):
@@ -100,6 +97,7 @@ class HoaDonMuaVao(models.Model):
     ngay_tao = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = 'mua_hang_hoadonmuavao'
         verbose_name = 'Hóa đơn mua vào'
         ordering = ['-ngay_hd']
 
@@ -112,6 +110,11 @@ class PhieuChi(models.Model):
         ('tien_mat', 'Tiền mặt'),
         ('chuyen_khoan', 'Chuyển khoản'),
     ]
+    TRANG_THAI = [
+        ('1', '1 - Lập phiếu'),
+        ('2', '2 - Ghi nhận nghiệp vụ'),
+        ('3', '3 - Sổ cái'),
+    ]
     so_phieu = models.CharField(max_length=30, unique=True, verbose_name='Số phiếu chi')
     ngay_chi = models.DateField(default=datetime.date.today, verbose_name='Ngày chi')
     nha_cung_cap = models.ForeignKey(NhaCungCap, on_delete=models.PROTECT,
@@ -122,11 +125,14 @@ class PhieuChi(models.Model):
     tong_chi = models.DecimalField(max_digits=18, decimal_places=0, verbose_name='Số tiền chi')
     hoa_don_lien_ket = models.ForeignKey(HoaDonMuaVao, on_delete=models.SET_NULL,
                                           null=True, blank=True, verbose_name='Liên kết HĐ')
+    trang_thai = models.CharField(max_length=20, choices=TRANG_THAI, default='1',
+                                   verbose_name='Trạng thái')
     ghi_chu = models.TextField(blank=True)
     nguoi_tao = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     ngay_tao = models.DateTimeField(auto_now_add=True)
 
     class Meta:
+        db_table = 'mua_hang_phieuchi'
         verbose_name = 'Phiếu chi tiền NCC'
         ordering = ['-ngay_chi']
 

@@ -7,25 +7,17 @@
         <div class="card-title">
             <i class="fas fa-file-invoice-dollar text-success"></i> Chi tiết đơn bán hàng: {{ don.so_don }}
             
-            {% if don.trang_thai == 'nhap' %}
-            <span class="badge badge-warning ml-2">Phiên bản Nháp</span>
-            {% elif don.trang_thai == 'da_xac_nhan' %}
-            <span class="badge badge-success ml-2">Đã xác nhận & Trừ tồn</span>
+            {% if don.trang_thai == '1' %}
+            <span class="badge badge-warning ml-2">1 - Lập chứng từ</span>
+            {% elif don.trang_thai == '2' %}
+            <span class="badge badge-secondary ml-2">2 - Chờ duyệt</span>
+            {% elif don.trang_thai == '3' %}
+            <span class="badge badge-success ml-2">3 - Duyệt</span>
             {% else %}
-            <span class="badge badge-danger ml-2">Đã hủy</span>
+            <span class="badge badge-danger ml-2">4 - Treo</span>
             {% endif %}
         </div>
         <div>
-            {% if don.trang_thai == 'nhap' %}
-            <form action="{% url 'don_ban_xac_nhan' don.pk %}" method="post" style="display:inline;">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-check-double"></i> Xác nhận đơn & Trừ tồn kho</button>
-            </form>
-            <form action="{% url 'don_ban_huy' don.pk %}" method="post" style="display:inline;" onsubmit="return confirm('Bạn có chắc chắn muốn hủy đơn hàng này?');">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-times"></i> Hủy đơn</button>
-            </form>
-            {% endif %}
             <a href="{% url 'don_ban_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
         </div>
     </div>
@@ -35,8 +27,7 @@
             <div style="flex: 1;">
                 <h6 class="text-muted text-uppercase mb-3" style="font-size: 0.75rem; font-weight: 600;">Thông tin chung</h6>
                 <table class="table" style="background: transparent;">
-                    <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Ngày bán:</th><td style="border:none; padding: 0.5rem 0;">{{ don.ngay_ban|date:"d/m/Y" }}</td></tr>
-                    <tr><th style="border:none; padding: 0.5rem 0;">Loại phiếu:</th><td style="border:none; padding: 0.5rem 0;">{{ don.get_loai_ban_display }}</td></tr>
+                    <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Ngày chứng từ:</th><td style="border:none; padding: 0.5rem 0;">{{ don.ngay_chung_tu|date:"d/m/Y" }}</td></tr>
                     <tr><th style="border:none; padding: 0.5rem 0;">Kho xuất:</th><td style="border:none; padding: 0.5rem 0;">{{ don.kho.ten_kho }}</td></tr>
                     <tr><th style="border:none; padding: 0.5rem 0;">NV Bán hàng:</th><td style="border:none; padding: 0.5rem 0;">{{ don.nhan_vien_ban.username|default:"-" }}</td></tr>
                 </table>
@@ -48,7 +39,6 @@
                     <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Khách hàng:</th><td style="border:none; padding: 0.5rem 0; font-weight: 600; color: var(--accent-color);">{{ don.ten_kh }}</td></tr>
                     <tr><th style="border:none; padding: 0.5rem 0;">SĐT:</th><td style="border:none; padding: 0.5rem 0;">{{ don.sdt_kh|default:"-" }}</td></tr>
                     <tr><th style="border:none; padding: 0.5rem 0;">Thông tin xe:</th><td style="border:none; padding: 0.5rem 0;">{{ don.xe_kh|default:"-" }}</td></tr>
-                    <tr><th style="border:none; padding: 0.5rem 0;">Hình thức TT:</th><td style="border:none; padding: 0.5rem 0;">{{ don.get_phuong_thuc_tt_display }}</td></tr>
                 </table>
             </div>
         </div>
@@ -108,7 +98,7 @@
                     <strong class="text-warning">{{ don.tong_thanh_toan|floatformat:0|intcomma }} đ</strong>
                 </div>
                 
-                {% if don.trang_thai == 'da_xac_nhan' %}
+                {% if don.trang_thai == '3' %}
                 <div class="d-flex justify-content-between mt-3 mb-2">
                     <span class="text-muted">Đã thu (Phiếu thu):</span>
                     <strong class="text-success">{{ don.da_thu|floatformat:0|intcomma }} đ</strong>
@@ -120,9 +110,6 @@
                 
                 {% if don.con_no > 0 %}
                 <div class="mt-4 text-center">
-                    <a href="{% url 'phieu_thu_them' %}?don_ban={{ don.pk }}" class="btn btn-sm btn-success" style="width: 100%;">
-                        <i class="fas fa-hand-holding-dollar"></i> Lập phiếu thu ngay
-                    </a>
                 </div>
                 {% endif %}
                 {% endif %}

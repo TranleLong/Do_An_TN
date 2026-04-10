@@ -1,4 +1,5 @@
 from django.urls import path
+
 from . import views
 
 urlpatterns = [
@@ -10,5 +11,7 @@ urlpatterns = [
     path('hoa-don-mua/them/', views.hoa_don_mua_them, name='hoa_don_mua_them'),
     path('phieu-chi/', views.phieu_chi_list, name='phieu_chi_list'),
     path('phieu-chi/them/', views.phieu_chi_them, name='phieu_chi_them'),
+    path('phieu-chi/<int:pk>/xac-nhan/', views.phieu_chi_xac_nhan, name='phieu_chi_xac_nhan'),
+    path('phieu-chi/<int:pk>/so-cai/', views.phieu_chi_chuyen_so_cai, name='phieu_chi_chuyen_so_cai'),
     path('cong-no-ncc/', views.cong_no_ncc, name='cong_no_ncc'),
 ]

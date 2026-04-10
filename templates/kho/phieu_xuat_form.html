@@ -1,13 +1,139 @@
 {% extends 'base.html' %}
 
+{% block extra_css %}
+<style>
+    .lookup-wrap {
+        position: relative;
+    }
+    .lookup-input {
+        padding-right: 34px;
+    }
+    .lookup-btn {
+        position: absolute;
+        right: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 22px;
+        height: 22px;
+        border: 0;
+        background: transparent;
+        color: #6b7d94;
+        padding: 0;
+        font-size: 12px;
+        line-height: 22px;
+        border-radius: 50%;
+    }
+    .lookup-btn:hover {
+        background: #eaf2fd;
+        color: #1d5ea8;
+    }
+    #modalTaiKhoan .modal-dialog {
+        max-width: 860px;
+    }
+    #modalTaiKhoan .modal-content {
+        border: 1px solid #7aa1cf;
+        border-radius: 8px;
+        box-shadow: 0 20px 45px rgba(22, 44, 75, 0.28);
+    }
+    #modalTaiKhoan .modal-header {
+        background: linear-gradient(180deg, #f7fbff 0%, #e9f3ff 100%);
+        border-bottom: 1px solid #c7dcf3;
+    }
+    #tkSearchResults {
+        border: 1px solid #c9d9eb;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .tk-head {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        gap: 10px;
+        background: #eef5fb;
+        color: #1f4d83;
+        border-bottom: 1px solid #cfdeef;
+        padding: 8px 12px;
+        font-weight: 700;
+        font-size: 14px;
+    }
+    .tk-row {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        gap: 10px;
+        width: 100%;
+        padding: 9px 12px;
+        border: 0;
+        border-bottom: 1px solid #e9eef5;
+        background: #fff;
+        cursor: pointer;
+    }
+    .tk-row:hover {
+        background: #f2f8ff;
+    }
+    .tk-row-code {
+        font-weight: 700;
+        color: #0d4b86;
+        text-align: left;
+    }
+    .tk-row-name {
+        text-align: left;
+        color: #30465f;
+    }
+    #modalHangHoa .modal-dialog {
+        max-width: 860px;
+    }
+    #hangSearchResults {
+        border: 1px solid #c9d9eb;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .hang-head {
+        display: grid;
+        grid-template-columns: 180px 1fr 120px;
+        gap: 10px;
+        background: #eef5fb;
+        color: #1f4d83;
+        border-bottom: 1px solid #cfdeef;
+        padding: 8px 12px;
+        font-weight: 700;
+        font-size: 14px;
+    }
+    .hang-row {
+        display: grid;
+        grid-template-columns: 180px 1fr 120px;
+        gap: 10px;
+        width: 100%;
+        padding: 9px 12px;
+        border: 0;
+        border-bottom: 1px solid #e9eef5;
+        background: #fff;
+        cursor: pointer;
+        text-align: left;
+    }
+    .hang-row:hover {
+        background: #f2f8ff;
+    }
+    .hang-row-code {
+        font-weight: 700;
+        color: #0d4b86;
+    }
+    .hang-row-name {
+        color: #30465f;
+    }
+    .hang-row-dvt {
+        color: #6b7d94;
+        text-align: right;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card">
     <div class="card-header">
-        <div class="card-title"><i class="fas fa-file-export text-info"></i> Lập phiếu xuất kho</div>
+        <div class="card-title"><i class="fas fa-file-export text-info"></i> {% if editing_phieu %}Sửa phiếu xuất kho {{ editing_phieu.so_phieu }}{% else %}Lập phiếu xuất kho{% endif %}</div>
         <a href="{% url 'phieu_xuat_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
     </div>
 
-    <form method="post" action="{% url 'phieu_xuat_them' %}" id="phieuXuatForm" class="card-body">
+    <form method="post" action="{% if editing_phieu %}{% url 'phieu_xuat_sua' editing_phieu.pk %}{% else %}{% url 'phieu_xuat_them' %}{% endif %}" id="phieuXuatForm" class="card-body">
         {% csrf_token %}
 
         <div class="form-row">
@@ -16,17 +142,18 @@
                 <input type="text" name="so_phieu" class="form-control" value="{{ so_phieu_default }}" readonly>
             </div>
             <div class="col col-3 form-group">
-                <label class="form-label">Ngày xuất <span class="text-danger">*</span></label>
-                <input type="date" name="ngay_xuat" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+                <label class="form-label">Ngày chứng từ <span class="text-danger">*</span></label>
+                <input type="date" name="ngay_chung_tu" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
             </div>
             <div class="col col-3 form-group">
                 <label class="form-label">Loại xuất</label>
                 <select name="loai_xuat" class="form-control">
-                    <option value="ban_hang">Xuất bán hàng</option>
-                    <option value="noi_bo">Xuất nội bộ</option>
-                    <option value="tra_ncc">Trả nhà cung cấp</option>
-                    <option value="hu_hong">Xuất hao hụt/Hư hỏng</option>
+                    <option value="ban_hang">1 - Xuất bán hàng</option>
+                    <option value="noi_bo">2 - Xuất nội bộ</option>
+                    <option value="tra_ncc">3 - Trả nhà cung cấp</option>
+                    <option value="hu_hong">4 - Xuất hao hụt/Hư hỏng</option>
                 </select>
+                <small class="text-muted">Trạng thái chứng từ: tạo mới = <strong>1 - Lập phiếu</strong>, ghi sổ kho = <strong>2</strong>, chuyển sổ cái = <strong>3</strong>.</small>
             </div>
             <div class="col col-3 form-group">
                 <label class="form-label">Kho xuất hàng <span class="text-danger">*</span></label>
@@ -40,9 +167,17 @@
         </div>
 
         <div class="form-row">
-            <div class="col col-12 form-group">
+            <div class="col col-10 form-group">
                 <label class="form-label">Ghi chú (Lý do xuất)</label>
                 <input type="text" name="ghi_chu" class="form-control" placeholder="Ví dụ: Xuất hàng cho vận đơn XYZ...">
+            </div>
+            <div class="col col-2 form-group">
+                <label class="form-label">Trạng thái</label>
+                <select name="trang_thai" class="form-control" style="font-weight:600;">
+                    <option value="1" selected>1 - Lập phiếu</option>
+                    <option value="2">2 - Sổ kho</option>
+                    <option value="3">3 - Sổ cái</option>
+                </select>
             </div>
         </div>
 
@@ -52,23 +187,40 @@
             <table class="table" id="chiTietTable">
                 <thead>
                     <tr>
-                        <th style="width: 65%">Mặt hàng</th>
-                        <th style="width: 20%" class="text-right">Số lượng xuất</th>
-                        <th style="width: 15%" class="text-center">Thao tác</th>
+                        <th style="width: 42%">Mặt hàng</th>
+                        <th style="width: 14%" class="text-right">Số lượng xuất</th>
+                        <th style="width: 17%" class="text-center">TK Nợ</th>
+                        <th style="width: 17%" class="text-center">TK Có</th>
+                        <th style="width: 10%" class="text-center">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody id="chiTietBody">
                     <tr class="item-row">
                         <td>
-                            <select name="hang_id[]" class="form-control" required>
-                                <option value="">-- Chọn hàng hóa --</option>
-                                {% for h in hang_list %}
-                                <option value="{{ h.pk }}">{{ h.ma_hang }} - {{ h.ten_hang }}{% if h.don_vi_tinh %} ({{ h.don_vi_tinh }}){% endif %}</option>
-                                {% endfor %}
-                            </select>
+                            <div class="lookup-wrap">
+                                <select name="hang_id[]" class="form-control hang-select lookup-input" required>
+                                    <option value="">-- Chọn hàng hóa --</option>
+                                    {% for h in hang_list %}
+                                    <option value="{{ h.pk }}">{{ h.ma_hang }} - {{ h.ten_hang }}{% if h.don_vi_tinh %} ({{ h.don_vi_tinh }}){% endif %}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="button" class="lookup-btn btn-search-hang" title="Tra cứu vật tư"><i class="fas fa-search"></i></button>
+                            </div>
                         </td>
                         <td>
                             <input type="number" name="so_luong[]" class="form-control text-right" min="1" required>
+                        </td>
+                        <td>
+                            <div class="lookup-wrap">
+                                <input name="tk_no[]" class="form-control lookup-input" placeholder="VD: 632" autocomplete="off" />
+                                <button type="button" class="lookup-btn btn-search-tk" title="Chọn TK Nợ" data-field="tk_no"><i class="fas fa-search"></i></button>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="lookup-wrap">
+                                <input name="tk_co[]" class="form-control lookup-input" placeholder="VD: 156" autocomplete="off" />
+                                <button type="button" class="lookup-btn btn-search-tk" title="Chọn TK Có" data-field="tk_co"><i class="fas fa-search"></i></button>
+                            </div>
                         </td>
                         <td class="text-center">
                             <button type="button" class="btn btn-sm btn-danger btn-remove"><i class="fas fa-trash"></i></button>
@@ -77,7 +229,7 @@
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="3">
+                        <td colspan="5">
                             <button type="button" class="btn btn-secondary btn-sm" id="btnAddRow"><i class="fas fa-plus"></i> Thêm dòng</button>
                         </td>
                     </tr>
@@ -85,8 +237,62 @@
             </table>
         </div>
 
+        <div class="modal fade" id="modalTaiKhoan" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Chọn Tài Khoản Kế Toán</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Tìm kiếm</label>
+                            <input type="text" id="tkSearchInput" class="form-control" placeholder="Nhập mã hoặc tên tài khoản..." autocomplete="off">
+                        </div>
+                        <div id="tkSearchResults" style="max-height: 320px; overflow-y: auto;">
+                            <div class="text-muted" style="padding: 1rem; text-align: center;">Đang tải...</div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <small id="tkPagingInfo" class="text-muted"></small>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnTkPrev">Trước</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnTkNext">Tiếp</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="modalHangHoa" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Tra cứu vật tư / hàng hóa</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Tìm kiếm</label>
+                            <input type="text" id="hangSearchInput" class="form-control" placeholder="Nhập mã hoặc tên hàng hóa..." autocomplete="off">
+                        </div>
+                        <div id="hangSearchResults" style="max-height: 320px; overflow-y: auto;">
+                            <div class="text-muted" style="padding: 1rem; text-align: center;">Đang tải...</div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <small id="hangPagingInfo" class="text-muted"></small>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnHangPrev">Trước</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnHangNext">Tiếp</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="mt-4 text-center">
-            <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem;"><i class="fas fa-check-circle"></i> Xác nhận xuất kho</button>
+            <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem;"><i class="fas fa-save"></i> {% if editing_phieu %}Cập nhật phiếu{% else %}Lưu phiếu{% endif %}</button>
         </div>
     </form>
 </div>
@@ -94,38 +300,258 @@
 <template id="rowTemplate">
     <tr class="item-row">
         <td>
-            <select name="hang_id[]" class="form-control" required>
-                <option value="">-- Chọn hàng hóa --</option>
-                {% for h in hang_list %}
-                <option value="{{ h.pk }}">{{ h.ma_hang }} - {{ h.ten_hang }}{% if h.don_vi_tinh %} ({{ h.don_vi_tinh }}){% endif %}</option>
-                {% endfor %}
-            </select>
+            <div class="lookup-wrap">
+                <select name="hang_id[]" class="form-control hang-select lookup-input" required>
+                    <option value="">-- Chọn hàng hóa --</option>
+                    {% for h in hang_list %}
+                    <option value="{{ h.pk }}">{{ h.ma_hang }} - {{ h.ten_hang }}{% if h.don_vi_tinh %} ({{ h.don_vi_tinh }}){% endif %}</option>
+                    {% endfor %}
+                </select>
+                <button type="button" class="lookup-btn btn-search-hang" title="Tra cứu vật tư"><i class="fas fa-search"></i></button>
+            </div>
         </td>
         <td>
             <input type="number" name="so_luong[]" class="form-control text-right" min="1" required>
+        </td>
+        <td>
+            <div class="lookup-wrap">
+                <input name="tk_no[]" class="form-control lookup-input" placeholder="VD: 632" autocomplete="off" />
+                <button type="button" class="lookup-btn btn-search-tk" title="Chọn TK Nợ" data-field="tk_no"><i class="fas fa-search"></i></button>
+            </div>
+        </td>
+        <td>
+            <div class="lookup-wrap">
+                <input name="tk_co[]" class="form-control lookup-input" placeholder="VD: 156" autocomplete="off" />
+                <button type="button" class="lookup-btn btn-search-tk" title="Chọn TK Có" data-field="tk_co"><i class="fas fa-search"></i></button>
+            </div>
         </td>
         <td class="text-center">
             <button type="button" class="btn btn-sm btn-danger btn-remove"><i class="fas fa-trash"></i></button>
         </td>
     </tr>
 </template>
+{% if copy_data %}{{ copy_data|json_script:"copyXuatData" }}{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    document.getElementById('btnAddRow').addEventListener('click', function() {
+    let currentInputElement = null;
+    let tkModalInstance = null;
+    let hangModalInstance = null;
+    let currentHangSelectElement = null;
+    let tkCurrentPage = 1;
+    let tkTotalPages = 1;
+    let hangCurrentPage = 1;
+    let hangTotalPages = 1;
+    const tkPageSize = 5;
+    const hangPageSize = 5;
+
+    function fillXuatRow(row, item) {
+        row.find('select[name="hang_id[]"]').val(String(item.hang_id || ''));
+        row.find('input[name="so_luong[]"]').val(item.so_luong || 0);
+        row.find('input[name="tk_no[]"]').val(item.tk_no || '');
+        row.find('input[name="tk_co[]"]').val(item.tk_co || '');
+    }
+
+    function applyXuatCopyData() {
+        const node = document.getElementById('copyXuatData');
+        if (!node) return;
+        const data = JSON.parse(node.textContent || '{}');
+
+        if (data.ngay_chung_tu) $('input[name="ngay_chung_tu"]').val(data.ngay_chung_tu);
+        if (data.loai_xuat) $('select[name="loai_xuat"]').val(data.loai_xuat);
+        if (data.kho_id) $('select[name="kho"]').val(data.kho_id);
+        if (data.trang_thai) $('select[name="trang_thai"]').val(data.trang_thai);
+        if (data.ghi_chu !== undefined) $('input[name="ghi_chu"]').val(data.ghi_chu || '');
+
+        if (Array.isArray(data.rows) && data.rows.length > 0) {
+            const firstRow = $('#chiTietBody .item-row:first');
+            fillXuatRow(firstRow, data.rows[0]);
+            for (let i = 1; i < data.rows.length; i++) {
+                const template = document.getElementById('rowTemplate');
+                const clone = template.content.cloneNode(true);
+                document.getElementById('chiTietBody').appendChild(clone);
+                const appendedRow = $('#chiTietBody .item-row').last();
+                fillXuatRow(appendedRow, data.rows[i]);
+            }
+        }
+    }
+
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function loadTaiKhoanPage(page) {
+        const q = $('#tkSearchInput').val().trim();
+        $.ajax({
+            url: '{% url "tai_khoan_api_lookup" %}',
+            method: 'GET',
+            dataType: 'json',
+            data: { q: q, page: page, page_size: tkPageSize },
+            success: function(resp) {
+                const results = resp.results || [];
+                tkCurrentPage = resp.page || 1;
+                tkTotalPages = resp.total_pages || 1;
+
+                if (results.length === 0) {
+                    $('#tkSearchResults').html('<div class="text-warning" style="padding: 1rem; text-align: center;">Không tìm thấy tài khoản</div>');
+                } else {
+                    let html = '<div class="tk-head"><span>Tài khoản</span><span>Tên tài khoản</span></div>';
+                    for (let item of results) {
+                        html += `<button type="button" class="tk-row btn-select-tk" data-ma-tk="${escapeHtml(item.ma_tk)}">
+                            <span class="tk-row-code">${escapeHtml(item.ma_tk)}</span>
+                            <span class="tk-row-name">${escapeHtml(item.ten_tk)}</span>
+                        </button>`;
+                    }
+                    $('#tkSearchResults').html(html);
+                }
+
+                $('#tkPagingInfo').text(`Trang ${tkCurrentPage}/${tkTotalPages} - ${resp.total || 0} tài khoản`);
+                $('#btnTkPrev').prop('disabled', tkCurrentPage <= 1);
+                $('#btnTkNext').prop('disabled', tkCurrentPage >= tkTotalPages);
+            },
+            error: function() {
+                $('#tkSearchResults').html('<div class="text-danger" style="padding: 1rem; text-align: center;">Lỗi tải dữ liệu tài khoản</div>');
+            }
+        });
+    }
+
+    function loadHangPage(page) {
+        const q = $('#hangSearchInput').val().trim();
+        $.ajax({
+            url: '{% url "hang_hoa_lookup_api" %}',
+            method: 'GET',
+            dataType: 'json',
+            data: { q: q, page: page, page_size: hangPageSize },
+            success: function(resp) {
+                const results = resp.results || [];
+                hangCurrentPage = resp.page || 1;
+                hangTotalPages = resp.total_pages || 1;
+
+                if (results.length === 0) {
+                    $('#hangSearchResults').html('<div class="text-warning" style="padding: 1rem; text-align: center;">Không tìm thấy vật tư</div>');
+                } else {
+                    let html = '<div class="hang-head"><span>Mã hàng</span><span>Tên hàng</span><span>ĐVT</span></div>';
+                    for (let item of results) {
+                        html += `<button type="button" class="hang-row btn-select-hang" data-hang-id="${item.id}">
+                            <span class="hang-row-code">${escapeHtml(item.ma_hang)}</span>
+                            <span class="hang-row-name">${escapeHtml(item.ten_hang)}</span>
+                            <span class="hang-row-dvt">${escapeHtml(item.dvt || '')}</span>
+                        </button>`;
+                    }
+                    $('#hangSearchResults').html(html);
+                }
+
+                $('#hangPagingInfo').text(`Trang ${hangCurrentPage}/${hangTotalPages} - ${resp.total || 0} hàng hóa`);
+                $('#btnHangPrev').prop('disabled', hangCurrentPage <= 1);
+                $('#btnHangNext').prop('disabled', hangCurrentPage >= hangTotalPages);
+            },
+            error: function() {
+                $('#hangSearchResults').html('<div class="text-danger" style="padding: 1rem; text-align: center;">Lỗi tải dữ liệu hàng hóa</div>');
+            }
+        });
+    }
+
+    $('#btnAddRow').on('click', function() {
         const template = document.getElementById('rowTemplate');
         const clone = template.content.cloneNode(true);
         document.getElementById('chiTietBody').appendChild(clone);
     });
 
-    document.addEventListener('click', function(event) {
-        if (event.target.closest('.btn-remove')) {
-            const rows = document.querySelectorAll('#chiTietBody .item-row');
-            if (rows.length > 1) {
-                event.target.closest('tr').remove();
-            }
+    $(document).on('click', '.btn-remove', function() {
+        const rows = document.querySelectorAll('#chiTietBody .item-row');
+        if (rows.length > 1) {
+            this.closest('tr').remove();
         }
     });
+
+    $(document).on('click', '.btn-search-tk', function(e) {
+        e.preventDefault();
+        const field = $(this).data('field');
+        currentInputElement = $(this).closest('.lookup-wrap').find('input[name="' + field + '[]"]');
+
+        if (!tkModalInstance) {
+            tkModalInstance = new bootstrap.Modal(document.getElementById('modalTaiKhoan'));
+        }
+        tkModalInstance.show();
+        $('#tkSearchInput').val('');
+        loadTaiKhoanPage(1);
+        setTimeout(() => $('#tkSearchInput').focus(), 300);
+    });
+
+    $(document).on('click', '.btn-search-hang', function(e) {
+        e.preventDefault();
+        currentHangSelectElement = $(this).closest('tr').find('select[name="hang_id[]"]');
+        if (!hangModalInstance) {
+            hangModalInstance = new bootstrap.Modal(document.getElementById('modalHangHoa'));
+        }
+        hangModalInstance.show();
+        $('#hangSearchInput').val('');
+        loadHangPage(1);
+        setTimeout(() => $('#hangSearchInput').focus(), 300);
+    });
+
+    $('#tkSearchInput').on('input', function() {
+        loadTaiKhoanPage(1);
+    });
+
+    $('#hangSearchInput').on('input', function() {
+        loadHangPage(1);
+    });
+
+    $('#btnTkPrev').on('click', function() {
+        if (tkCurrentPage > 1) {
+            loadTaiKhoanPage(tkCurrentPage - 1);
+        }
+    });
+
+    $('#btnTkNext').on('click', function() {
+        if (tkCurrentPage < tkTotalPages) {
+            loadTaiKhoanPage(tkCurrentPage + 1);
+        }
+    });
+
+    $('#btnHangPrev').on('click', function() {
+        if (hangCurrentPage > 1) {
+            loadHangPage(hangCurrentPage - 1);
+        }
+    });
+
+    $('#btnHangNext').on('click', function() {
+        if (hangCurrentPage < hangTotalPages) {
+            loadHangPage(hangCurrentPage + 1);
+        }
+    });
+
+    $(document).on('click', '.btn-select-tk', function(e) {
+        e.preventDefault();
+        const maTk = $(this).data('ma-tk');
+        if (currentInputElement) {
+            currentInputElement.val(maTk);
+        }
+        if (tkModalInstance) {
+            tkModalInstance.hide();
+        }
+        currentInputElement = null;
+    });
+
+    $(document).on('click', '.btn-select-hang', function(e) {
+        e.preventDefault();
+        const hangId = String($(this).data('hang-id') || '');
+        if (currentHangSelectElement && hangId) {
+            currentHangSelectElement.val(hangId).trigger('change');
+        }
+        if (hangModalInstance) {
+            hangModalInstance.hide();
+        }
+        currentHangSelectElement = null;
+    });
+
+    applyXuatCopyData();
 </script>
 {% endblock %}

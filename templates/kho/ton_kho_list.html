@@ -1,117 +1,562 @@
 {% extends 'base.html' %}
 {% load humanize %}
 
+{% block extra_css %}
+<style>
+    .inventory-stage {
+        background:
+            radial-gradient(circle at 10% 0%, rgba(45, 108, 223, 0.08), transparent 38%),
+            radial-gradient(circle at 90% 100%, rgba(15, 92, 171, 0.08), transparent 35%),
+            #eff3f9;
+        border-radius: 14px;
+        padding: 14px;
+    }
+    .inventory-shell {
+        background: linear-gradient(180deg, #f9fbff 0%, #f4f7fc 100%);
+        border: 1px solid #d8e2f0;
+        border-radius: 12px;
+        padding: 18px;
+        box-shadow: 0 8px 22px rgba(18, 38, 58, 0.06);
+    }
+    .inventory-kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(170px, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
+    }
+    .inventory-kpi {
+        border: 1px solid #d9e4f3;
+        border-radius: 10px;
+        background: #fff;
+        padding: 11px 12px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+    .inventory-kpi-label {
+        font-size: 11px;
+        text-transform: uppercase;
+        font-weight: 700;
+        color: #69809a;
+        letter-spacing: .02em;
+    }
+    .inventory-kpi-value {
+        font-size: 28px;
+        line-height: 1;
+        font-weight: 800;
+        color: #16385b;
+        margin-top: 4px;
+    }
+    .inventory-kpi-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+    }
+    .inventory-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        margin-bottom: 14px;
+    }
+    .inventory-title {
+        font-size: 28px;
+        font-weight: 800;
+        color: #12263a;
+        margin: 0;
+        line-height: 1.1;
+    }
+    .inventory-desc {
+        color: #60758c;
+        margin: 6px 0 0;
+        font-size: 14px;
+    }
+    .inventory-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .inventory-btn {
+        border: 1px solid #d9e0ea;
+        border-radius: 8px;
+        background: #fff;
+        color: #1e2f44;
+        font-weight: 700;
+        font-size: 13px;
+        padding: 10px 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        text-decoration: none;
+        transition: all .16s ease;
+    }
+    .inventory-btn:hover {
+        border-color: #a9bdd6;
+        background: #f5f9ff;
+    }
+    .inventory-btn.primary {
+        background: linear-gradient(180deg, #1f73c4 0%, #0d5cab 100%);
+        border-color: #0d5cab;
+        color: #fff;
+    }
+    .inventory-btn.primary:hover {
+        background: linear-gradient(180deg, #1a69b3 0%, #0a4f94 100%);
+    }
+    .inventory-filters {
+        background: #fff;
+        border: 1px solid #d7e1ee;
+        border-radius: 10px;
+        padding: 13px;
+        margin-bottom: 12px;
+    }
+    .inventory-filter-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    .inventory-filter-grid label {
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #6b7f96;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+    .inventory-filter-grid .form-control {
+        border-radius: 7px;
+        border-color: #d7e1ee;
+        background: #fbfdff;
+    }
+    .inventory-status {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .inventory-status button {
+        border: 1px solid #d7e1ee;
+        border-radius: 7px;
+        background: #f5f8fc;
+        color: #23405e;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 7px 12px;
+    }
+    .inventory-status button.active {
+        background: linear-gradient(180deg, #1e73c4 0%, #0d5cab 100%);
+        border-color: #0d5cab;
+        color: #fff;
+    }
+    .inventory-table-wrap {
+        background: #fff;
+        border: 1px solid #d7e1ee;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(15, 42, 70, 0.04);
+    }
+    .inventory-table th {
+        background: #f3f6fb;
+        border-bottom: 1px solid #e2e9f3;
+        font-size: 11px;
+        text-transform: uppercase;
+        color: #506780;
+        letter-spacing: .02em;
+        white-space: nowrap;
+        vertical-align: middle;
+        position: sticky;
+        top: 0;
+        z-index: 2;
+    }
+    .inventory-table td {
+        vertical-align: middle;
+        border-bottom: 1px solid #eef3f8;
+    }
+    .inventory-table tbody tr:hover {
+        background: #f8fbff;
+    }
+    .inventory-badge {
+        padding: 5px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+    .inventory-badge.ok {
+        background: #e7f8ee;
+        color: #0f7a4a;
+    }
+    .inventory-badge.warn {
+        background: #fff4dd;
+        color: #a76500;
+    }
+    .inventory-badge.danger {
+        background: #ffe8ea;
+        color: #af1c2c;
+    }
+    .inventory-badge.info {
+        background: #e8f1ff;
+        color: #195ca8;
+    }
+    .inventory-code {
+        color: #0d5cab;
+        font-weight: 700;
+        text-decoration: none;
+    }
+    .inventory-unit {
+        color: #6f839b;
+        font-size: 12px;
+        margin-top: 3px;
+    }
+    .inventory-value {
+        font-weight: 700;
+        color: #1a2f46;
+    }
+    .inventory-footer-cards {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(220px, 1fr));
+        gap: 12px;
+    }
+    .inventory-footer-card {
+        background: #fff;
+        border: 1px solid #e0e8f1;
+        border-radius: 10px;
+        padding: 12px 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .inventory-footer-label {
+        color: #677d96;
+        font-size: 11px;
+        text-transform: uppercase;
+        font-weight: 700;
+    }
+    .inventory-footer-value {
+        font-size: 34px;
+        line-height: 1;
+        font-weight: 800;
+        color: #12263a;
+        margin-top: 5px;
+    }
+    .inventory-footer-value.warning {
+        color: #b45a06;
+    }
+    .inventory-footer-value.danger {
+        color: #bb1f2f;
+    }
+    @media (max-width: 1100px) {
+        .inventory-kpi-grid {
+            grid-template-columns: repeat(2, minmax(170px, 1fr));
+        }
+        .inventory-filter-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+    @media (max-width: 900px) {
+        .inventory-head {
+            flex-direction: column;
+        }
+        .inventory-footer-cards {
+            grid-template-columns: 1fr;
+        }
+    }
+    @media (max-width: 640px) {
+        .inventory-kpi-grid {
+            grid-template-columns: 1fr;
+        }
+        .inventory-filter-grid {
+            grid-template-columns: 1fr;
+        }
+        .inventory-actions {
+            width: 100%;
+        }
+        .inventory-actions .inventory-btn,
+        .inventory-actions .inventory-btn.primary {
+            flex: 1;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
+<div class="inventory-stage">
+<div class="inventory-shell">
+    <div class="inventory-kpi-grid">
+        <div class="inventory-kpi">
+            <div>
+                <div class="inventory-kpi-label">Tổng dòng tồn</div>
+                <div class="inventory-kpi-value">{{ tong_chung_lo }}</div>
+            </div>
+            <span class="inventory-kpi-icon" style="background:#eaf2ff; color:#1b63b6;"><i class="fas fa-boxes"></i></span>
+        </div>
+        <div class="inventory-kpi">
+            <div>
+                <div class="inventory-kpi-label">Kho hoạt động</div>
+                <div class="inventory-kpi-value">{{ tong_kho }}</div>
+            </div>
+            <span class="inventory-kpi-icon" style="background:#e9f8f0; color:#0f7a4a;"><i class="fas fa-warehouse"></i></span>
+        </div>
+        <div class="inventory-kpi">
+            <div>
+                <div class="inventory-kpi-label">SKU cần xử lý</div>
+                <div class="inventory-kpi-value" style="color:#af1c2c;">{{ so_hang_can_nhap }}</div>
+            </div>
+            <span class="inventory-kpi-icon" style="background:#ffecef; color:#af1c2c;"><i class="fas fa-bell"></i></span>
+        </div>
+        <div class="inventory-kpi">
+            <div>
+                <div class="inventory-kpi-label">Vượt mức tối đa</div>
+                <div class="inventory-kpi-value" style="color:#195ca8;">{{ so_hang_vuot_toi_da }}</div>
+            </div>
+            <span class="inventory-kpi-icon" style="background:#e8f1ff; color:#195ca8;"><i class="fas fa-arrow-trend-up"></i></span>
+        </div>
+    </div>
 
-{# ─── Thẻ tóm tắt nhanh ─── #}
-<div class="kpi-grid" style="grid-template-columns: repeat(4, 1fr);">
-    <div class="kpi-card" style="border-left: 4px solid #3b82f6;">
-        <div class="kpi-icon" style="background:#eff6ff;"><i class="fas fa-boxes" style="color:#3b82f6; font-size:1.5rem;"></i></div>
-        <div class="kpi-info">
-            <h4>Tổng mặt hàng</h4>
-            <div class="kpi-value" style="color:#3b82f6;">{{ tong_chung_lo }}</div>
+    <div class="inventory-head">
+        <div>
+            <h1 class="inventory-title">Tồn kho tổng hợp</h1>
+            <p class="inventory-desc">
+                Theo dõi tồn theo hàng hóa và kho, phục vụ kiểm soát nhập - xuất - tồn theo UC10.1.
+            </p>
+        </div>
+        <div class="inventory-actions">
+            <button type="button" class="inventory-btn" id="btnSetMucTon">
+                <i class="fas fa-sliders-h"></i> Thiết lập mức tồn
+            </button>
+            <a href="{% url 'tinh_gia_xuat' %}" class="inventory-btn">
+                <i class="fas fa-calculator"></i> Tính giá bình quân
+            </a>
+            <button type="submit" form="formTonKhoFilter" name="export" value="excel" class="inventory-btn primary">
+                <i class="fas fa-download"></i> Xuất Excel
+            </button>
         </div>
     </div>
-    <div class="kpi-card" style="border-left: 4px solid #10b981;">
-        <div class="kpi-icon" style="background:#d1fae5;"><i class="fas fa-warehouse" style="color:#10b981; font-size:1.5rem;"></i></div>
-        <div class="kpi-info">
-            <h4>Kho hoạt động</h4>
-            <div class="kpi-value" style="color:#10b981;">{{ tong_kho }}</div>
-        </div>
-    </div>
-    <div class="kpi-card" style="border-left: 4px solid #ef4444;">
-        <div class="kpi-icon" style="background:#fee2e2;"><i class="fas fa-exclamation-triangle" style="color:#ef4444; font-size:1.5rem;"></i></div>
-        <div class="kpi-info">
-            <h4>Hàng sắp hết tồn</h4>
-            <div class="kpi-value" style="color:#ef4444;">{{ so_hang_can_nhap }}</div>
-        </div>
-    </div>
-    <div class="kpi-card" style="border-left: 4px solid #f59e0b;">
-        <div class="kpi-icon" style="background:#fef3c7;"><i class="fas fa-coins" style="color:#f59e0b; font-size:1.5rem;"></i></div>
-        <div class="kpi-info">
-            <h4>Tổng giá trị tồn</h4>
-            <div class="kpi-value" style="color:#f59e0b; font-size:1.2rem;">{{ tong_gia_tri|intcomma }} đ</div>
-        </div>
-    </div>
-</div>
 
-<div class="card">
-    <div class="card-header">
-        <div class="card-title"><i class="fas fa-boxes text-info"></i> Tồn kho hiện tại</div>
-        <div class="d-flex gap-2">
-            <a href="{% url 'phieu_xuat_them' %}" class="btn btn-warning btn-sm"><i class="fas fa-minus"></i> Xuất kho</a>
-            <a href="{% url 'kiem_ke_them' %}" class="btn btn-secondary btn-sm"><i class="fas fa-clipboard-check"></i> Kiểm kê</a>
-        </div>
-    </div>
-    <div class="card-body">
-        <form method="get" class="form-row mb-4 align-items-center">
-            <div class="col col-3">
+    <form method="get" id="formTonKhoFilter" class="inventory-filters">
+        <div class="inventory-filter-grid">
+            <div>
+                <label>Kho</label>
                 <select name="kho" class="form-control">
-                    <option value="">-- Tất cả kho --</option>
+                    <option value="">Tất cả kho</option>
                     {% for k in kho_list %}
-                    <option value="{{ k.pk }}" {% if k.pk|stringformat:"s" == kho_filter %}selected{% endif %}>{{ k.ten_kho }}</option>
+                    <option value="{{ k.pk }}" {% if kho_filter == k.pk|stringformat:'s' %}selected{% endif %}>{{ k.ten_kho }}</option>
                     {% endfor %}
                 </select>
             </div>
-            <div class="col col-4">
-                <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Tìm theo mã, tên phụ tùng...">
+            <div>
+                <label>Nhóm hàng</label>
+                <select name="nhom_hang" class="form-control">
+                    <option value="">Tất cả nhóm hàng</option>
+                    {% for n in nhom_hang_list %}
+                    <option value="{{ n.nhom_hang__id }}" {% if nhom_hang_filter == n.nhom_hang__id|stringformat:'s' %}selected{% endif %}>{{ n.nhom_hang__ten_nhom }}</option>
+                    {% endfor %}
+                </select>
             </div>
-            <div class="col col-2">
-                <button type="submit" class="btn btn-secondary"><i class="fas fa-search"></i> Lọc</button>
+            <div>
+                <label>Mã hoặc tên hàng</label>
+                <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="VD: Lọc theo mã/tên">
             </div>
-        </form>
+            <div>
+                <label>Vị trí/Kệ</label>
+                <input type="text" name="vi_tri" value="{{ vi_tri_filter }}" class="form-control" placeholder="VD: A-D01-K01-T01">
+            </div>
+            <div>
+                <label>Mã hàng</label>
+                <input type="text" name="ma_hang" value="{{ ma_hang }}" class="form-control">
+            </div>
+            <div>
+                <label>Tên hàng</label>
+                <input type="text" name="ten_hang" value="{{ ten_hang }}" class="form-control">
+            </div>
+            <div>
+                <label>Barcode</label>
+                <input type="text" name="barcode" value="{{ barcode }}" class="form-control" placeholder="(nếu có)">
+            </div>
+            <div class="d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-primary flex-fill">
+                    <i class="fas fa-search"></i> Tìm kiếm
+                </button>
+                <a href="{% url 'ton_kho_list' %}" class="btn btn-light border">Làm mới</a>
+            </div>
+        </div>
 
+        <div class="inventory-status">
+            <button type="submit" name="trang_thai_ton" value="" class="{% if not trang_thai_ton_filter %}active{% endif %}">Tất cả</button>
+            <button type="submit" name="trang_thai_ton" value="sap_het" class="{% if trang_thai_ton_filter == 'sap_het' %}active{% endif %}">Sắp hết</button>
+            <button type="submit" name="trang_thai_ton" value="het_hang" class="{% if trang_thai_ton_filter == 'het_hang' %}active{% endif %}">Hết hàng</button>
+            <button type="submit" name="trang_thai_ton" value="vuot_toi_da" class="{% if trang_thai_ton_filter == 'vuot_toi_da' %}active{% endif %}">Vượt tối đa</button>
+            <span class="ms-auto text-muted small d-flex align-items-center">Hiển thị {{ items|length }} dòng</span>
+        </div>
+    </form>
+
+    <div class="inventory-table-wrap">
         <div class="table-responsive">
-            <table class="table">
+            <table class="table table-hover inventory-table mb-0">
                 <thead>
                     <tr>
-                        <th>Mã phụ tùng</th>
-                        <th>Tên phụ tùng</th>
+                        <th class="text-center" style="width:44px;">Chọn</th>
+                        <th>Mã hàng</th>
+                        <th>Tên hàng</th>
                         <th>Nhóm hàng</th>
                         <th>Kho</th>
-                        <th class="text-right">Tồn kho (SL)</th>
-                        <th class="text-right">Giá vốn TB</th>
-                        <th class="text-right">Tổng giá trị</th>
+                        <th>Vị trí/Kệ</th>
+                        <th class="text-end">Tồn thường</th>
+                        <th class="text-end">Tồn lỗi</th>
+                        <th class="text-end">Giá trị tồn</th>
                         <th class="text-center">Trạng thái</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in items %}
                     <tr>
-                        <td><a href="{% url 'hang_hoa_sua' item.hang_hoa.pk %}"><strong>{{ item.hang_hoa.ma_hang }}</strong></a></td>
-                        <td>
-                            {{ item.hang_hoa.ten_hang }}
-                            <div style="font-size:11px; color:var(--text-muted);">{{ item.hang_hoa.thuong_hieu.ten|default:"-" }}</div>
-                        </td>
-                        <td>{{ item.hang_hoa.nhom_hang.ten_nhom|default:"-" }}</td>
-                        <td><i class="fas fa-warehouse text-muted me-1" style="font-size:0.8rem;"></i>{{ item.kho.ten_kho }}</td>
-                        <td class="text-right">
-                            <span class="badge {% if item.so_luong <= item.hang_hoa.ton_toi_thieu %}badge-danger{% else %}badge-info{% endif %}">
-                                {{ item.so_luong }} {{ item.hang_hoa.don_vi_tinh.ten }}
-                            </span>
-                        </td>
-                        <td class="text-right">{{ item.gia_von_tb|floatformat:0|intcomma }} đ</td>
-                        <td class="text-right fw-semibold" style="color:var(--accent-color);">
-                            {{ item.gia_von_tb|floatformat:0 }} × {{ item.so_luong }} = <strong>{{ item.tong_gia_tri|default:"—" }} đ</strong>
-                        </td>
                         <td class="text-center">
-                            {% if item.so_luong <= 0 %}
-                                <span class="badge badge-danger"><i class="fas fa-times me-1"></i>Hết kho</span>
-                            {% elif item.so_luong <= item.hang_hoa.ton_toi_thieu %}
-                                <span class="badge badge-warning">⚠ Sắp hết</span>
+                            <input type="checkbox" name="selected_tonkho" class="erp-row-select" value="{{ item.id }}"
+                                   data-hang-hoa-id="{{ item.hang_hoa_id }}"
+                                   data-kho-id="{{ item.kho_id }}"
+                                   data-ma-hang="{{ item.hang_hoa.ma_hang }}"
+                                   data-ten-hang="{{ item.hang_hoa.ten_hang }}"
+                                   data-ten-kho="{{ item.kho.ten_kho }}"
+                                   data-ton-toi-thieu="{{ item.ton_toi_thieu_ap_dung }}"
+                                   data-ton-toi-da="{{ item.ton_toi_da_ap_dung }}">
+                        </td>
+                        <td>
+                            <a href="{% url 'hang_hoa_sua' item.hang_hoa.pk %}" class="inventory-code">{{ item.hang_hoa.ma_hang }}</a>
+                            <div class="inventory-unit">{{ item.hang_hoa.don_vi_tinh.ten|default:'-' }}</div>
+                        </td>
+                        <td>
+                            <div class="fw-semibold">{{ item.hang_hoa.ten_hang }}</div>
+                            <div class="inventory-unit">{{ item.hang_hoa.thuong_hieu.ten|default:'-' }}</div>
+                        </td>
+                        <td>{{ item.hang_hoa.nhom_hang.ten_nhom|default:'-' }}</td>
+                        <td>{{ item.kho.ten_kho }}</td>
+                        <td>{{ item.vi_tri_hien_tai }}</td>
+                        <td class="text-end fw-semibold">{{ item.so_luong_thuong|intcomma }}</td>
+                        <td class="text-end {% if item.so_luong_loi > 0 %}text-danger fw-semibold{% endif %}">{{ item.so_luong_loi|intcomma }}</td>
+                        <td class="text-end inventory-value">{{ item.tong_gia_tri|intcomma }} đ</td>
+                        <td class="text-center">
+                            {% if item.trang_thai_ton == 'het_hang' %}
+                            <span class="inventory-badge danger">Hết hàng</span>
+                            {% elif item.trang_thai_ton == 'sap_het' %}
+                            <span class="inventory-badge warn">Sắp hết</span>
+                            {% elif item.trang_thai_ton == 'vuot_toi_da' %}
+                            <span class="inventory-badge info">Vượt tối đa</span>
                             {% else %}
-                                <span class="badge badge-success"><i class="fas fa-check me-1"></i>Còn hàng</span>
+                            <span class="inventory-badge ok">Bình thường</span>
                             {% endif %}
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="8" class="text-center text-muted py-5">
-                        <i class="fas fa-box-open fa-2x mb-2"></i><br>Kho trống hoặc không tìm thấy dữ liệu.
-                    </td></tr>
+                    <tr>
+                        <td colspan="10" class="text-center text-muted py-5">
+                            Không tìm thấy tồn kho phù hợp
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
+
+    <div class="inventory-footer-cards">
+        <div class="inventory-footer-card">
+            <div>
+                <div class="inventory-footer-label">Tổng giá trị tồn</div>
+                <div class="inventory-footer-value">{{ tong_gia_tri|intcomma }} đ</div>
+            </div>
+            <i class="fas fa-wallet text-primary" style="font-size:28px;"></i>
+        </div>
+        <div class="inventory-footer-card">
+            <div>
+                <div class="inventory-footer-label">Tỷ lệ hàng lỗi</div>
+                <div class="inventory-footer-value danger">{{ ty_le_hang_loi }}%</div>
+            </div>
+            <i class="fas fa-exclamation-circle text-danger" style="font-size:28px;"></i>
+        </div>
+        <div class="inventory-footer-card">
+            <div>
+                <div class="inventory-footer-label">SKU cảnh báo</div>
+                <div class="inventory-footer-value warning">{{ tong_sku_canh_bao }}</div>
+            </div>
+            <i class="fas fa-triangle-exclamation" style="font-size:28px; color:#b45a06;"></i>
+        </div>
+    </div>
 </div>
+</div>
+
+<div class="modal fade" id="modalSetMucTon" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Thiết lập mức tồn kho</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'thiet_lap_muc_ton_kho' %}" class="modal-body" id="formSetMucTon">
+                {% csrf_token %}
+                <input type="hidden" name="hang_hoa_id" id="setHangHoaId">
+                <input type="hidden" name="kho_id" id="setKhoId">
+                <div class="mb-3">
+                    <label class="form-label">Mã hàng</label>
+                    <input type="text" id="setMaHang" class="form-control" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tên hàng</label>
+                    <input type="text" id="setTenHang" class="form-control" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Kho áp dụng</label>
+                    <input type="text" id="setTenKho" class="form-control" readonly>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tồn tối thiểu</label>
+                    <input type="number" min="0" name="ton_toi_thieu" id="setTonToiThieu" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tồn tối đa</label>
+                    <input type="number" min="0" name="ton_toi_da" id="setTonToiDa" class="form-control">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Ghi chú</label>
+                    <input type="text" name="ghi_chu" class="form-control" placeholder="Ghi chú thiết lập mức tồn">
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function getSelectedTonKhoRows() {
+        return Array.from(document.querySelectorAll('input[name="selected_tonkho"]:checked'));
+    }
+
+    document.getElementById('btnSetMucTon').addEventListener('click', function() {
+        const selected = getSelectedTonKhoRows();
+        if (selected.length !== 1) {
+            alert('Vui lòng chọn đúng 1 dòng tồn kho để thiết lập mức tồn.');
+            return;
+        }
+
+        const row = selected[0];
+        document.getElementById('setHangHoaId').value = row.dataset.hangHoaId;
+        document.getElementById('setKhoId').value = row.dataset.khoId;
+        document.getElementById('setMaHang').value = row.dataset.maHang;
+        document.getElementById('setTenHang').value = row.dataset.tenHang;
+        document.getElementById('setTenKho').value = row.dataset.tenKho;
+        document.getElementById('setTonToiThieu').value = row.dataset.tonToiThieu || 0;
+        document.getElementById('setTonToiDa').value = row.dataset.tonToiDa && row.dataset.tonToiDa !== '0' ? row.dataset.tonToiDa : '';
+
+        const modal = new bootstrap.Modal(document.getElementById('modalSetMucTon'));
+        modal.show();
+    });
+</script>
 {% endblock %}

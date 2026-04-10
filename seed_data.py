@@ -1,12 +1,13 @@
 import os
+
 import django
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'erp_tien_huong.settings')
 django.setup()
 
+from apps.danh_muc.models import (DonViTinh, HangHoa, KhachHang, Kho,
+                                  NhaCungCap, NhomHang, ThuongHieu, ViTriKho)
 from django.contrib.auth.models import User
-from apps.core.models import NhomHang, ThuongHieu, DonViTinh, HangHoa, Kho, ViTriKho
-from apps.danh_muc.models import KhachHang, NhaCungCap
 
 print("Starting seed data...")
 

@@ -41,7 +41,7 @@
             Bảng dưới đây hiển thị giá vốn trung bình hiện tại của từng mặt hàng để kế toán kiểm tra.
         </div>
 
-        <form method="get" class="d-flex gap-3 mb-4 align-items-center">
+        <form method="get" class="d-flex gap-3 mb-4 align-items-center flex-wrap">
             <div>
                 <label class="form-label fw-semibold text-muted small mb-1">Chọn kho</label>
                 <select name="kho" class="form-control" style="min-width:180px;">
@@ -52,9 +52,27 @@
                 </select>
             </div>
             <div>
+                <label class="form-label fw-semibold text-muted small mb-1">Hàng hóa (tùy chọn)</label>
+                <select name="hang_hoa" class="form-control" style="min-width:260px;">
+                    <option value="">-- Tất cả hàng hóa --</option>
+                    {% for hh in hang_hoa_list %}
+                    <option value="{{ hh.pk }}" {% if hh.pk|stringformat:'s' == hang_filter %}selected{% endif %}>{{ hh.ma_hang }} - {{ hh.ten_hang }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
                 <label class="form-label fw-semibold text-muted small mb-1">&nbsp;</label>
                 <button type="submit" class="btn btn-primary d-block"><i class="fas fa-filter me-1"></i> Lọc kho</button>
             </div>
+        </form>
+
+        <form method="post" class="mb-3">
+            {% csrf_token %}
+            <input type="hidden" name="kho" value="{{ kho_filter }}">
+            <input type="hidden" name="hang_hoa" value="{{ hang_filter }}">
+            <button type="submit" class="btn btn-success">
+                <i class="fas fa-calculator me-1"></i> Tính giá bình quân
+            </button>
         </form>
 
         <div class="table-responsive">

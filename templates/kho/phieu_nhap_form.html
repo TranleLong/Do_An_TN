@@ -1,30 +1,156 @@
 {% extends 'base.html' %}
 
+{% block extra_css %}
+<style>
+    .lookup-wrap {
+        position: relative;
+    }
+    .lookup-input {
+        padding-right: 34px;
+    }
+    .lookup-btn {
+        position: absolute;
+        right: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 22px;
+        height: 22px;
+        border: 0;
+        background: transparent;
+        color: #6b7d94;
+        padding: 0;
+        font-size: 12px;
+        line-height: 22px;
+        border-radius: 50%;
+    }
+    .lookup-btn:hover {
+        background: #eaf2fd;
+        color: #1d5ea8;
+    }
+    #modalTaiKhoan .modal-dialog {
+        max-width: 860px;
+    }
+    #modalTaiKhoan .modal-content {
+        border: 1px solid #7aa1cf;
+        border-radius: 8px;
+        box-shadow: 0 20px 45px rgba(22, 44, 75, 0.28);
+    }
+    #modalTaiKhoan .modal-header {
+        background: linear-gradient(180deg, #f7fbff 0%, #e9f3ff 100%);
+        border-bottom: 1px solid #c7dcf3;
+    }
+    #tkSearchResults {
+        border: 1px solid #c9d9eb;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .tk-head {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        gap: 10px;
+        background: #eef5fb;
+        color: #1f4d83;
+        border-bottom: 1px solid #cfdeef;
+        padding: 8px 12px;
+        font-weight: 700;
+        font-size: 14px;
+    }
+    .tk-row {
+        display: grid;
+        grid-template-columns: 180px 1fr;
+        gap: 10px;
+        width: 100%;
+        padding: 9px 12px;
+        border: 0;
+        border-bottom: 1px solid #e9eef5;
+        background: #fff;
+        cursor: pointer;
+    }
+    .tk-row:hover {
+        background: #f2f8ff;
+    }
+    .tk-row-code {
+        font-weight: 700;
+        color: #0d4b86;
+        text-align: left;
+    }
+    .tk-row-name {
+        text-align: left;
+        color: #30465f;
+    }
+    #modalHangHoa .modal-dialog {
+        max-width: 860px;
+    }
+    #hangSearchResults {
+        border: 1px solid #c9d9eb;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .hang-head {
+        display: grid;
+        grid-template-columns: 180px 1fr 120px;
+        gap: 10px;
+        background: #eef5fb;
+        color: #1f4d83;
+        border-bottom: 1px solid #cfdeef;
+        padding: 8px 12px;
+        font-weight: 700;
+        font-size: 14px;
+    }
+    .hang-row {
+        display: grid;
+        grid-template-columns: 180px 1fr 120px;
+        gap: 10px;
+        width: 100%;
+        padding: 9px 12px;
+        border: 0;
+        border-bottom: 1px solid #e9eef5;
+        background: #fff;
+        cursor: pointer;
+        text-align: left;
+    }
+    .hang-row:hover {
+        background: #f2f8ff;
+    }
+    .hang-row-code {
+        font-weight: 700;
+        color: #0d4b86;
+    }
+    .hang-row-name {
+        color: #30465f;
+    }
+    .hang-row-dvt {
+        color: #6b7d94;
+        text-align: right;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card">
     <div class="card-header">
-        <div class="card-title"><i class="fas fa-truck-loading text-success"></i> Tạo Phiếu Nhập Kho</div>
+        <div class="card-title"><i class="fas fa-truck-loading text-success"></i> {% if editing_phieu %}Sửa phiếu nhập {{ editing_phieu.so_phieu }}{% else %}Tạo Phiếu Nhập Kho{% endif %}</div>
         <a href="{% url 'phieu_nhap_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
     </div>
 
     <form method="post" id="phieuNhapForm" class="card-body">
         {% csrf_token %}
+
         <div class="form-row">
             <div class="col col-3 form-group">
                 <label class="form-label">Số phiếu <span class="text-danger">*</span></label>
                 <input type="text" name="so_phieu" class="form-control" value="{{ so_phieu_default }}" required>
             </div>
             <div class="col col-3 form-group">
-                <label class="form-label">Ngày nhập <span class="text-danger">*</span></label>
-                <input type="date" name="ngay_nhap" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+                <label class="form-label">Ngày chứng từ <span class="text-danger">*</span></label>
+                <input type="date" name="ngay_chung_tu" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
             </div>
             <div class="col col-3 form-group">
-                <label class="form-label">Loại nhập <span class="text-danger">*</span></label>
-                <select name="loai_nhap" class="form-control" required>
-                    <option value="tu_ncc">Nhập từ Nhà cung cấp</option>
-                    <option value="khach_tra">Khách trả hàng</option>
-                    <option value="chuyen_kho">Nhận điều chuyển kho</option>
-                    <option value="khac">Nhập khác</option>
+                <label class="form-label">Loại chứng từ <span class="text-danger">*</span></label>
+                <select name="loai_nhap" id="loaiChungTu" class="form-control" required style="font-weight:600;">
+                    <option value="1" selected>1 - Mua nhà cung cấp</option>
+                    <option value="2">2 - Khách hàng trả hàng</option>
+                    <option value="3">3 - Điều chỉnh tồn kho</option>
                 </select>
             </div>
             <div class="col col-3 form-group">
@@ -38,54 +164,85 @@
         </div>
 
         <div class="form-row">
-            <div class="col col-6 form-group">
-                <label class="form-label">Nhà cung cấp (nếu có)</label>
-                <select name="nha_cung_cap" class="form-control">
+            <div class="col col-5 form-group">
+                <label class="form-label">Nhà cung cấp <span id="nccRequiredMark" class="text-danger">*</span></label>
+                <select name="ncc" id="nccSelect" class="form-control" style="display:none;">
                     <option value="">-- Chọn Nhà cung cấp --</option>
                     {% for ncc in ncc_list %}
                     <option value="{{ ncc.pk }}">{{ ncc.ma_ncc }} - {{ ncc.ten_ncc }}</option>
                     {% endfor %}
                 </select>
+                <div class="lookup-wrap">
+                    <input type="text" id="nccDisplay" class="form-control lookup-input" placeholder="-- Chọn Nhà cung cấp --" readonly>
+                    <button type="button" class="lookup-btn" id="btnOpenNccModal" title="Chọn nhà cung cấp"><i class="fas fa-search"></i></button>
+                </div>
+                <small id="nccHint" class="text-muted">Chỉ hiện khách hàng có tích Nhà cung cấp.</small>
             </div>
-            <div class="col col-6 form-group">
+            <div class="col col-5 form-group">
                 <label class="form-label">Lý do / Ghi chú</label>
                 <input type="text" name="ghi_chu" class="form-control" placeholder="Ghi chú thêm...">
             </div>
+            <div class="col col-2 form-group">
+                <label class="form-label">Trạng thái</label>
+                <select name="trang_thai" id="trangThaiXuLy" class="form-control" style="font-weight:600;">
+                    <option value="1" selected>1 - Lập phiếu</option>
+                    <option value="2">2 - Sổ kho</option>
+                    <option value="3">3 - Chuyển sổ</option>
+                </select>
+            </div>
         </div>
 
-        <!-- Chi tiết phụ tùng nhập kho -->
         <h5 class="mt-4 mb-3 border-top pt-4 text-warning">Chi tiết vật tư / phụ tùng nhập kho</h5>
-        
+
         <div class="table-responsive">
             <table class="table" id="chiTietTable">
                 <thead>
                     <tr>
-                        <th style="width: 35%">Phụ tùng / Hàng hóa</th>
-                        <th style="width: 15%">Số lượng</th>
-                        <th style="width: 20%">Đơn giá nhập (VNĐ)</th>
-                        <th style="width: 25%" class="text-right">Thành tiền</th>
-                        <th style="width: 5%">Xóa</th>
+                        <th style="width: 28%">Phụ tùng / Hàng hóa</th>
+                        <th style="width: 10%">Số lượng</th>
+                        <th style="width: 14%">Đơn giá nhập (VND)</th>
+                        <th style="width: 13%">TK Nợ</th>
+                        <th style="width: 13%">TK Có</th>
+                        <th style="width: 12%" class="text-right">Thành tiền</th>
+                        <th style="width: 8%">Gợi ý vị trí</th>
+                        <th style="width: 2%">Xóa</th>
                     </tr>
                 </thead>
                 <tbody id="chiTietBody">
                     <tr class="item-row">
                         <td>
-                            <select name="hang_id[]" class="form-control hang-select" required>
-                                <option value="">-- Chọn vật tư --</option>
-                                {% for h in hang_list %}
-                                <option value="{{ h.pk }}" data-gia="{{ h.gia_ban_le|default:0 }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
-                                {% endfor %}
-                            </select>
+                            <div class="lookup-wrap">
+                                <select name="hang_id[]" class="form-control hang-select lookup-input" required>
+                                    <option value="">-- Chọn vật tư --</option>
+                                    {% for h in hang_list %}
+                                    <option value="{{ h.pk }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="button" class="lookup-btn btn-search-hang" title="Tra cứu vật tư"><i class="fas fa-search"></i></button>
+                            </div>
                         </td>
-                        <td><input type="number" name="so_luong[]" class="form-control so-luong calc-input" min="1" required></td>
+                        <td><input type="number" name="so_luong_nhan[]" class="form-control so-luong calc-input" min="1" required></td>
                         <td><input type="number" name="don_gia[]" class="form-control don-gia calc-input" min="0" required></td>
+                        <td>
+                            <div class="lookup-wrap">
+                                <input name="tk_no[]" class="form-control tk-no lookup-input" placeholder="VD: 156" autocomplete="off" />
+                                <button type="button" class="lookup-btn btn-search-tk" title="Chọn TK Nợ" data-field="tk_no"><i class="fas fa-search"></i></button>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="lookup-wrap">
+                                <input name="tk_co[]" class="form-control tk-co lookup-input" placeholder="VD: 331" autocomplete="off" />
+                                <button type="button" class="lookup-btn btn-search-tk" title="Chọn TK Có" data-field="tk_co"><i class="fas fa-search"></i></button>
+                            </div>
+                        </td>
                         <td><input type="text" class="form-control thanh-tien text-right text-success fw-bold" readonly></td>
+                        <td><div class="goi-y-vi-tri text-muted" style="font-size:12px;">Chưa gợi ý</div></td>
                         <td class="text-center"><button type="button" class="btn btn-sm btn-danger btn-remove text-white"><i class="fas fa-times"></i></button></td>
                     </tr>
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="5">
+                        <td colspan="8">
                             <button type="button" class="btn btn-secondary btn-sm" id="btnAddRow"><i class="fas fa-plus"></i> Thêm vật tư</button>
                         </td>
                     </tr>
@@ -93,12 +250,90 @@
             </table>
         </div>
 
+        <!-- Modal chọn tài khoản -->
+        <div class="modal fade" id="modalTaiKhoan" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Chọn Tài Khoản Kế Toán</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Tìm kiếm</label>
+                            <input type="text" id="tkSearchInput" class="form-control" placeholder="Nhập mã hoặc tên tài khoản..." autocomplete="off">
+                        </div>
+                        <div id="tkSearchResults" style="max-height: 320px; overflow-y: auto;">
+                            <div class="text-muted" style="padding: 1rem; text-align: center;">Đang tải...</div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <small id="tkPagingInfo" class="text-muted"></small>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnTkPrev">Trước</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnTkNext">Tiếp</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="modalNhaCungCap" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Chọn Nhà Cung Cấp (từ danh mục KH)</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Tìm kiếm</label>
+                            <input type="text" id="nccSearchInput" class="form-control" placeholder="Nhập mã, tên hoặc SĐT..." autocomplete="off">
+                        </div>
+                        <div id="nccSearchResults" style="max-height: 320px; overflow-y: auto;">
+                            <div class="text-muted" style="padding: 1rem; text-align: center;">Đang tải...</div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <small id="nccPagingInfo" class="text-muted"></small>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnNccPrev">Trước</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnNccNext">Tiếp</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="modalHangHoa" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Tra cứu vật tư / hàng hóa</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Tìm kiếm</label>
+                            <input type="text" id="hangSearchInput" class="form-control" placeholder="Nhập mã hoặc tên hàng hóa..." autocomplete="off">
+                        </div>
+                        <div id="hangSearchResults" style="max-height: 320px; overflow-y: auto;">
+                            <div class="text-muted" style="padding: 1rem; text-align: center;">Đang tải...</div>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <small id="hangPagingInfo" class="text-muted"></small>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnHangPrev">Trước</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="btnHangNext">Tiếp</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="row mt-4 justify-content-end" style="display: flex;">
             <div style="width: 350px; background: rgba(0,0,0,0.04); padding: 1.5rem; border-radius: var(--radius-md);">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <span>Chi phí phát sinh:</span>
-                    <input type="number" name="chi_phi_phat_sinh" id="chiPhiKhac" class="form-control text-right" style="width: 120px;" value="0">
-                </div>
                 <div class="d-flex justify-content-between text-warning" style="font-size: 1.25rem;">
                     <strong>Tổng thanh toán:</strong>
                     <strong id="tongThanhToan">0 đ</strong>
@@ -107,27 +342,123 @@
         </div>
 
         <div class="mt-4 text-center">
-            <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem; font-size: 1rem;"><i class="fas fa-save"></i> LƯU PHIẾU NHÁP</button>
+            <button type="submit" class="btn btn-primary" style="padding: 0.75rem 2rem; font-size: 1rem;"><i class="fas fa-save"></i> {% if editing_phieu %}Cập nhật phiếu{% else %}Lưu phiếu nhập{% endif %}</button>
         </div>
     </form>
 </div>
+{% if copy_data %}{{ copy_data|json_script:"copyNhapData" }}{% endif %}
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    function fmtMoney(val) { return parseFloat(val).toLocaleString('vi-VN') + ' đ'; }
+    let currentInputElement = null;
+    let tkModalInstance = null;
+    let nccModalInstance = null;
+    let hangModalInstance = null;
+    let currentHangSelectElement = null;
+    let tkCurrentPage = 1;
+    let tkTotalPages = 1;
+    let nccCurrentPage = 1;
+    let nccTotalPages = 1;
+    let hangCurrentPage = 1;
+    let hangTotalPages = 1;
+    const tkPageSize = 5;
+    const nccPageSize = 5;
+    const hangPageSize = 5;
+    
+    function fmtMoney(val) { return parseFloat(val || 0).toLocaleString('vi-VN') + ' đ'; }
 
-    $(document).on('change', '.hang-select', function() {
-        let row = $(this).closest('tr');
-        if($(this).val()) {
-            if(!row.find('.so-luong').val()) row.find('.so-luong').val(1);
-            let giaDeXuat = $(this).find('option:selected').data('gia') * 0.7; // Tạm tính giá nhập = 70% giá bán
-            if(!row.find('.don-gia').val()) row.find('.don-gia').val(Math.round(giaDeXuat));
-            tinhTongRow(row);
+    function updateNccRequired() {
+        const loai = $('#loaiChungTu').val();
+        const isRequired = loai === '1';
+        if (isRequired) {
+            $('#nccRequiredMark').show();
+            $('#nccHint').text('Bắt buộc khi loại chứng từ = 1 - Mua nhà cung cấp.');
         } else {
-            row.find('.thanh-tien').val('');
+            $('#nccRequiredMark').hide();
+            $('#nccHint').text('Không bắt buộc với loại chứng từ 2/3.');
         }
-    });
+    }
+
+    function fillNhapRow(row, item) {
+        row.find('select[name="hang_id[]"]').val(String(item.hang_id || ''));
+        row.find('input[name="so_luong_nhan[]"]').val(item.so_luong_nhan || 0);
+        row.find('input[name="don_gia[]"]').val(item.don_gia || 0);
+        row.find('input[name="tk_no[]"]').val(item.tk_no || '');
+        row.find('input[name="tk_co[]"]').val(item.tk_co || '');
+        const thanhTien = (parseFloat(item.don_gia || 0) || 0) * (parseFloat(item.so_luong_nhan || 0) || 0);
+        row.find('.thanh-tien').val(fmtMoney(thanhTien));
+        row.data('thanh_tien', thanhTien);
+        row.find('.goi-y-vi-tri').html('<span class="text-muted">Chưa gợi ý</span>');
+    }
+
+    function applyNhapCopyData() {
+        const node = document.getElementById('copyNhapData');
+        if (!node) return;
+        const data = JSON.parse(node.textContent || '{}');
+
+        if (data.ngay_chung_tu) $('input[name="ngay_chung_tu"]').val(data.ngay_chung_tu);
+        if (data.loai_nhap) $('#loaiChungTu').val(data.loai_nhap);
+        if (data.kho_id) $('select[name="kho"]').val(data.kho_id);
+        if (data.so_hd_ncc !== undefined) $('input[name="so_hd_ncc"]').val(data.so_hd_ncc || '');
+        if (data.ngay_hd_ncc !== undefined) $('input[name="ngay_hd_ncc"]').val(data.ngay_hd_ncc || '');
+        if (data.ghi_chu !== undefined) $('input[name="ghi_chu"]').val(data.ghi_chu || '');
+        if (data.ncc_id) setSelectedNcc(data.ncc_id, data.ncc_label);
+
+        if (Array.isArray(data.rows) && data.rows.length > 0) {
+            const firstRow = $('#chiTietBody .item-row:first');
+            fillNhapRow(firstRow, data.rows[0]);
+            for (let i = 1; i < data.rows.length; i++) {
+                const newRow = firstRow.clone();
+                newRow.find('input').val('');
+                newRow.find('select').val('');
+                $('#chiTietBody').append(newRow);
+                fillNhapRow(newRow, data.rows[i]);
+            }
+            tinhTongDH();
+            $('.item-row').each(function() {
+                goiYChoDong($(this));
+            });
+        }
+
+        updateNccRequired();
+    }
+
+    function setSelectedNcc(nccId, label) {
+        $('#nccSelect').val(String(nccId || ''));
+        $('#nccDisplay').val(label || '');
+    }
+
+    function renderGoiY(row, data) {
+        const box = row.find('.goi-y-vi-tri');
+        if (!data || !data.de_xuat || data.de_xuat.length === 0) {
+            box.html('<span class="text-warning">Không có ô phù hợp</span>');
+            return;
+        }
+
+        const lines = data.de_xuat.slice(0, 2).map(item => `${item.ma_vi_tri}: ${item.de_xuat_so_luong}`);
+        box.html(lines.join('<br>'));
+    }
+
+    function goiYChoDong(row) {
+        const hangId = row.find('.hang-select').val();
+        const soLuong = parseInt(row.find('.so-luong').val() || '0', 10);
+        const khoId = $('select[name="kho"]').val();
+        if (!hangId || !khoId || soLuong <= 0) {
+            row.find('.goi-y-vi-tri').html('<span class="text-muted">Chưa đủ dữ liệu</span>');
+            return;
+        }
+
+        $.get('{% url "goi_y_vi_tri_nhap" %}', {
+            kho_id: khoId,
+            hang_id: hangId,
+            so_luong: soLuong
+        }).done(function(resp) {
+            renderGoiY(row, resp);
+        }).fail(function() {
+            row.find('.goi-y-vi-tri').html('<span class="text-danger">Lỗi gợi ý</span>');
+        });
+    }
 
     function tinhTongRow(row) {
         let sl = parseFloat(row.find('.so-luong').val()) || 0;
@@ -140,27 +471,312 @@
 
     function tinhTongDH() {
         let tong = 0;
-        $('.item-row').each(function() { tong += $(this).data('thanh_tien') || 0; });
-        let phi = parseFloat($('#chiPhiKhac').val()) || 0;
-        $('#tongThanhToan').text(fmtMoney(tong + phi));
+        $('.item-row').each(function() {
+            tong += $(this).data('thanh_tien') || 0;
+        });
+        $('#tongThanhToan').text(fmtMoney(tong));
     }
 
-    $(document).on('input', '.calc-input, #chiPhiKhac', function() {
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function loadTaiKhoanPage(page) {
+        const q = $('#tkSearchInput').val().trim();
+        $.ajax({
+            url: '{% url "tai_khoan_api_lookup" %}',
+            method: 'GET',
+            dataType: 'json',
+            data: { q: q, page: page, page_size: tkPageSize },
+            success: function(resp) {
+                const results = resp.results || [];
+                tkCurrentPage = resp.page || 1;
+                tkTotalPages = resp.total_pages || 1;
+
+                if (results.length === 0) {
+                    $('#tkSearchResults').html('<div class="text-warning" style="padding: 1rem; text-align: center;">Không tìm thấy tài khoản</div>');
+                } else {
+                    let html = '<div class="tk-head"><span>Tài khoản</span><span>Tên tài khoản</span></div>';
+                    for (let item of results) {
+                        html += `<button type="button" class="tk-row btn-select-tk" data-ma-tk="${escapeHtml(item.ma_tk)}">
+                            <span class="tk-row-code">${escapeHtml(item.ma_tk)}</span>
+                            <span class="tk-row-name">${escapeHtml(item.ten_tk)}</span>
+                        </button>`;
+                    }
+                    $('#tkSearchResults').html(html);
+                }
+
+                $('#tkPagingInfo').text(`Trang ${tkCurrentPage}/${tkTotalPages} - ${resp.total || 0} tài khoản`);
+                $('#btnTkPrev').prop('disabled', tkCurrentPage <= 1);
+                $('#btnTkNext').prop('disabled', tkCurrentPage >= tkTotalPages);
+            },
+            error: function() {
+                $('#tkSearchResults').html('<div class="text-danger" style="padding: 1rem; text-align: center;">Lỗi tải dữ liệu tài khoản</div>');
+            }
+        });
+    }
+
+    function loadNccPage(page) {
+        const q = $('#nccSearchInput').val().trim();
+        $.ajax({
+            url: '{% url "nha_cung_cap_kh_api_lookup" %}',
+            method: 'GET',
+            dataType: 'json',
+            data: { q: q, page: page, page_size: nccPageSize },
+            success: function(resp) {
+                const results = resp.results || [];
+                nccCurrentPage = resp.page || 1;
+                nccTotalPages = resp.total_pages || 1;
+
+                if (results.length === 0) {
+                    $('#nccSearchResults').html('<div class="text-warning" style="padding: 1rem; text-align: center;">Không tìm thấy nhà cung cấp</div>');
+                } else {
+                    let html = '<div class="tk-head"><span>Mã NCC</span><span>Tên nhà cung cấp</span></div>';
+                    for (let item of results) {
+                        const label = `${item.ma_ncc} - ${item.ten_ncc}`;
+                        html += `<button type="button" class="tk-row btn-select-ncc" data-ncc-id="${item.ncc_id}" data-ncc-label="${escapeHtml(label)}">
+                            <span class="tk-row-code">${escapeHtml(item.ma_ncc)}</span>
+                            <span class="tk-row-name">${escapeHtml(item.ten_ncc)}</span>
+                        </button>`;
+                    }
+                    $('#nccSearchResults').html(html);
+                }
+
+                $('#nccPagingInfo').text(`Trang ${nccCurrentPage}/${nccTotalPages} - ${resp.total || 0} nhà cung cấp`);
+                $('#btnNccPrev').prop('disabled', nccCurrentPage <= 1);
+                $('#btnNccNext').prop('disabled', nccCurrentPage >= nccTotalPages);
+            },
+            error: function() {
+                $('#nccSearchResults').html('<div class="text-danger" style="padding: 1rem; text-align: center;">Lỗi tải dữ liệu nhà cung cấp</div>');
+            }
+        });
+    }
+
+    function loadHangPage(page) {
+        const q = $('#hangSearchInput').val().trim();
+        $.ajax({
+            url: '{% url "hang_hoa_lookup_api" %}',
+            method: 'GET',
+            dataType: 'json',
+            data: { q: q, page: page, page_size: hangPageSize },
+            success: function(resp) {
+                const results = resp.results || [];
+                hangCurrentPage = resp.page || 1;
+                hangTotalPages = resp.total_pages || 1;
+
+                if (results.length === 0) {
+                    $('#hangSearchResults').html('<div class="text-warning" style="padding: 1rem; text-align: center;">Không tìm thấy vật tư</div>');
+                } else {
+                    let html = '<div class="hang-head"><span>Mã hàng</span><span>Tên hàng</span><span>ĐVT</span></div>';
+                    for (let item of results) {
+                        html += `<button type="button" class="hang-row btn-select-hang" data-hang-id="${item.id}">
+                            <span class="hang-row-code">${escapeHtml(item.ma_hang)}</span>
+                            <span class="hang-row-name">${escapeHtml(item.ten_hang)}</span>
+                            <span class="hang-row-dvt">${escapeHtml(item.dvt || '')}</span>
+                        </button>`;
+                    }
+                    $('#hangSearchResults').html(html);
+                }
+
+                $('#hangPagingInfo').text(`Trang ${hangCurrentPage}/${hangTotalPages} - ${resp.total || 0} hàng hóa`);
+                $('#btnHangPrev').prop('disabled', hangCurrentPage <= 1);
+                $('#btnHangNext').prop('disabled', hangCurrentPage >= hangTotalPages);
+            },
+            error: function() {
+                $('#hangSearchResults').html('<div class="text-danger" style="padding: 1rem; text-align: center;">Lỗi tải dữ liệu hàng hóa</div>');
+            }
+        });
+    }
+
+    // === Xử lý modal chọn tài khoản ===
+    $(document).on('click', '.btn-search-tk', function(e) {
+        e.preventDefault();
+        const field = $(this).data('field');
+        currentInputElement = $(this).closest('div').find('input[name="' + field + '[]"]');
+
+        if (!tkModalInstance) {
+            tkModalInstance = new bootstrap.Modal(document.getElementById('modalTaiKhoan'));
+        }
+        tkModalInstance.show();
+        $('#tkSearchInput').val('');
+        loadTaiKhoanPage(1);
+        setTimeout(() => $('#tkSearchInput').focus(), 300);
+    });
+
+    $('#btnOpenNccModal').on('click', function(e) {
+        e.preventDefault();
+        if (!nccModalInstance) {
+            nccModalInstance = new bootstrap.Modal(document.getElementById('modalNhaCungCap'));
+        }
+        nccModalInstance.show();
+        $('#nccSearchInput').val('');
+        loadNccPage(1);
+        setTimeout(() => $('#nccSearchInput').focus(), 300);
+    });
+
+    $(document).on('click', '.btn-search-hang', function(e) {
+        e.preventDefault();
+        currentHangSelectElement = $(this).closest('tr').find('select[name="hang_id[]"]');
+        if (!hangModalInstance) {
+            hangModalInstance = new bootstrap.Modal(document.getElementById('modalHangHoa'));
+        }
+        hangModalInstance.show();
+        $('#hangSearchInput').val('');
+        loadHangPage(1);
+        setTimeout(() => $('#hangSearchInput').focus(), 300);
+    });
+
+    // Tìm kiếm tài khoản khi gõ
+    $('#tkSearchInput').on('input', function() {
+        loadTaiKhoanPage(1);
+    });
+
+    $('#btnTkPrev').on('click', function() {
+        if (tkCurrentPage > 1) {
+            loadTaiKhoanPage(tkCurrentPage - 1);
+        }
+    });
+
+    $('#btnTkNext').on('click', function() {
+        if (tkCurrentPage < tkTotalPages) {
+            loadTaiKhoanPage(tkCurrentPage + 1);
+        }
+    });
+
+    $('#nccSearchInput').on('input', function() {
+        loadNccPage(1);
+    });
+
+    $('#hangSearchInput').on('input', function() {
+        loadHangPage(1);
+    });
+
+    $('#btnNccPrev').on('click', function() {
+        if (nccCurrentPage > 1) {
+            loadNccPage(nccCurrentPage - 1);
+        }
+    });
+
+    $('#btnNccNext').on('click', function() {
+        if (nccCurrentPage < nccTotalPages) {
+            loadNccPage(nccCurrentPage + 1);
+        }
+    });
+
+    $('#btnHangPrev').on('click', function() {
+        if (hangCurrentPage > 1) {
+            loadHangPage(hangCurrentPage - 1);
+        }
+    });
+
+    $('#btnHangNext').on('click', function() {
+        if (hangCurrentPage < hangTotalPages) {
+            loadHangPage(hangCurrentPage + 1);
+        }
+    });
+
+    // Chọn tài khoản từ danh sách
+    $(document).on('click', '.btn-select-tk', function(e) {
+        e.preventDefault();
+        const maTk = $(this).data('ma-tk');
+        if (currentInputElement) {
+            currentInputElement.val(maTk);
+        }
+        if (tkModalInstance) {
+            tkModalInstance.hide();
+        }
+        currentInputElement = null;
+    });
+
+    $(document).on('click', '.btn-select-ncc', function(e) {
+        e.preventDefault();
+        const nccId = $(this).data('ncc-id');
+        const label = $(this).data('ncc-label');
+        setSelectedNcc(nccId, label);
+        if (nccModalInstance) {
+            nccModalInstance.hide();
+        }
+    });
+
+    $(document).on('click', '.btn-select-hang', function(e) {
+        e.preventDefault();
+        const hangId = String($(this).data('hang-id') || '');
+        if (currentHangSelectElement && hangId) {
+            currentHangSelectElement.val(hangId).trigger('change');
+        }
+        if (hangModalInstance) {
+            hangModalInstance.hide();
+        }
+        currentHangSelectElement = null;
+    });
+
+    $('#loaiChungTu').on('change', updateNccRequired);
+    updateNccRequired();
+
+    // Đồng bộ giá trị NCC ban đầu từ select sang ô hiển thị
+    const nccSelectedText = $('#nccSelect option:selected').text();
+    if ($('#nccSelect').val()) {
+        $('#nccDisplay').val(nccSelectedText);
+    }
+
+    applyNhapCopyData();
+
+    $('#phieuNhapForm').on('submit', function(e) {
+        if ($('#loaiChungTu').val() === '1' && !$('#nccSelect').val()) {
+            e.preventDefault();
+            alert('Loại chứng từ 1 - Mua nhà cung cấp bắt buộc chọn Nhà cung cấp.');
+            $('#nccSelect').focus();
+            return;
+        }
+    });
+
+    $(document).on('change', '.hang-select', function() {
         let row = $(this).closest('tr');
-        if(row.hasClass('item-row')) tinhTongRow(row);
-        else tinhTongDH();
+        if ($(this).val()) {
+            if (!row.find('.so-luong').val()) row.find('.so-luong').val(1);
+            if (!row.find('.don-gia').val()) row.find('.don-gia').val(0);
+            tinhTongRow(row);
+            goiYChoDong(row);
+        } else {
+            row.find('.thanh-tien').val('');
+            row.find('.goi-y-vi-tri').html('<span class="text-muted">Chưa gợi ý</span>');
+        }
+    });
+
+    $(document).on('input', '.calc-input', function() {
+        let row = $(this).closest('tr');
+        tinhTongRow(row);
+        goiYChoDong(row);
+    });
+
+    $('select[name="kho"]').on('change', function() {
+        $('.item-row').each(function() {
+            goiYChoDong($(this));
+        });
     });
 
     $('#btnAddRow').click(function() {
         let newRow = $('.item-row:first').clone();
         newRow.find('input').val('');
         newRow.find('.so-luong').val(1);
-        newRow.find('.thanh-tien').val(0);
+        newRow.find('.don-gia').val(0);
+        newRow.find('.thanh-tien').val('0 đ');
+        newRow.find('.goi-y-vi-tri').html('<span class="text-muted">Chưa gợi ý</span>');
+        newRow.data('thanh_tien', 0);
         $('#chiTietBody').append(newRow);
+        tinhTongDH();
     });
 
     $(document).on('click', '.btn-remove', function() {
-        if($('.item-row').length > 1) { $(this).closest('tr').remove(); tinhTongDH(); }
+        if ($('.item-row').length > 1) {
+            $(this).closest('tr').remove();
+            tinhTongDH();
+        }
     });
 </script>
 {% endblock %}

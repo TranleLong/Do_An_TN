@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-tag text-success"></i> Quản lý giá bán</div>
+    </div>
+
+    <div class="px-3 pt-3">
+        <div class="erp-toolbar" role="toolbar" aria-label="Thanh thao tác giá bán">
+            <a href="{% url 'gia_ban_them' %}" class="erp-toolbar-btn" title="Thêm mới" aria-label="Thêm mới"><i class="fas fa-plus"></i></a>
+            <button type="button" class="erp-toolbar-btn" id="btnGiaEdit" title="Sửa" aria-label="Sửa"><i class="fas fa-pen-to-square"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnGiaDelete" title="Xóa" aria-label="Xóa"><i class="fas fa-trash"></i></button>
+            <span class="erp-toolbar-sep"></span>
+            <button type="button" class="erp-toolbar-btn" id="btnGiaCopy" title="Chép dữ liệu" aria-label="Chép dữ liệu"><i class="fas fa-copy"></i></button>
+            <a href="{% url 'gia_ban_export_template' %}" class="erp-toolbar-btn" title="Kế xuất file mẫu" aria-label="Kế xuất file mẫu"><i class="fas fa-file-export"></i></a>
+            <button type="button" class="erp-toolbar-btn" id="btnGiaImport" title="Import Excel" aria-label="Import Excel"><i class="fas fa-file-import"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnGiaSearch" title="Tìm" aria-label="Tìm"><i class="fas fa-magnifying-glass"></i></button>
+            <button type="button" class="erp-toolbar-btn" onclick="window.location.reload()" title="Làm mới" aria-label="Làm mới"><i class="fas fa-rotate-right"></i></button>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width:42px;">Chọn</th>
+                        <th>Trạng thái</th>
+                        <th>Mã hàng</th>
+                        <th>Tên mặt hàng</th>
+                        <th class="text-right">Giá bán</th>
+                        <th>ĐVT</th>
+                        <th>Loại tiền</th>
+                        <th>Ngày hiệu lực</th>
+                        <th>Mã phiếu</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if rows %}
+                        {% for ct in rows %}
+                        <tr>
+                            <td class="text-center">
+                                <input
+                                    type="checkbox"
+                                    name="selected_gia"
+                                    class="erp-row-select"
+                                    value="{{ ct.phieu_id }}"
+                                    data-edit-url="{% url 'gia_ban_sua' ct.phieu_id %}"
+                                    data-delete-url="{% url 'gia_ban_xoa' ct.phieu_id %}"
+                                    data-copy-url="{% url 'gia_ban_copy' ct.phieu_id %}"
+                                    data-state="{{ ct.phieu__trang_thai_duyet }}"
+                                >
+                            </td>
+                            <td>
+                                {% if ct.phieu__trang_thai_duyet == 'cho_duyet' %}
+                                    <span class="badge badge-warning">Chờ duyệt</span>
+                                {% elif ct.phieu__trang_thai_duyet == 'da_duyet' %}
+                                    <span class="badge badge-success">Đã duyệt</span>
+                                {% elif ct.phieu__trang_thai_duyet == 'tu_choi' %}
+                                    <span class="badge badge-danger">Từ chối</span>
+                                {% endif %}
+                            </td>
+                            <td><strong>{{ ct.hang_hoa__ma_hang }}</strong></td>
+                            <td>{{ ct.hang_hoa__ten_hang }}</td>
+                            <td class="text-right fw-semibold">{{ ct.gia_ban_chuan|floatformat:0|intcomma }}</td>
+                            <td>{{ ct.hang_hoa__don_vi_tinh__ten }}</td>
+                            <td>{{ ct.phieu__loai_tien_te }}</td>
+                            <td>{% if ct.phieu__ngay_hieu_luc %}{{ ct.phieu__ngay_hieu_luc|date:'d/m/Y' }}{% endif %}</td>
+                            <td><strong>{{ ct.phieu__ma_phieu }}</strong></td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted">Chưa có dữ liệu giá bán.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<form method="post" id="formGiaDelete" style="display:none;">{% csrf_token %}</form>
+<form method="post" id="formGiaCopy" style="display:none;">{% csrf_token %}</form>
+
+<div class="modal fade" id="modalGiaImport" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Import file Excel giá bán</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{% url 'gia_ban_import_excel' %}" enctype="multipart/form-data" class="modal-body">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Chọn file .xlsx</label>
+                    <input type="file" name="excel_file" class="form-control" accept=".xlsx" required>
+                    <small class="text-muted">Phải đúng cấu trúc cột theo file mẫu kế xuất, sai hoặc thiếu trường sẽ không import được.</small>
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-light border btn-sm" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary btn-sm">Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalGiaSearch" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tìm kiếm giá bán</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="get" class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Tìm kiếm</label>
+                    <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Mã phiếu, mã hàng, tên hàng...">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Trạng thái</label>
+                    <select name="trang_thai" class="form-control">
+                        <option value="">-- Tất cả --</option>
+                        <option value="cho_duyet" {% if trang_thai == 'cho_duyet' %}selected{% endif %}>Chờ duyệt</option>
+                        <option value="da_duyet" {% if trang_thai == 'da_duyet' %}selected{% endif %}>Đã duyệt</option>
+                        <option value="tu_choi" {% if trang_thai == 'tu_choi' %}selected{% endif %}>Từ chối</option>
+                    </select>
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{% url 'gia_ban_list' %}" class="btn btn-light border btn-sm">Bỏ lọc</a>
+                    <button type="submit" class="btn btn-primary btn-sm">Tìm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function getSelectedGiaInputs() {
+        return Array.from(document.querySelectorAll('input[name="selected_gia"]:checked'));
+    }
+
+    document.getElementById('btnGiaEdit').addEventListener('click', function() {
+        const selected = getSelectedGiaInputs();
+        if (selected.length !== 1) {
+            alert('Vui lòng chọn đúng 1 dòng giá bán để sửa.');
+            return;
+        }
+        const input = selected[0];
+        const state = input.dataset.state;
+        if (state !== 'cho_duyet') {
+            alert('Chỉ được sửa phiếu ở trạng thái "Chờ duyệt".');
+            return;
+        }
+        window.location.href = input.dataset.editUrl;
+    });
+
+    document.getElementById('btnGiaDelete').addEventListener('click', function() {
+        const selected = getSelectedGiaInputs();
+        if (selected.length === 0) {
+            alert('Chọn ít nhất 1 dòng giá bán để xóa.');
+            return;
+        }
+        const input = selected[0];
+        const state = input.dataset.state;
+        if (state === 'da_duyet') {
+            alert('Không được xóa phiếu đã duyệt.');
+            return;
+        }
+        if (!confirm('Xác nhận xóa giá bán đã chọn?')) return;
+        const form = document.getElementById('formGiaDelete');
+        form.action = input.dataset.deleteUrl;
+        form.submit();
+    });
+
+    document.getElementById('btnGiaCopy').addEventListener('click', function() {
+        const selected = getSelectedGiaInputs();
+        if (selected.length !== 1) {
+            alert('Vui lòng chọn đúng 1 dòng giá bán để chép dữ liệu.');
+            return;
+        }
+        const input = selected[0];
+        const form = document.getElementById('formGiaCopy');
+        form.action = input.dataset.copyUrl;
+        form.submit();
+    });
+
+    document.getElementById('btnGiaImport').addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('modalGiaImport'));
+        modal.show();
+    });
+
+    document.getElementById('btnGiaSearch').addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('modalGiaSearch'));
+        modal.show();
+    });
+</script>
+{% endblock %}

@@ -1,17 +1,16 @@
 """ERP Tiến Hương - Main URL Configuration"""
-from django.contrib import admin
-from django.urls import path, include
+from apps.danh_muc import views as danh_muc_views
 from django.conf import settings
 from django.conf.urls.static import static
+from django.contrib import admin
 from django.contrib.auth import views as auth_views
-from apps.core import views as core_views
+from django.urls import include, path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('dang-nhap/', auth_views.LoginView.as_view(template_name='auth/login.html'), name='login'),
     path('dang-xuat/', auth_views.LogoutView.as_view(), name='logout'),
-    path('', core_views.dashboard, name='dashboard'),
-    path('hang-hoa/', include('apps.core.urls')),
+    path('', danh_muc_views.dashboard, name='dashboard'),
     path('kho/', include('apps.kho.urls')),
     path('ban-hang/', include('apps.ban_hang.urls')),
     path('mua-hang/', include('apps.mua_hang.urls')),

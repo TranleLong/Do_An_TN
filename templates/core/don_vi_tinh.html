@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">Danh sách đơn vị tính</div>
+    </div>
+
+    <div class="px-3 pt-3">
+        <div class="erp-toolbar" role="toolbar" aria-label="Thanh thao tác đơn vị tính">
+            <button type="button" class="erp-toolbar-btn" id="btnDvtAdd" title="Thêm mới" aria-label="Thêm mới"><i class="fas fa-plus"></i></button>
+            <button type="button" class="erp-toolbar-btn disabled" title="Sửa" aria-label="Sửa"><i class="fas fa-pen-to-square"></i></button>
+            <button type="button" class="erp-toolbar-btn disabled" title="Xóa" aria-label="Xóa"><i class="fas fa-trash"></i></button>
+            <span class="erp-toolbar-sep"></span>
+            <button type="button" class="erp-toolbar-btn" id="btnDvtSearch" title="Tìm" aria-label="Tìm"><i class="fas fa-magnifying-glass"></i></button>
+            <button type="button" class="erp-toolbar-btn" onclick="window.location.reload()" title="Làm mới" aria-label="Làm mới"><i class="fas fa-rotate-right"></i></button>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width:80px;">Chọn</th>
+                        <th style="width:80px;">#</th>
+                        <th>Tên đơn vị tính</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td><input type="checkbox" name="selected_dvt" class="erp-row-select" value="{{ item.pk }}"></td>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ item.ten }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" class="text-center text-muted">Chưa có đơn vị tính nào.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj and page_obj.paginator.num_pages > 1 %}
+        <div class="pagination-bar">
+            <div class="text-muted">Trang {{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</div>
+            <div class="pagination-actions">
+                {% if page_obj.has_previous %}
+                <a class="btn btn-sm btn-light" href="?q={{ q }}&page=1">Đầu</a>
+                <a class="btn btn-sm btn-light" href="?q={{ q }}&page={{ page_obj.previous_page_number }}">Trước</a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                <a class="btn btn-sm btn-light" href="?q={{ q }}&page={{ page_obj.next_page_number }}">Sau</a>
+                <a class="btn btn-sm btn-light" href="?q={{ q }}&page={{ page_obj.paginator.num_pages }}">Cuối</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="modal fade" id="modalDvtAdd" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Thêm đơn vị tính</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" class="modal-body">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Tên đơn vị tính <span class="text-danger">*</span></label>
+                    <input type="text" name="ten" class="form-control" value="{{ ten_default }}" required placeholder="VD: Cái, Bộ, Lít, Kg">
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Thêm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalDvtSearch" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tìm kiếm đơn vị tính</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="get" class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Từ khóa</label>
+                    <input type="text" name="q" class="form-control" value="{{ q }}" placeholder="Tìm theo tên đơn vị tính">
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{% url 'don_vi_tinh_list' %}" class="btn btn-light border">Bỏ lọc</a>
+                    <button type="submit" class="btn btn-primary">Nhận</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('btnDvtAdd').addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('modalDvtAdd'));
+        modal.show();
+    });
+
+    document.getElementById('btnDvtSearch').addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('modalDvtSearch'));
+        modal.show();
+    });
+</script>
+{% endblock %}

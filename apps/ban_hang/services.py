@@ -1,8 +1,9 @@
 from decimal import Decimal
 
-from apps.kho.models import PhieuXuat, PhieuXuat_CT, TonKho
 from django.db import transaction
 from django.utils import timezone
+
+from apps.kho.models import PhieuXuat, PhieuXuat_CT, TonKho
 
 
 class DonBanService:
@@ -22,7 +23,7 @@ class DonBanService:
 
     @staticmethod
     def _validate_xac_nhan(don):
-        if don.trang_thai != 'nhap':
+        if don.trang_thai != '1':
             return False, "Đơn đã được xử lý", []
 
         chi_tiet = list(don.chi_tiet.select_related('hang_hoa'))
@@ -54,11 +55,12 @@ class DonBanService:
 
         phieu_xuat = PhieuXuat.objects.create(
             so_phieu=DonBanService._gen_so_phieu_xuat(),
-            ngay_xuat=don.ngay_ban,
+            ngay_chung_tu=don.ngay_chung_tu,
+            ngay_xuat=don.ngay_chung_tu,
             loai_xuat='ban_hang',
             kho=don.kho,
             nguoi_tao=don.nhan_vien_ban,
-            trang_thai='da_xuat',
+            trang_thai='2',
             ghi_chu=f"Xuất từ đơn {don.so_don} - {don.get_loai_ban_display()}"
         )
 
@@ -88,7 +90,7 @@ class DonBanService:
         phieu_xuat.tong_gia_von = tong_gia_von
         phieu_xuat.save(update_fields=['tong_gia_von'])
 
-        don.trang_thai = 'da_xac_nhan'
+        don.trang_thai = '2'
         if don.phuong_thuc_tt in ('tien_mat', 'chuyen_khoan'):
             don.da_thu = don.tong_thanh_toan
             don.con_no = 0

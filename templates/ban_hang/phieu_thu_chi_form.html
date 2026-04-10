@@ -63,6 +63,7 @@
                 <input type="number" name="so_tien" id="soTien" class="form-control text-right" style="font-size: 1.2rem; font-weight: bold; color: var(--{% if loai == 'thu'%}success{% else %}danger{% endif %});" value="0" min="1" required>
             </div>
         </div>
+        <small class="text-muted d-block" style="margin-top:8px;">Trạng thái chứng từ: tạo mới = <strong>1 - Lập phiếu</strong>, xác nhận chi = <strong>2 - Ghi nhận nghiệp vụ</strong>, chuyển sổ cái = <strong>3</strong>.</small>
 
         <div class="form-group">
             <label class="form-label">Lý do {% if loai == 'thu' %}thu{% else %}chi{% endif %} / Ghi chú diễn giải <span class="text-danger">*</span></label>

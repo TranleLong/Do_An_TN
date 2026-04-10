@@ -1,12 +1,174 @@
 {% extends 'base.html' %}
 {% load humanize %}
 
+{% block extra_css %}
+<style>
+    .lookup-wrap {
+        position: relative;
+    }
+    .lookup-input {
+        padding-right: 34px;
+    }
+    .lookup-btn {
+        position: absolute;
+        right: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 22px;
+        height: 22px;
+        border: 0;
+        background: transparent;
+        color: #6b7d94;
+        padding: 0;
+        font-size: 12px;
+        line-height: 22px;
+        border-radius: 50%;
+    }
+    .lookup-btn:hover {
+        background: #eaf2fd;
+        color: #1d5ea8;
+    }
+    #hangLookupModal .modal-dialog {
+        max-width: 860px;
+    }
+    #hangLookupModal .modal-content {
+        border: 1px solid #7aa1cf;
+        border-radius: 8px;
+        box-shadow: 0 20px 45px rgba(22, 44, 75, 0.28);
+    }
+    #hangLookupModal .modal-header {
+        background: linear-gradient(180deg, #f7fbff 0%, #e9f3ff 100%);
+        border-bottom: 1px solid #c7dcf3;
+    }
+    .hang-head, .hang-row {
+        display: grid;
+        grid-template-columns: 150px 1fr 120px;
+        gap: 10px;
+    }
+    .hang-head {
+        background: #eef5fb;
+        color: #1f4d83;
+        border-bottom: 1px solid #cfdeef;
+        padding: 8px 12px;
+        font-weight: 700;
+    }
+    .hang-row {
+        width: 100%;
+        padding: 10px 12px;
+        border: 0;
+        border-bottom: 1px solid #e9eef5;
+        background: #fff;
+        cursor: pointer;
+        text-align: left;
+    }
+    .hang-row:hover {
+        background: #f2f8ff;
+    }
+    .hang-row-code {
+        font-weight: 700;
+        color: #0d4b86;
+    }
+    .hang-row-name {
+        color: #30465f;
+    }
+    .hang-row-dvt {
+        color: #6b7d94;
+        text-align: right;
+    }
+    .erp-wrap {
+        border: 1px solid #c4d1df;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .erp-title {
+        background: #eef3f8;
+        border-bottom: 1px solid #ccd8e5;
+        padding: 8px 12px;
+        font-weight: 700;
+        color: #254b73;
+    }
+    .erp-subtitle {
+        background: #fffde9;
+        border-bottom: 1px solid #efe7b4;
+        padding: 6px 12px;
+        color: #4f4f4f;
+    }
+    .erp-table {
+        font-size: 14px;
+        margin-bottom: 0;
+        table-layout: auto;
+        min-width: 1800px;
+    }
+    .erp-table thead th {
+        background: #f5f7fa;
+        border-color: #d5dee8;
+        color: #3d4f61;
+        white-space: nowrap;
+        height: 42px;
+        padding: 8px 10px;
+        vertical-align: middle;
+    }
+    .erp-table td {
+        border-color: #e1e7ef;
+        vertical-align: middle;
+        height: 42px;
+        padding: 8px 10px;
+        white-space: nowrap;
+    }
+    .erp-summary td {
+        background: #f7f8fb;
+        color: #3b6ea6;
+        font-weight: 700;
+    }
+    .text-erp-right {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
+    .erp-cell-text {
+        display: inline;
+        white-space: nowrap;
+    }
+    .erp-actionbar {
+        padding: 6px 10px;
+        border-top: 1px solid #d9e3ef;
+        border-bottom: 1px solid #d9e3ef;
+        background: linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+    }
+    .erp-action-btn {
+        width: 34px;
+        height: 34px;
+        border: 1px solid #c7d6e8;
+        border-radius: 4px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: #2f4f79;
+        background: linear-gradient(180deg, #fff 0%, #f2f6fb 100%);
+        text-decoration: none;
+        box-shadow: 0 1px 0 rgba(255,255,255,0.9) inset;
+        transition: all 0.12s ease;
+    }
+    .erp-action-btn:hover {
+        color: #0d4b86;
+        border-color: #8fb0d8;
+        background: #eaf3ff;
+        transform: translateY(-1px);
+    }
+    .erp-action-sep {
+        width: 1px;
+        height: 24px;
+        background: #cfd9e6;
+        margin: 0 2px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="card" style="margin-bottom:16px;">
+<div class="card" style="margin-bottom:12px;">
     <div class="card-body">
-        <form method="get" class="form-row">
-            <div class="col">
-                <label>Kho</label>
+        <form method="get" class="form-row align-items-end">
+            <div class="col col-3 form-group mb-0">
+                <label class="form-label">Kho</label>
                 <select class="form-control" name="kho">
                     <option value="">Tất cả kho</option>
                     {% for kho in kho_list %}
@@ -14,47 +176,243 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col" style="display:flex;align-items:end;">
-                <button type="submit" class="btn btn-primary">Lọc</button>
+            <div class="col col-3 form-group mb-0">
+                <label class="form-label">Từ ngày</label>
+                <input type="date" class="form-control" name="tu_ngay" value="{{ tu_ngay }}">
+            </div>
+            <div class="col col-3 form-group mb-0">
+                <label class="form-label">Đến ngày</label>
+                <input type="date" class="form-control" name="den_ngay" value="{{ den_ngay }}">
+            </div>
+            <div class="col col-3 form-group mb-0">
+                <label class="form-label">Vật tư</label>
+                <div class="lookup-wrap">
+                    <input type="text" name="q" id="hangReportFilterInput" value="{{ q }}" class="form-control lookup-input" placeholder="Mã hoặc tên vật tư" autocomplete="off">
+                    <button type="button" class="lookup-btn" id="btnOpenHangLookup" title="Tra cứu hàng hóa"><i class="fas fa-search"></i></button>
+                </div>
+            </div>
+            <div class="col col-12 form-group mt-2 mb-0 text-right">
+                <button type="submit" class="btn btn-primary"><i class="fas fa-filter"></i> Lọc</button>
+                <button type="button" class="btn btn-light border" onclick="window.print()"><i class="fas fa-print"></i> In</button>
             </div>
         </form>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header">
-        <div class="card-title">Báo cáo tồn kho</div>
-        <div class="text-muted">Tổng giá trị tồn: {{ tong_gia_tri|intcomma }} đ</div>
+<div class="erp-wrap">
+    <div class="erp-title">Sổ kho/Chi tiết vật tư</div>
+    <div class="erp-subtitle">
+        Kho: {{ kho_da_chon|default:'Tất cả kho' }}, vật tư: {{ q|default:'Tất cả' }},
+        {% if tu_ngay or den_ngay %}
+            từ ngày {{ tu_ngay|default:'...' }} đến ngày {{ den_ngay|default:'...' }}
+        {% else %}
+            tất cả thời gian
+        {% endif %}
     </div>
     <div class="table-responsive">
-        <table class="table">
+        <table class="table table-sm erp-table">
             <thead>
                 <tr>
-                    <th>Mã hàng</th>
-                    <th>Tên hàng</th>
-                    <th>Kho</th>
-                    <th class="text-right">Số lượng</th>
-                    <th class="text-right">Giá vốn TB</th>
-                    <th class="text-right">Giá trị tồn</th>
+                    <th>Ngày ghi sổ</th>
+                    <th>Ngày ct</th>
+                    <th>Mã ct</th>
+                    <th>Số ct</th>
+                    <th>Diễn giải</th>
+                    <th>Mã nhập xuất</th>
+                    <th>Tk đối ứng</th>
+                    <th class="text-erp-right">Giá</th>
+                    <th class="text-erp-right">Số lượng nhập</th>
+                    <th class="text-erp-right">Tiền nhập</th>
+                    <th class="text-erp-right">Số lượng xuất</th>
+                    <th class="text-erp-right">Tiền xuất</th>
+                    <th class="text-erp-right">Tồn</th>
+                    <th class="text-center" style="width:56px;"><i class="fas fa-bolt"></i></th>
                 </tr>
             </thead>
             <tbody>
-                {% for t in items %}
+                <tr class="erp-summary">
+                    <td></td><td></td><td></td><td></td>
+                    <td>Đầu kỳ</td>
+                    <td></td><td></td><td></td>
+                    <td class="text-erp-right">{{ sl_dau_ky|intcomma }}</td>
+                    <td class="text-erp-right">{{ gt_dau_ky|intcomma }}</td>
+                    <td class="text-erp-right"></td>
+                    <td class="text-erp-right"></td>
+                    <td class="text-erp-right">{{ sl_dau_ky|intcomma }}</td>
+                    <td></td>
+                </tr>
+                <tr class="erp-summary">
+                    <td></td><td></td><td></td><td></td>
+                    <td>Ps nhập trong kỳ</td>
+                    <td></td><td></td><td></td>
+                    <td class="text-erp-right">{{ sl_nhap_ky|intcomma }}</td>
+                    <td class="text-erp-right">{{ gt_nhap_ky|intcomma }}</td>
+                    <td class="text-erp-right"></td>
+                    <td class="text-erp-right"></td>
+                    <td class="text-erp-right"></td>
+                    <td></td>
+                </tr>
+                <tr class="erp-summary">
+                    <td></td><td></td><td></td><td></td>
+                    <td>Ps xuất trong kỳ</td>
+                    <td></td><td></td><td></td>
+                    <td class="text-erp-right"></td>
+                    <td class="text-erp-right"></td>
+                    <td class="text-erp-right">{{ sl_xuat_ky|intcomma }}</td>
+                    <td class="text-erp-right">{{ gt_xuat_ky|intcomma }}</td>
+                    <td class="text-erp-right"></td>
+                    <td></td>
+                </tr>
+                <tr class="erp-summary">
+                    <td></td><td></td><td></td><td></td>
+                    <td>Cuối kỳ</td>
+                    <td></td><td></td><td></td>
+                    <td class="text-erp-right">{{ sl_cuoi_ky|intcomma }}</td>
+                    <td class="text-erp-right">{{ gt_cuoi_ky|intcomma }}</td>
+                    <td class="text-erp-right"></td>
+                    <td class="text-erp-right"></td>
+                    <td class="text-erp-right">{{ sl_cuoi_ky|intcomma }}</td>
+                    <td></td>
+                </tr>
+
+                {% for r in rows %}
                 <tr>
-                    <td>{{ t.hang_hoa.ma_hang }}</td>
-                    <td>{{ t.hang_hoa.ten_hang }}</td>
-                    <td>{{ t.kho.ten_kho }}</td>
-                    <td class="text-right">{{ t.so_luong|intcomma }}</td>
-                    <td class="text-right">{{ t.gia_von_tb|intcomma }}</td>
-                    <td class="text-right">-</td>
+                    <td>{{ r.ngay_ghi_so|date:'d/m/Y' }}</td>
+                    <td>{{ r.ngay_ct|date:'d/m/Y' }}</td>
+                    <td>{{ r.ma_ct }}</td>
+                    <td><span class="erp-cell-text" title="{{ r.so_ct }}">{{ r.so_ct }}</span></td>
+                    <td><span class="erp-cell-text" title="{{ r.dien_giai }}">{{ r.dien_giai }}</span></td>
+                    <td><span class="erp-cell-text" title="{{ r.ma_nhap_xuat }}">{{ r.ma_nhap_xuat }}</span></td>
+                    <td><span class="erp-cell-text" title="{{ r.tk_doi_ung }}">{{ r.tk_doi_ung }}</span></td>
+                    <td class="text-erp-right">{{ r.gia|intcomma }}</td>
+                    <td class="text-erp-right">{% if r.sl_nhap %}{{ r.sl_nhap|intcomma }}{% endif %}</td>
+                    <td class="text-erp-right">{% if r.tien_nhap %}{{ r.tien_nhap|intcomma }}{% endif %}</td>
+                    <td class="text-erp-right">{% if r.sl_xuat %}{{ r.sl_xuat|intcomma }}{% endif %}</td>
+                    <td class="text-erp-right">{% if r.tien_xuat %}{{ r.tien_xuat|intcomma }}{% endif %}</td>
+                    <td class="text-erp-right">{{ r.sl_ton|intcomma }}</td>
+                    <td class="text-center"><a href="{{ r.action_url }}" class="erp-action-btn" title="Xem chứng từ" aria-label="Xem chứng từ"><i class="fas fa-eye"></i></a></td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center text-muted">Chưa có dữ liệu tồn kho.</td>
+                    <td colspan="14" class="text-center text-muted">Không có phát sinh trong khoảng thời gian đã chọn.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+
+<div class="modal fade" id="hangLookupModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tra cứu hàng hóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Tìm nhanh</label>
+                    <input type="text" id="hangLookupSearch" class="form-control" placeholder="Nhập mã hoặc tên hàng hóa..." autocomplete="off">
+                </div>
+                <div id="hangLookupResults" style="max-height: 320px; overflow-y: auto; border: 1px solid #c9d9eb; border-radius: 6px; overflow: hidden;">
+                    <div class="text-muted" style="padding: 1rem; text-align: center;">Đang tải...</div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <small id="hangLookupPaging" class="text-muted"></small>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnHangPrev">Trước</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnHangNext">Tiếp</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let hangLookupModalInstance = null;
+    let hangLookupPage = 1;
+    let hangLookupTotalPages = 1;
+    const hangLookupPageSize = 5;
+
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function loadHangLookup(page) {
+        const q = $('#hangLookupSearch').val().trim();
+        $.ajax({
+            url: '{% url "hang_hoa_lookup_api" %}',
+            method: 'GET',
+            dataType: 'json',
+            data: { q: q, page: page, page_size: hangLookupPageSize },
+            success: function(resp) {
+                const results = resp.results || [];
+                hangLookupPage = resp.page || 1;
+                hangLookupTotalPages = resp.total_pages || 1;
+
+                if (results.length === 0) {
+                    $('#hangLookupResults').html('<div class="text-warning" style="padding: 1rem; text-align: center;">Không tìm thấy hàng hóa</div>');
+                } else {
+                    let html = '<div class="hang-head"><span>Mã hàng</span><span>Tên hàng</span><span>ĐVT</span></div>';
+                    for (let item of results) {
+                        html += `<button type="button" class="hang-row btn-select-hang" data-hang-code="${escapeHtml(item.ma_hang)}">
+                            <span class="hang-row-code">${escapeHtml(item.ma_hang)}</span>
+                            <span class="hang-row-name">${escapeHtml(item.ten_hang)}</span>
+                            <span class="hang-row-dvt">${escapeHtml(item.dvt || '')}</span>
+                        </button>`;
+                    }
+                    $('#hangLookupResults').html(html);
+                }
+
+                $('#hangLookupPaging').text(`Trang ${hangLookupPage}/${hangLookupTotalPages} - ${resp.total || 0} hàng hóa`);
+                $('#btnHangPrev').prop('disabled', hangLookupPage <= 1);
+                $('#btnHangNext').prop('disabled', hangLookupPage >= hangLookupTotalPages);
+            },
+            error: function() {
+                $('#hangLookupResults').html('<div class="text-danger" style="padding: 1rem; text-align: center;">Lỗi tải dữ liệu hàng hóa</div>');
+            }
+        });
+    }
+
+    $(document).on('click', '#btnOpenHangLookup', function() {
+        if (!hangLookupModalInstance) {
+            hangLookupModalInstance = new bootstrap.Modal(document.getElementById('hangLookupModal'));
+        }
+        hangLookupModalInstance.show();
+        $('#hangLookupSearch').val('');
+        loadHangLookup(1);
+        setTimeout(() => $('#hangLookupSearch').focus(), 250);
+    });
+
+    $('#hangLookupSearch').on('input', function() {
+        loadHangLookup(1);
+    });
+
+    $('#btnHangPrev').on('click', function() {
+        if (hangLookupPage > 1) {
+            loadHangLookup(hangLookupPage - 1);
+        }
+    });
+
+    $('#btnHangNext').on('click', function() {
+        if (hangLookupPage < hangLookupTotalPages) {
+            loadHangLookup(hangLookupPage + 1);
+        }
+    });
+
+    $(document).on('click', '.btn-select-hang', function() {
+        const hangCode = $(this).data('hang-code');
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('q', hangCode);
+        window.location = currentUrl.toString();
+    });
+</script>
 {% endblock %}

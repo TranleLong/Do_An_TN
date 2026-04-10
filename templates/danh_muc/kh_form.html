@@ -1,35 +1,57 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="card" style="max-width: 800px; margin: 0 auto;">
+<div class="card erp-form-shell">
     <div class="card-header">
         <div class="card-title">
             <i class="fas fa-edit text-success"></i> 
-            {% if obj %}Sửa thông tin khách hàng: {{ obj.ma_kh }}{% else %}Thêm mới khách hàng/Gara{% endif %}
+            {% if obj and obj.pk %}Sửa thông tin đối tác: {{ obj.ma_kh }}{% else %}Thêm mới đối tác{% endif %}
         </div>
         <a href="{% url 'kh_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
     </div>
 
     <form method="post" class="card-body">
         {% csrf_token %}
+        <div class="erp-required-note"><span class="text-danger">*</span> là trường bắt buộc</div>
+
         <div class="form-row">
             <div class="col col-4 form-group">
                 <label class="form-label">Mã KH <span class="text-danger">*</span></label>
-                <input type="text" name="ma_kh" class="form-control" value="{{ obj.ma_kh }}" required autofocus>
+                {% if obj and obj.pk %}
+                <input type="text" name="ma_kh" class="form-control" value="{{ obj.ma_kh }}" readonly>
+                <small class="text-muted">Mã khách hàng không cho phép chỉnh sửa.</small>
+                {% else %}
+                <input type="text" name="ma_kh" class="form-control" value="{{ obj.ma_kh }}" required autofocus readonly>
+                <small class="text-muted">Mã tự động (không cần nhập)</small>
+                {% endif %}
             </div>
             <div class="col col-8 form-group">
-                <label class="form-label">Tên khách hàng / Tên Gara <span class="text-danger">*</span></label>
+                <label class="form-label">Tên đối tác <span class="text-danger">*</span></label>
                 <input type="text" name="ten_kh" class="form-control" value="{{ obj.ten_kh }}" required>
             </div>
         </div>
 
         <div class="form-row">
             <div class="col col-4 form-group">
+                <label class="form-label">Vai trò đối tác <span class="text-danger">*</span></label>
+                <div class="d-flex" style="gap: 1rem; flex-wrap: wrap; padding-top: 0.5rem;">
+                    <label class="d-flex align-items-center" style="gap: 0.4rem; margin-bottom: 0;">
+                        <input type="checkbox" name="la_khach_hang" {% if obj.la_khach_hang %}checked{% endif %}>
+                        <span>1 - Khách hàng</span>
+                    </label>
+                    <label class="d-flex align-items-center" style="gap: 0.4rem; margin-bottom: 0;">
+                        <input type="checkbox" name="la_nha_cung_cap" {% if obj.la_nha_cung_cap %}checked{% endif %}>
+                        <span>2 - Nhà cung cấp</span>
+                    </label>
+                </div>
+                <small class="text-muted">Có thể chọn 1 mục hoặc chọn cả 2.</small>
+            </div>
+            <div class="col col-4 form-group">
                 <label class="form-label">Loại khách hàng <span class="text-danger">*</span></label>
-                <select name="loai_kh" class="form-control" required>
-                    <option value="ca_nhan" {% if obj.loai_kh == 'ca_nhan' %}selected{% endif %}>Cá nhân</option>
-                    <option value="gara" {% if obj.loai_kh == 'gara' %}selected{% endif %}>Gara / Xưởng mảng</option>
-                    <option value="doanh_nghiep" {% if obj.loai_kh == 'doanh_nghiep' %}selected{% endif %}>Doanh nghiệp / Đại lý</option>
+                <select name="loai_kh" id="loai_kh" class="form-control" required>
+                    <option value="1" {% if obj.loai_kh == '1' %}selected{% endif %}>1 - Cá nhân</option>
+                    <option value="2" {% if obj.loai_kh == '2' %}selected{% endif %}>2 - Doanh nghiệp</option>
+                    <option value="3" {% if obj.loai_kh == '3' %}selected{% endif %}>3 - Khác</option>
                 </select>
             </div>
             <div class="col col-4 form-group">
@@ -37,14 +59,49 @@
                 <input type="text" name="so_dien_thoai" class="form-control" value="{{ obj.so_dien_thoai }}" required>
             </div>
             <div class="col col-4 form-group">
-                <label class="form-label">Mã số thuế</label>
-                <input type="text" name="ma_so_thue" class="form-control" value="{{ obj.ma_so_thue }}">
+                <label class="form-label" id="ma_so_thue_label">
+                    Mã số thuế
+                    <span class="text-danger" id="ma_so_thue_required" style="display: none;">*</span>
+                </label>
+                <div>
+                    <input type="text" name="ma_so_thue" id="ma_so_thue" class="form-control" value="{{ obj.ma_so_thue }}" placeholder="Nhập rồi Enter để tra cứu">
+                    <div class="d-flex align-items-center mt-2" style="gap: 0.5rem; flex-wrap: wrap;">
+                        <button type="button" id="btn_lookup_mst" class="btn btn-sm btn-info">Tra cứu</button>
+                        <span id="lookup_spinner" style="display: none;">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                    </div>
+                    <div id="lookup_status" style="margin-top: 5px; font-size: 0.85rem; display: none;"></div>
+                </div>
+                <small class="text-muted" id="ma_so_thue_hint">
+                    ℹ️ Chỉ dùng để hỗ trợ nhập nhanh. Nhập mã số thuế rồi Enter hoặc bấm Tra cứu để điền sẵn thông tin nếu khách đã có
+                </small>
             </div>
         </div>
 
         <div class="form-group">
-            <label class="form-label">Địa chỉ</label>
-            <input type="text" name="dia_chi" class="form-control" value="{{ obj.dia_chi }}">
+            <label class="form-label" id="dia_chi_label">
+                Địa chỉ
+                <span class="text-danger" id="dia_chi_required" style="display: none;">*</span>
+            </label>
+            <input type="text" name="dia_chi" id="dia_chi" class="form-control" value="{{ obj.dia_chi }}">
+            <small class="text-muted" id="dia_chi_hint">Địa chỉ bắt buộc khi chọn loại khách hàng 2 - Doanh nghiệp.</small>
+        </div>
+
+        <div class="form-row">
+            <div class="col col-6 form-group">
+                <label class="form-label">Email</label>
+                <input type="email" name="email" class="form-control" value="{{ obj.email }}">
+            </div>
+            <div class="col col-6 form-group">
+                <label class="form-label">Nhóm khách hàng</label>
+                <select name="nhom_kh" class="form-control">
+                    <option value="">-- Chọn nhóm --</option>
+                    {% for n in nhom_list %}
+                    <option value="{{ n.pk }}" {% if obj.nhom_kh_id == n.pk %}selected{% endif %}>{{ n.ten_nhom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
 
         <div class="form-row mt-4">
@@ -53,6 +110,13 @@
                 <input type="number" name="han_muc_cong_no" class="form-control" value="{{ obj.han_muc_cong_no|default:'0' }}" min="0">
                 <small class="text-muted">Nhập 0 nếu không cho nợ</small>
             </div>
+            <div class="col col-6 form-group">
+                <label class="form-label">Số ngày nợ tối đa</label>
+                <input type="number" name="so_ngay_no_max" class="form-control" value="{{ obj.so_ngay_no_max|default:'0' }}" min="0">
+            </div>
+        </div>
+
+        <div class="form-row">
             <div class="col col-6 form-group">
                 <label class="form-label">Chiết khấu mặc định (%)</label>
                 <input type="number" name="chiet_khau_mac_dinh" class="form-control" value="{{ obj.chiet_khau_mac_dinh|default:'0' }}" step="0.1" min="0" max="100">
@@ -69,4 +133,156 @@
         </div>
     </form>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const loaiKhSelect = document.getElementById('loai_kh');
+    const khCheckbox = document.querySelector('input[name="la_khach_hang"]');
+    const nccCheckbox = document.querySelector('input[name="la_nha_cung_cap"]');
+    const maSoThueInput = document.getElementById('ma_so_thue');
+    const maSoThueRequired = document.getElementById('ma_so_thue_required');
+    const maSoThueHint = document.getElementById('ma_so_thue_hint');
+    const diaChiInput = document.getElementById('dia_chi');
+    const diaChiRequired = document.getElementById('dia_chi_required');
+    const diaChiHint = document.getElementById('dia_chi_hint');
+    const lookupSpinner = document.getElementById('lookup_spinner');
+    const lookupStatus = document.getElementById('lookup_status');
+
+    // Hàm cập nhật conditional required
+    function updateMaSoThueRequired() {
+        const loaiKh = loaiKhSelect.value;
+        const isSupplier = nccCheckbox && nccCheckbox.checked;
+        if (isSupplier || loaiKh === '2' || loaiKh === '3') {
+            maSoThueRequired.style.display = 'inline';
+            maSoThueInput.setAttribute('data-required', 'true');
+            maSoThueHint.innerHTML = '⚠️ Bắt buộc khi chọn Nhà cung cấp hoặc doanh nghiệp/khác - Nhập và Enter để tra cứu';
+        } else {
+            maSoThueRequired.style.display = 'none';
+            maSoThueInput.removeAttribute('data-required');
+            maSoThueHint.innerHTML = 'ℹ️ Tùy chọn - Nhập mã số thuế và bấm Enter để tự động lấy thông tin khách hàng';
+        }
+    }
+
+    function updateDiaChiRequired() {
+        const loaiKh = loaiKhSelect.value;
+        if (loaiKh === '2') {
+            diaChiRequired.style.display = 'inline';
+            diaChiInput.setAttribute('required', 'required');
+            diaChiHint.textContent = '⚠️ Bắt buộc khi chọn loại khách hàng 2 - Doanh nghiệp';
+        } else {
+            diaChiRequired.style.display = 'none';
+            diaChiInput.removeAttribute('required');
+            diaChiHint.textContent = 'Địa chỉ không bắt buộc với loại khách hàng 1 hoặc 3.';
+        }
+    }
+
+    // Gọi khi trang load lần đầu
+    updateMaSoThueRequired();
+    updateDiaChiRequired();
+
+    // Cập nhật khi thay đổi loại khách hàng / vai trò
+    loaiKhSelect.addEventListener('change', updateMaSoThueRequired);
+    loaiKhSelect.addEventListener('change', updateDiaChiRequired);
+    if (khCheckbox) khCheckbox.addEventListener('change', updateMaSoThueRequired);
+    if (nccCheckbox) nccCheckbox.addEventListener('change', updateMaSoThueRequired);
+
+    // Handle Enter key trên mã số thuế
+    maSoThueInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            performLookup();
+        }
+    });
+
+    document.getElementById('btn_lookup_mst').addEventListener('click', function() {
+        performLookup();
+    });
+
+    function performLookup() {
+        const maSoThue = maSoThueInput.value.trim();
+        
+        if (!maSoThue) {
+            lookupStatus.style.display = 'block';
+            lookupStatus.innerHTML = '<span class="text-warning">⚠️ Vui lòng nhập mã số thuế</span>';
+            setTimeout(() => {
+                lookupStatus.style.display = 'none';
+            }, 3000);
+            return;
+        }
+
+        // Hiện spinner
+        lookupSpinner.style.display = 'inline';
+        lookupStatus.style.display = 'none';
+
+        // Gọi API
+        fetch(`{% url 'kh_lookup_masothue' %}?ma_so_thue=${encodeURIComponent(maSoThue)}`)
+            .then(response => {
+                if (response.status === 404) {
+                    throw new Error('Không tìm thấy khách hàng');
+                }
+                if (!response.ok) {
+                    throw new Error('Lỗi API');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Auto-populate form
+                document.querySelector('input[name="ten_kh"]').value = data.ten_kh || document.querySelector('input[name="ten_kh"]').value;
+                document.querySelector('input[name="so_dien_thoai"]').value = data.so_dien_thoai || document.querySelector('input[name="so_dien_thoai"]').value;
+                document.querySelector('input[name="dia_chi"]').value = data.dia_chi || document.querySelector('input[name="dia_chi"]').value;
+                document.querySelector('input[name="email"]').value = data.email || document.querySelector('input[name="email"]').value;
+                document.querySelector('select[name="loai_kh"]').value = data.loai_kh || document.querySelector('select[name="loai_kh"]').value;
+                document.querySelector('input[name="han_muc_cong_no"]').value = data.han_muc_cong_no;
+                document.querySelector('input[name="so_ngay_no_max"]').value = data.so_ngay_no_max;
+                document.querySelector('input[name="chiet_khau_mac_dinh"]').value = data.chiet_khau_mac_dinh;
+                document.querySelector('textarea[name="ghi_chu"]').value = data.ghi_chu || '';
+                if (data.nhom_kh_id) {
+                    document.querySelector('select[name="nhom_kh"]').value = data.nhom_kh_id;
+                }
+
+                // Hiện thông báo thành công
+                lookupStatus.style.display = 'block';
+                lookupStatus.innerHTML = `<span class="text-success">✓ Đã tải thông tin: ${data.ten_kh}</span>`;
+                setTimeout(() => {
+                    lookupStatus.style.display = 'none';
+                }, 3000);
+            })
+            .catch(error => {
+                // Hiện lỗi
+                lookupStatus.style.display = 'block';
+                lookupStatus.innerHTML = `<span class="text-danger">✗ ${error.message} - Vui lòng nhập thông tin thủ công</span>`;
+                setTimeout(() => {
+                    lookupStatus.style.display = 'none';
+                }, 5000);
+            })
+            .finally(() => {
+                lookupSpinner.style.display = 'none';
+            });
+    }
+});
+</script>
+
+<style>
+    #lookup_spinner {
+        color: var(--accent-color, #2563eb);
+    }
+    
+    #lookup_status {
+        padding: 4px 8px;
+        border-radius: 3px;
+        background: rgba(0, 0, 0, 0.05);
+        animation: slideDown 0.3s ease-out;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-5px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
 {% endblock %}

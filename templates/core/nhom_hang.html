@@ -1,55 +1,124 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="card" style="margin-bottom:16px;">
-    <div class="card-header">
-        <div class="card-title">Thêm nhóm hàng</div>
-    </div>
-    <div class="card-body">
-        <form method="post" class="form-row">
-            {% csrf_token %}
-            <div class="col">
-                <label>Mã nhóm</label>
-                <input type="text" name="ma_nhom" class="form-control" required>
-            </div>
-            <div class="col">
-                <label>Tên nhóm</label>
-                <input type="text" name="ten_nhom" class="form-control" required>
-            </div>
-            <div class="col" style="display:flex;align-items:end;">
-                <button type="submit" class="btn btn-primary">Thêm</button>
-            </div>
-        </form>
-    </div>
-</div>
-
 <div class="card">
     <div class="card-header">
         <div class="card-title">Danh sách nhóm hàng</div>
     </div>
-    <div class="table-responsive">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Mã nhóm</th>
-                    <th>Tên nhóm</th>
-                    <th>Mô tả</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in items %}
-                <tr>
-                    <td>{{ item.ma_nhom }}</td>
-                    <td>{{ item.ten_nhom }}</td>
-                    <td>{{ item.mo_ta }}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="3" class="text-center text-muted">Chưa có nhóm hàng.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+
+    <div class="px-3 pt-3">
+        <div class="erp-toolbar" role="toolbar" aria-label="Thanh thao tác nhóm hàng">
+            <button type="button" class="erp-toolbar-btn" id="btnNhomAdd" title="Thêm mới" aria-label="Thêm mới"><i class="fas fa-plus"></i></button>
+            <button type="button" class="erp-toolbar-btn disabled" title="Sửa" aria-label="Sửa"><i class="fas fa-pen-to-square"></i></button>
+            <button type="button" class="erp-toolbar-btn disabled" title="Xóa" aria-label="Xóa"><i class="fas fa-trash"></i></button>
+            <span class="erp-toolbar-sep"></span>
+            <button type="button" class="erp-toolbar-btn" id="btnNhomSearch" title="Tìm" aria-label="Tìm"><i class="fas fa-magnifying-glass"></i></button>
+            <button type="button" class="erp-toolbar-btn" onclick="window.location.reload()" title="Làm mới" aria-label="Làm mới"><i class="fas fa-rotate-right"></i></button>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th style="width:42px;">Chọn</th>
+                        <th>Mã nhóm</th>
+                        <th>Tên nhóm</th>
+                        <th>Mô tả</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td class="text-center"><input type="checkbox" name="selected_nhom" class="erp-row-select" value="{{ item.pk }}"></td>
+                        <td>{{ item.ma_nhom }}</td>
+                        <td>{{ item.ten_nhom }}</td>
+                        <td>{{ item.mo_ta|default:'-' }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">Chưa có nhóm hàng.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj and page_obj.paginator.num_pages > 1 %}
+        <div class="pagination-bar">
+            <div class="text-muted">Trang {{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</div>
+            <div class="pagination-actions">
+                {% if page_obj.has_previous %}
+                <a class="btn btn-sm btn-light" href="?page=1">Đầu</a>
+                <a class="btn btn-sm btn-light" href="?page={{ page_obj.previous_page_number }}">Trước</a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                <a class="btn btn-sm btn-light" href="?page={{ page_obj.next_page_number }}">Sau</a>
+                <a class="btn btn-sm btn-light" href="?page={{ page_obj.paginator.num_pages }}">Cuối</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
+
+<div class="modal fade" id="modalNhomAdd" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Thêm nhóm hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" class="modal-body">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Mã nhóm <span class="text-danger">*</span></label>
+                    <input type="text" name="ma_nhom" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tên nhóm <span class="text-danger">*</span></label>
+                    <input type="text" name="ten_nhom" class="form-control" required>
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Thêm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalNhomSearch" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tìm kiếm nhóm hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="get" class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Từ khóa</label>
+                    <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Mã nhóm hoặc tên nhóm...">
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{% url 'nhom_hang_list' %}" class="btn btn-light border">Bỏ lọc</a>
+                    <button type="submit" class="btn btn-primary">Nhận</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('btnNhomAdd').addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('modalNhomAdd'));
+        modal.show();
+    });
+
+    document.getElementById('btnNhomSearch').addEventListener('click', function() {
+        const modal = new bootstrap.Modal(document.getElementById('modalNhomSearch'));
+        modal.show();
+    });
+</script>
 {% endblock %}

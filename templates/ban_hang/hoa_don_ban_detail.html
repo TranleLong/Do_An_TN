@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-file-invoice-dollar text-primary"></i> Chi tiết hóa đơn: {{ hoa_don.so_hoa_don }}</div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'hoa_don_ban_in' hoa_don.pk %}" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="fas fa-print"></i> In</a>
+            <a href="{% url 'hoa_don_ban_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <div class="row g-3 mb-3">
+            <div class="col-md-4"><strong>Số hóa đơn:</strong> {{ hoa_don.so_hoa_don }}</div>
+            <div class="col-md-4"><strong>Ngày lập:</strong> {{ hoa_don.ngay_lap|date:"d/m/Y" }}</div>
+            <div class="col-md-4"><strong>Ngày hạch toán:</strong> {{ hoa_don.ngay_hach_toan|date:"d/m/Y" }}</div>
+            <div class="col-md-4"><strong>Mã giao dịch:</strong> {{ hoa_don.get_ma_giao_dich_display }}</div>
+            <div class="col-md-4"><strong>Mã khách:</strong> {{ hoa_don.khach_hang.ma_kh }}</div>
+            <div class="col-md-4"><strong>Tên khách:</strong> {{ hoa_don.ten_kh }}</div>
+            <div class="col-md-4"><strong>Điện thoại:</strong> {{ hoa_don.so_dien_thoai|default:'-' }}</div>
+            <div class="col-md-4"><strong>MST:</strong> {{ hoa_don.mst|default:'-' }}</div>
+            <div class="col-md-4"><strong>TK nợ:</strong> {{ hoa_don.tk_no }}</div>
+            <div class="col-md-12"><strong>Diễn giải:</strong> {{ hoa_don.dien_giai|default:'-' }}</div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>STT</th>
+                        <th>Mã hàng</th>
+                        <th>Tên mặt hàng</th>
+                        <th>Kho</th>
+                        <th class="text-end">Số lượng</th>
+                        <th class="text-end">Giá bán</th>
+                        <th class="text-end">CK %</th>
+                        <th class="text-end">Thuế %</th>
+                        <th class="text-end">Tiền hàng</th>
+                        <th class="text-end">Tiền thuế</th>
+                        <th class="text-end">Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ct in chi_tiet %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ ct.hang_hoa.ma_hang }}</td>
+                        <td>{{ ct.hang_hoa.ten_hang }}</td>
+                        <td>{{ ct.kho.ma_kho }}</td>
+                        <td class="text-end">{{ ct.so_luong }}</td>
+                        <td class="text-end">{{ ct.gia_ban|intcomma }}</td>
+                        <td class="text-end">{{ ct.ty_le_chiet_khau }}</td>
+                        <td class="text-end">{{ ct.thue_suat }}</td>
+                        <td class="text-end">{{ ct.tien_hang|intcomma }}</td>
+                        <td class="text-end">{{ ct.tien_thue|intcomma }}</td>
+                        <td class="text-end fw-semibold">{{ ct.thanh_tien|intcomma }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="11" class="text-center text-muted">Không có dữ liệu chi tiết.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-end mt-3">
+            <div style="width: 380px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
+                <div class="d-flex justify-content-between mb-2"><span>Tổng số lượng:</span><strong>{{ hoa_don.tong_so_luong }}</strong></div>
+                <div class="d-flex justify-content-between mb-2"><span>Tổng chiết khấu:</span><strong>{{ hoa_don.tong_chiet_khau|intcomma }}</strong></div>
+                <div class="d-flex justify-content-between mb-2"><span>Tiền hàng:</span><strong>{{ hoa_don.tien_hang|intcomma }}</strong></div>
+                <div class="d-flex justify-content-between mb-2"><span>Tổng tiền thuế:</span><strong>{{ hoa_don.tong_tien_thue|intcomma }}</strong></div>
+                <div class="d-flex justify-content-between fs-5"><strong>Tổng cộng:</strong><strong>{{ hoa_don.tong_cong|intcomma }}</strong></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

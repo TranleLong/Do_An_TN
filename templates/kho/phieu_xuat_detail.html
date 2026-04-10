@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fas fa-file-export text-info"></i> Chi tiết Phiếu Xuất Kho: {{ phieu.so_phieu }}
+            {% if phieu.trang_thai == '1' %}
+            <span class="badge badge-warning ml-2">1 - Lập phiếu</span>
+            {% elif phieu.trang_thai == '2' %}
+            <span class="badge badge-success ml-2">2 - Sổ kho</span>
+            {% else %}
+            <span class="badge badge-info ml-2">3 - Sổ cái</span>
+            {% endif %}
+        </div>
+        <div>
+            <a href="{% url 'phieu_xuat_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <div class="row" style="display: flex; gap: 30px; margin-bottom: 2rem;">
+            <div style="flex: 1;">
+                <h6 class="text-muted text-uppercase mb-3" style="font-size: 0.75rem; font-weight: 600;">Thông tin xuất kho</h6>
+                <table class="table" style="background: transparent;">
+                    <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Ngày chứng từ:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.ngay_chung_tu|date:"d/m/Y" }}</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Loại xuất:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.get_loai_xuat_display }}</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Kho xuất:</th><td style="border:none; padding: 0.5rem 0; color: var(--info); font-weight: bold;">{{ phieu.kho.ten_kho }}</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Ghi chú:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.ghi_chu|default:"-" }}</td></tr>
+                </table>
+            </div>
+
+            <div style="flex: 1;">
+                <h6 class="text-muted text-uppercase mb-3" style="font-size: 0.75rem; font-weight: 600;">Thông tin chứng từ</h6>
+                <table class="table" style="background: transparent;">
+                    <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Người tạo:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.nguoi_tao.username|default:"-" }}</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Ngày tạo:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.ngay_tao|date:"d/m/Y H:i" }}</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Tổng giá vốn:</th><td style="border:none; padding: 0.5rem 0; color: var(--warning); font-weight: bold; font-size: 1.1em;">{{ phieu.tong_gia_von|floatformat:0|intcomma }} đ</td></tr>
+                </table>
+            </div>
+        </div>
+
+        {% if phieu.trang_thai == '1' %}
+        <div class="alert alert-warning">
+            <i class="fas fa-info-circle"></i> Phiếu xuất đang ở bước nháp. Tồn kho chưa bị trừ.
+        </div>
+        {% endif %}
+
+        <div class="table-responsive mt-3">
+            <table class="table">
+                <thead>
+                    <tr style="background: rgba(0,0,0,0.04);">
+                        <th>STT</th>
+                        <th>Mã hàng</th>
+                        <th>Tên hàng</th>
+                        <th class="text-right">Số lượng</th>
+                        <th class="text-center">TK Nợ</th>
+                        <th class="text-center">TK Có</th>
+                        <th class="text-right">Giá vốn</th>
+                        <th class="text-right">Tổng giá vốn</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ct in chi_tiet %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td><strong>{{ ct.hang_hoa.ma_hang }}</strong></td>
+                        <td>{{ ct.hang_hoa.ten_hang }}</td>
+                        <td class="text-right fw-semibold">{{ ct.so_luong }}</td>
+                        <td class="text-center">{{ ct.tk_no|default:'-' }}</td>
+                        <td class="text-center">{{ ct.tk_co|default:'-' }}</td>
+                        <td class="text-right">{{ ct.gia_von|floatformat:0|intcomma }} đ</td>
+                        <td class="text-right fw-bold text-warning">{{ ct.tong_gia_von|floatformat:0|intcomma }} đ</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="8" class="text-center text-muted">Không có chi tiết mặt hàng.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

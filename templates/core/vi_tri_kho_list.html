@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="card" style="margin-bottom:16px;">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-map-marker-alt text-info"></i> Danh mục vị trí kho</div>
+        <div style="display:flex; gap:8px;">
+            <a href="{% url 'so_do_kho' %}" class="btn btn-sm btn-info">
+                <i class="fas fa-map-marked-alt"></i> Xem sơ đồ kho
+            </a>
+            {% if kho_id %}
+            <a href="{% url 'so_do_kho' %}?kho_id={{ kho_id }}" class="btn btn-sm btn-light">
+                <i class="fas fa-filter"></i> Sơ đồ theo kho đang lọc
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <form method="get" class="form-row align-items-center">
+            <div class="col col-5">
+                <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Tìm mã vị trí, mô tả, mã kho...">
+            </div>
+            <div class="col col-3">
+                <select name="kho_id" class="form-control">
+                    <option value="">-- Tất cả kho --</option>
+                    {% for kho in kho_list %}
+                    <option value="{{ kho.pk }}" {% if kho_id == kho.pk|stringformat:'s' %}selected{% endif %}>{{ kho.ma_kho }} - {{ kho.ten_kho }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col col-2">
+                <button type="submit" class="btn btn-secondary"><i class="fas fa-search"></i> Lọc</button>
+                <a href="{% url 'vi_tri_kho_list' %}" class="btn btn-sm btn-light">Xóa lọc</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Kho</th>
+                        <th>Mã vị trí</th>
+                        <th>Bên</th>
+                        <th>Dãy</th>
+                        <th>Kệ</th>
+                        <th>Tầng</th>
+                        <th>Mô tả</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in items_display %}
+                    <tr>
+                        <td>{{ row.obj.kho.ma_kho }} - {{ row.obj.kho.ten_kho }}</td>
+                        <td><strong>{{ row.obj.ma_vi_tri }}</strong></td>
+                        <td>{{ row.side }}</td>
+                        <td>{{ row.day|default:'-' }}</td>
+                        <td>{{ row.ke|default:'-' }}</td>
+                        <td>{{ row.tang|default:'-' }}</td>
+                        <td>{{ row.obj.mo_ta|default:'-' }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">Chưa có dữ liệu vị trí kho.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if page_obj and page_obj.paginator.num_pages > 1 %}
+        <div class="pagination-bar">
+            <div class="text-muted">Trang {{ page_obj.number }}/{{ page_obj.paginator.num_pages }}</div>
+            <div class="pagination-actions">
+                {% if page_obj.has_previous %}
+                <a class="btn btn-sm btn-light" href="?q={{ q }}&kho_id={{ kho_id }}&page=1">Đầu</a>
+                <a class="btn btn-sm btn-light" href="?q={{ q }}&kho_id={{ kho_id }}&page={{ page_obj.previous_page_number }}">Trước</a>
+                {% endif %}
+                {% if page_obj.has_next %}
+                <a class="btn btn-sm btn-light" href="?q={{ q }}&kho_id={{ kho_id }}&page={{ page_obj.next_page_number }}">Sau</a>
+                <a class="btn btn-sm btn-light" href="?q={{ q }}&kho_id={{ kho_id }}&page={{ page_obj.paginator.num_pages }}">Cuối</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
