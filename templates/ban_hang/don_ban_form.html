@@ -447,12 +447,15 @@
 
     function capNhatGiaBan($row) {
         const hangId = $row.find('.hang-select').val();
+        const soLuong = parseFloat($row.find('.so-luong').val()) || 1;
         if (!hangId) {
             $row.find('.don-gia').val('0');
+            $row.find('.chiet-khau').val('0');
             return;
         }
-        $.get('{% url "gia_ban_hang_hoa_api" %}', { hang_id: hangId }, function(resp) {
+        $.get('{% url "gia_ban_hang_hoa_api" %}', { hang_id: hangId, so_luong: soLuong }, function(resp) {
             $row.find('.don-gia').val(resp.gia_ban_chuan || 0);
+            $row.find('.chiet-khau').val(resp.chiet_khau_phan_tram || 0);
             tinhTongRow($row);
             tinhTongDon();
         });
@@ -473,6 +476,11 @@
         capNhatGiaBan($row);
         tinhTongRow($row);
         tinhTongDon();
+    });
+
+    $(document).on('input', '.so-luong', function() {
+        const $row = $(this).closest('tr');
+        capNhatGiaBan($row);
     });
 
     $(document).on('input', '.calc-input, #ckDonHang', function() {
