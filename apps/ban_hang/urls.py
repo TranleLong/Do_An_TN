@@ -5,6 +5,9 @@ from . import views
 urlpatterns = [
     path('', views.don_ban_list, name='don_ban_list'),
     path('them/', views.don_ban_them, name='don_ban_them'),
+    path('export-data/', views.don_ban_export_data, name='don_ban_export_data'),
+    path('export-template/', views.don_ban_export_template, name='don_ban_export_template'),
+    path('import-excel/', views.don_ban_import_excel, name='don_ban_import_excel'),
     path('api/khach-hang/', views.khach_hang_lookup, name='khach_hang_lookup'),
     path('api/khach-hang-lookup/', views.khach_hang_api_lookup, name='khach_hang_api_lookup'),
     path('api/don-ban-lookup/', views.don_ban_api_lookup, name='don_ban_api_lookup'),
