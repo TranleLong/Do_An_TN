@@ -98,8 +98,9 @@
                 <input type="date" name="ngay_lap" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
             </div>
             <div class="col-md-3">
-                <label class="form-label">Ngày hạch toán <span class="text-danger">*</span></label>
-                <input type="date" name="ngay_hach_toan" class="form-control" value="{{ hoa_don.ngay_hach_toan|default:today|date:'Y-m-d' }}" required>
+                <label class="form-label">Ngày chứng từ (lên sổ cái) <span class="text-danger">*</span></label>
+                <input type="date" name="ngay_chung_tu" class="form-control" value="{{ hoa_don.ngay_hach_toan|default:today|date:'Y-m-d' }}" required>
+                <small class="text-muted">Ngày này dùng để ghi nhận Sổ cái kế toán.</small>
             </div>
 
             <div class="col-md-4">
