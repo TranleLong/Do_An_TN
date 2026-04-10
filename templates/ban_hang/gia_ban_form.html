@@ -90,7 +90,10 @@
             </div>
             <div class="col-md-3 mb-3">
                 <label class="form-label">Trạng thái</label>
-                <input type="text" class="form-control" value="{% if editing %}{{ phieu.get_trang_thai_duyet_display }}{% else %}Chờ duyệt{% endif %}" readonly>
+                <select name="trang_thai_duyet" class="form-control" required>
+                    <option value="1" {% if not editing or phieu.trang_thai_duyet == '1' %}selected{% endif %}>1 - Sử dụng</option>
+                    <option value="0" {% if editing and phieu.trang_thai_duyet == '0' %}selected{% endif %}>0 - Không sử dụng</option>
+                </select>
             </div>
         </div>
 

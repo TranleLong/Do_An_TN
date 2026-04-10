@@ -1162,9 +1162,6 @@ def _gia_ban_validate_and_save(request, phieu=None):
     if phieu is None and PhieuGiaBan.objects.filter(ma_phieu=ma_phieu).exists():
         raise ValueError('Mã phiếu giá bán đã tồn tại')
 
-    if phieu and phieu.trang_thai_duyet != 'cho_duyet':
-        raise ValueError('Chỉ được sửa phiếu giá bán ở trạng thái chờ duyệt')
-
     hang_ids = data.getlist('hang_id[]')
     gia_vons = data.getlist('gia_von[]')
     gia_ban_chuans = data.getlist('gia_ban_chuan[]')
@@ -1237,7 +1234,9 @@ def _gia_ban_validate_and_save(request, phieu=None):
         phieu.nhom_hang = nhom_hang
         phieu.bien_do_loi_nhuan = bien_do_loi_nhuan
         phieu.loai_tien_te = loai_tien_te
-        phieu.trang_thai_duyet = 'cho_duyet'
+        phieu.trang_thai_duyet = data.get('trang_thai_duyet', phieu.trang_thai_duyet or '1')
+        if phieu.trang_thai_duyet not in ('0', '1'):
+            phieu.trang_thai_duyet = '1'
         phieu.ghi_chu = ghi_chu
         phieu.save()
 
@@ -1306,7 +1305,7 @@ def gia_ban_copy(request, pk):
         nhom_hang=source.nhom_hang,
         bien_do_loi_nhuan=source.bien_do_loi_nhuan,
         loai_tien_te=source.loai_tien_te,
-        trang_thai_duyet='cho_duyet',
+        trang_thai_duyet=source.trang_thai_duyet if source.trang_thai_duyet in ('0', '1') else '1',
         ghi_chu=source.ghi_chu,
     )
     for ct in source.chi_tiet.all():
@@ -1334,9 +1333,6 @@ def gia_ban_sua(request, pk):
 
 def gia_ban_xoa(request, pk):
     phieu = get_object_or_404(PhieuGiaBan, pk=pk)
-    if phieu.trang_thai_duyet != 'cho_duyet':
-        messages.error(request, 'Phiếu giá bán đã được duyệt, không được phép xóa')
-        return redirect('gia_ban_list')
     if request.method == 'POST':
         phieu.delete()
         messages.success(request, 'Đã xóa phiếu giá bán')
@@ -1355,7 +1351,7 @@ def gia_ban_hang_hoa_api(request):
 
     phieu_gia = (
         PhieuGiaBan.objects
-        .filter(trang_thai_duyet='da_duyet', ngay_hieu_luc__lte=date.today(), chi_tiet__hang_hoa=hang)
+        .filter(trang_thai_duyet='1', ngay_hieu_luc__lte=date.today(), chi_tiet__hang_hoa=hang)
         .select_related('nhom_hang')
         .prefetch_related('chi_tiet')
         .order_by('-ngay_hieu_luc', '-ngay_cap_nhat', '-id')

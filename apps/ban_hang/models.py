@@ -197,9 +197,8 @@ class PhieuTraHang_CT(models.Model):
 class PhieuGiaBan(models.Model):
     """Phiếu giá bán - định mức giá theo nhóm hàng"""
     TRANG_THAI_DUYET = [
-        ('cho_duyet', 'Chờ duyệt'),
-        ('da_duyet', 'Đã duyệt'),
-        ('tu_choi', 'Từ chối'),
+        ('0', 'Không sử dụng'),
+        ('1', 'Sử dụng'),
     ]
     LOAI_TIEN_TE = [
         ('VND', 'VND'),
@@ -213,7 +212,7 @@ class PhieuGiaBan(models.Model):
     nhom_hang = models.ForeignKey(NhomHang, on_delete=models.PROTECT, verbose_name='Nhóm hàng')
     bien_do_loi_nhuan = models.DecimalField(max_digits=5, decimal_places=2, default=10, verbose_name='Biên độ lợi nhuận (%)')
     loai_tien_te = models.CharField(max_length=10, choices=LOAI_TIEN_TE, default='VND', verbose_name='Loại tiền tệ')
-    trang_thai_duyet = models.CharField(max_length=20, choices=TRANG_THAI_DUYET, default='cho_duyet', verbose_name='Trạng thái duyệt')
+    trang_thai_duyet = models.CharField(max_length=20, choices=TRANG_THAI_DUYET, default='1', verbose_name='Trạng thái')
     ghi_chu = models.TextField(blank=True, verbose_name='Ghi chú')
     ngay_tao = models.DateTimeField(auto_now_add=True, verbose_name='Ngày tạo')
     ngay_cap_nhat = models.DateTimeField(auto_now=True, verbose_name='Ngày cập nhật')

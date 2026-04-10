@@ -54,12 +54,10 @@
                                 >
                             </td>
                             <td>
-                                {% if ct.phieu__trang_thai_duyet == 'cho_duyet' %}
-                                    <span class="badge badge-warning">Chờ duyệt</span>
-                                {% elif ct.phieu__trang_thai_duyet == 'da_duyet' %}
-                                    <span class="badge badge-success">Đã duyệt</span>
-                                {% elif ct.phieu__trang_thai_duyet == 'tu_choi' %}
-                                    <span class="badge badge-danger">Từ chối</span>
+                                {% if ct.phieu__trang_thai_duyet == '1' %}
+                                    <span class="badge badge-success">1 - Sử dụng</span>
+                                {% elif ct.phieu__trang_thai_duyet == '0' %}
+                                    <span class="badge badge-secondary">0 - Không sử dụng</span>
                                 {% endif %}
                             </td>
                             <td><strong>{{ ct.hang_hoa__ma_hang }}</strong></td>
@@ -124,9 +122,8 @@
                     <label class="form-label">Trạng thái</label>
                     <select name="trang_thai" class="form-control">
                         <option value="">-- Tất cả --</option>
-                        <option value="cho_duyet" {% if trang_thai == 'cho_duyet' %}selected{% endif %}>Chờ duyệt</option>
-                        <option value="da_duyet" {% if trang_thai == 'da_duyet' %}selected{% endif %}>Đã duyệt</option>
-                        <option value="tu_choi" {% if trang_thai == 'tu_choi' %}selected{% endif %}>Từ chối</option>
+                        <option value="1" {% if trang_thai == '1' %}selected{% endif %}>1 - Sử dụng</option>
+                        <option value="0" {% if trang_thai == '0' %}selected{% endif %}>0 - Không sử dụng</option>
                     </select>
                 </div>
                 <div class="d-flex justify-content-end gap-2">
@@ -149,13 +146,7 @@
             alert('Vui lòng chọn đúng 1 dòng giá bán để sửa.');
             return;
         }
-        const input = selected[0];
-        const state = input.dataset.state;
-        if (state !== 'cho_duyet') {
-            alert('Chỉ được sửa phiếu ở trạng thái "Chờ duyệt".');
-            return;
-        }
-        window.location.href = input.dataset.editUrl;
+        window.location.href = selected[0].dataset.editUrl;
     });
 
     document.getElementById('btnGiaDelete').addEventListener('click', function() {
@@ -165,11 +156,6 @@
             return;
         }
         const input = selected[0];
-        const state = input.dataset.state;
-        if (state === 'da_duyet') {
-            alert('Không được xóa phiếu đã duyệt.');
-            return;
-        }
         if (!confirm('Xác nhận xóa giá bán đã chọn?')) return;
         const form = document.getElementById('formGiaDelete');
         form.action = input.dataset.deleteUrl;
