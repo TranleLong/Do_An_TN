@@ -221,8 +221,14 @@ def _save_hoa_don_from_request(request, hoa_don=None):
         kho_id = kho_ids[index] if index < len(kho_ids) else ''
         if not hang_id or not kho_id:
             continue
+        hang = HangHoa.objects.select_related('nhom_hang', 'don_vi_tinh').filter(pk=hang_id).first()
+        if not hang:
+            continue
         so_luong = _parse_decimal(so_luongs[index] if index < len(so_luongs) else 0)
         gia_ban = _parse_decimal(gia_bans[index] if index < len(gia_bans) else 0)
+        # 2 cách lấy giá: nhập tay hoặc để trống/0 để tự lấy từ phiếu giá bán.
+        if gia_ban <= 0:
+            gia_ban = _resolve_gia_ban_hang_hoa(hang)
         if so_luong <= 0:
             continue
 
@@ -322,15 +328,21 @@ def don_ban_them(request):
 
         so_dong_hop_le = 0
         for i in range(len(hang_ids)):
-            if hang_ids[i] and so_luongs[i] and don_gias[i]:
+            if hang_ids[i] and so_luongs[i]:
+                hang = HangHoa.objects.select_related('nhom_hang', 'don_vi_tinh').filter(pk=hang_ids[i]).first()
+                if not hang:
+                    continue
                 so_luong = int(so_luongs[i])
-                don_gia = Decimal(don_gias[i])
+                don_gia = _parse_decimal(don_gias[i] if i < len(don_gias) else 0, Decimal('0'))
+                # 2 cách lấy giá: nhập tay hoặc để trống/0 để tự lấy từ phiếu giá bán.
+                if don_gia <= 0:
+                    don_gia = _resolve_gia_ban_hang_hoa(hang)
                 if so_luong <= 0 or don_gia < 0:
                     continue
 
                 DonBan_CT.objects.create(
                     don_ban=don,
-                    hang_hoa_id=hang_ids[i],
+                    hang_hoa=hang,
                     so_luong=so_luong,
                     don_gia=don_gia,
                     chiet_khau=Decimal(cks[i]) if cks[i] else Decimal('0'),
@@ -1339,15 +1351,9 @@ def gia_ban_xoa(request, pk):
     return redirect('gia_ban_list')
 
 
-def gia_ban_hang_hoa_api(request):
-    hang_id = request.GET.get('hang_id')
-    hang = HangHoa.objects.select_related('don_vi_tinh', 'nhom_hang').filter(pk=hang_id).first()
-    if not hang:
-        return JsonResponse({'error': 'Không tìm thấy'}, status=404)
-
+def _resolve_gia_ban_hang_hoa(hang):
     gia_von = hang.get_gia_von() if hasattr(hang, 'get_gia_von') else 0
     bien_do = hang.nhom_hang.bien_do_loi_nhuan if hang.nhom_hang and hasattr(hang.nhom_hang, 'bien_do_loi_nhuan') else 0
-    gia_ban_chuan = None
 
     phieu_gia = (
         PhieuGiaBan.objects
@@ -1359,11 +1365,28 @@ def gia_ban_hang_hoa_api(request):
     )
     if phieu_gia:
         ct_gia = phieu_gia.chi_tiet.filter(hang_hoa=hang).first()
-        if ct_gia:
-            gia_ban_chuan = ct_gia.gia_ban_chuan
+        if ct_gia and ct_gia.gia_ban_chuan is not None:
+            return Decimal(ct_gia.gia_ban_chuan or 0)
 
-    if gia_ban_chuan is None:
-        gia_ban_chuan = round(Decimal(gia_von or 0) * (Decimal('1') + Decimal(bien_do or 0) / Decimal('100')), 0)
+    return round(Decimal(gia_von or 0) * (Decimal('1') + Decimal(bien_do or 0) / Decimal('100')), 0)
+
+
+def gia_ban_hang_hoa_api(request):
+    hang_id = request.GET.get('hang_id')
+    hang = HangHoa.objects.select_related('don_vi_tinh', 'nhom_hang').filter(pk=hang_id).first()
+    if not hang:
+        return JsonResponse({'error': 'Không tìm thấy'}, status=404)
+
+    gia_von = hang.get_gia_von() if hasattr(hang, 'get_gia_von') else 0
+    bien_do = hang.nhom_hang.bien_do_loi_nhuan if hang.nhom_hang and hasattr(hang.nhom_hang, 'bien_do_loi_nhuan') else 0
+    gia_ban_chuan = _resolve_gia_ban_hang_hoa(hang)
+
+    phieu_gia = (
+        PhieuGiaBan.objects
+        .filter(trang_thai_duyet='1', ngay_hieu_luc__lte=date.today(), chi_tiet__hang_hoa=hang)
+        .order_by('-ngay_hieu_luc', '-ngay_cap_nhat', '-id')
+        .first()
+    )
 
     return JsonResponse({
         'id': hang.pk,
