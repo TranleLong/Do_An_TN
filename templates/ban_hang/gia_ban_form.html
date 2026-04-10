@@ -97,12 +97,12 @@
         <h5 class="mt-4 mb-3 text-info">Thông tin áp dụng</h5>
         <div class="row">
             <div class="col-md-4 mb-3">
-                <label class="form-label">Nhóm hàng <span class="text-danger">*</span></label>
+                <label class="form-label">Nhóm hàng</label>
                 <div class="lookup-box">
                     <input type="text" id="nhomDisplay" class="form-control lookup-input lookup-display" value="{% if editing and phieu.nhom_hang %}{{ phieu.nhom_hang.ma_nhom }} - {{ phieu.nhom_hang.ten_nhom }}{% endif %}" readonly placeholder="Chọn nhóm hàng bằng kính lúp">
                     <button type="button" class="lookup-icon-btn" id="btnSearchNhom" title="Tra cứu nhóm hàng"><i class="fas fa-search"></i></button>
                 </div>
-                <select name="nhom_hang" id="nhomHang" style="display:none;" required>
+                <select name="nhom_hang" id="nhomHang" style="display:none;">
                     <option value="">-- Chọn nhóm hàng --</option>
                     {% for nhom in nhom_list %}
                     <option value="{{ nhom.pk }}" data-bien-do="{{ nhom.bien_do_loi_nhuan|default:10 }}" {% if editing and phieu.nhom_hang_id == nhom.pk %}selected{% endif %}>{{ nhom.ma_nhom }} - {{ nhom.ten_nhom }}</option>
@@ -140,7 +140,11 @@
                         {% for ct in chi_tiet %}
                         <tr class="item-row">
                             <td>
-                                <select name="hang_id[]" class="form-control hang-select" required>
+                                <div class="lookup-box">
+                                    <input type="text" class="form-control lookup-input lookup-display hang-display" value="{% if ct.hang_hoa %}{{ ct.hang_hoa.ma_hang }} - {{ ct.hang_hoa.ten_hang }}{% endif %}" readonly placeholder="Chọn mã hàng bằng kính lúp">
+                                    <button type="button" class="lookup-icon-btn btn-search-hang" title="Tra cứu mã hàng"><i class="fas fa-search"></i></button>
+                                </div>
+                                <select name="hang_id[]" class="form-control hang-select d-none" required>
                                     <option value="">-- Chọn --</option>
                                     {% for h in hang_list %}
                                     <option value="{{ h.pk }}" data-nhom="{{ h.nhom_hang_id|default:'' }}" {% if ct.hang_hoa_id == h.pk %}selected{% endif %}>{{ h.ma_hang }} - {{ h.ten_hang }}</option>
@@ -157,7 +161,11 @@
                     {% else %}
                         <tr class="item-row">
                             <td>
-                                <select name="hang_id[]" class="form-control hang-select" required>
+                                <div class="lookup-box">
+                                    <input type="text" class="form-control lookup-input lookup-display hang-display" readonly placeholder="Chọn mã hàng bằng kính lúp">
+                                    <button type="button" class="lookup-icon-btn btn-search-hang" title="Tra cứu mã hàng"><i class="fas fa-search"></i></button>
+                                </div>
+                                <select name="hang_id[]" class="form-control hang-select d-none" required>
                                     <option value="">-- Chọn --</option>
                                     {% for h in hang_list %}
                                     <option value="{{ h.pk }}" data-nhom="{{ h.nhom_hang_id|default:'' }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
@@ -262,10 +270,46 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalHangHoa" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tra cứu hàng hóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="hangSearchInput" class="form-control mb-2" placeholder="Nhập mã hàng hoặc tên hàng..." autocomplete="off">
+                <div class="lookup-scroll" id="hangSearchResults">
+                    <div class="lookup-head"><span>Mã hàng</span><span>Tên hàng</span><span>ĐVT</span></div>
+                    {% for h in hang_list %}
+                    <button
+                        type="button"
+                        class="lookup-row btn-hang-select"
+                        data-id="{{ h.pk }}"
+                        data-display="{{ h.ma_hang }} - {{ h.ten_hang }}"
+                        data-ma="{{ h.ma_hang }}"
+                        data-ten="{{ h.ten_hang }}"
+                        data-dvt="{{ h.don_vi_tinh.ten|default:'' }}"
+                    >
+                        <span><strong>{{ h.ma_hang }}</strong></span>
+                        <span>{{ h.ten_hang }}</span>
+                        <span class="text-end">{{ h.don_vi_tinh.ten|default:'' }}</span>
+                    </button>
+                    {% empty %}
+                    <div class="p-3 text-center text-muted">Chưa có hàng hóa.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+let hangTargetRow = null;
+
 function roundVnd(v) {
     return Math.round(parseFloat(v || 0));
 }
@@ -284,23 +328,9 @@ function tinhGiaBanRow(row) {
 }
 
 function applyGroupFilter() {
-    const nhom = $('#nhomHang').val();
     $('.hang-select').each(function() {
-        const current = $(this).val();
         $(this).find('option').each(function() {
-            const dataNhom = $(this).data('nhom');
-            if (!$(this).val()) {
-                $(this).show();
-                return;
-            }
-            if (!nhom || String(dataNhom || '') === String(nhom)) {
-                $(this).show();
-            } else {
-                if ($(this).val() === current) {
-                    $(this).prop('selected', false);
-                }
-                $(this).hide();
-            }
+            $(this).show();
         });
     });
 }
@@ -349,8 +379,31 @@ function filterNhomRows() {
     });
 }
 
+function filterHangRows() {
+    const q = $('#hangSearchInput').val().trim().toLowerCase();
+    $('#hangSearchResults .btn-hang-select').each(function() {
+        const text = [
+            String($(this).data('ma') || '').toLowerCase(),
+            String($(this).data('ten') || '').toLowerCase(),
+            String($(this).data('dvt') || '').toLowerCase(),
+        ].join(' ');
+        if (!q || text.includes(q)) {
+            $(this).show();
+        } else {
+            $(this).hide();
+        }
+    });
+}
+
+function syncHangDisplayForRow(row) {
+    const selected = row.find('.hang-select option:selected');
+    const display = selected.val() ? (selected.text() || '') : '';
+    row.find('.hang-display').val(display);
+}
+
 $(document).on('change', '.hang-select', function() {
     const row = $(this).closest('tr');
+    syncHangDisplayForRow(row);
     const hangId = $(this).val();
     if (!hangId) {
         row.find('.ten-hang, .dvt, .gia-von, .gia-ban').val('');
@@ -387,10 +440,36 @@ $('#bienDo').on('input', function() {
     });
 });
 
+$(document).on('click', '.btn-search-hang', function() {
+    hangTargetRow = $(this).closest('tr');
+    const modal = new bootstrap.Modal(document.getElementById('modalHangHoa'));
+    modal.show();
+    setTimeout(function() {
+        $('#hangSearchInput').val('');
+        filterHangRows();
+        $('#hangSearchInput').trigger('focus');
+    }, 150);
+});
+
+$('#hangSearchInput').on('input', function() {
+    filterHangRows();
+});
+
+$(document).on('click', '.btn-hang-select', function() {
+    if (!hangTargetRow || !hangTargetRow.length) {
+        return;
+    }
+    const id = String($(this).data('id') || '');
+    hangTargetRow.find('.hang-select').val(id).trigger('change');
+    syncHangDisplayForRow(hangTargetRow);
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalHangHoa')).hide();
+});
+
 $('#btnAddRow').on('click', function() {
     const row = $('#chiTietBody .item-row:first').clone();
     row.find('input').val('');
     row.find('select').val('');
+    row.find('.hang-display').val('');
     $('#chiTietBody').append(row);
     applyGroupFilter();
 });
@@ -446,6 +525,10 @@ $(document).on('click', '.btn-nhom-select', function() {
     }
     $('#nhomDisplay').val(display || '');
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalNhomHang')).hide();
+});
+
+$('#chiTietBody .item-row').each(function() {
+    syncHangDisplayForRow($(this));
 });
 
 renumberDiscountRows();

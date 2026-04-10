@@ -1149,14 +1149,13 @@ def _gen_ma_phieu_gia_ban():
 def _gia_ban_validate_and_save(request, phieu=None):
     data = request.POST
     nhom_hang_id = data.get('nhom_hang')
-    nhom_hang = NhomHang.objects.filter(pk=nhom_hang_id).first()
-    if not nhom_hang:
-        raise ValueError('Vui lòng chọn nhóm hàng hợp lệ')
+    nhom_hang = NhomHang.objects.filter(pk=nhom_hang_id).first() if nhom_hang_id else None
 
     ma_phieu = data.get('ma_phieu') or _gen_ma_phieu_gia_ban()
     ngay_lap = _parse_date(data.get('ngay_lap'))
     ngay_hieu_luc = _parse_date(data.get('ngay_hieu_luc'))
-    bien_do_loi_nhuan = _parse_decimal(data.get('bien_do_loi_nhuan'), nhom_hang.bien_do_loi_nhuan)
+    default_bien_do = nhom_hang.bien_do_loi_nhuan if nhom_hang else Decimal('10')
+    bien_do_loi_nhuan = _parse_decimal(data.get('bien_do_loi_nhuan'), default_bien_do)
     loai_tien_te = data.get('loai_tien_te', 'VND')
     ghi_chu = data.get('ghi_chu', '')
 
@@ -1201,6 +1200,14 @@ def _gia_ban_validate_and_save(request, phieu=None):
 
     if not detail_rows:
         raise ValueError('Vui lòng kiểm tra lại thông tin các trường dữ liệu bắt buộc')
+
+    # Nhóm hàng không bắt buộc nhập tay: tự suy ra từ mặt hàng đầu tiên.
+    if not nhom_hang:
+        nhom_hang = detail_rows[0]['hang'].nhom_hang
+    if not nhom_hang and phieu and phieu.nhom_hang_id:
+        nhom_hang = phieu.nhom_hang
+    if not nhom_hang:
+        raise ValueError('Không xác định được nhóm hàng cho phiếu giá bán')
 
     discount_rows = []
     ranges = []
