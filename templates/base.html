@@ -55,11 +55,74 @@
             opacity: .45;
             pointer-events: none;
         }
+        .erp-toolbar.erp-toolbar-auto {
+            margin-bottom: 10px;
+        }
         .erp-row-select {
             width: 14px;
             height: 14px;
             accent-color: #2f66eb;
             cursor: pointer;
+        }
+        .global-lookup-suggest {
+            position: absolute;
+            z-index: 2300;
+            border: 1px solid #c9d7e8;
+            border-radius: 6px;
+            background: #fff;
+            box-shadow: 0 8px 24px rgba(24, 54, 86, 0.18);
+            max-height: 260px;
+            overflow-y: auto;
+            display: none;
+        }
+        .global-lookup-item {
+            padding: 8px 10px;
+            border-bottom: 1px solid #edf2f8;
+            cursor: pointer;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+        .global-lookup-item:last-child {
+            border-bottom: 0;
+        }
+        .global-lookup-item:hover,
+        .global-lookup-item.active {
+            background: #f1f7ff;
+        }
+        .global-lookup-code {
+            color: #0d4b86;
+            font-weight: 700;
+            margin-right: 8px;
+        }
+        .global-lookup-name {
+            color: #334b63;
+        }
+        .auto-pager {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 8px 0 2px;
+        }
+        .auto-pager button {
+            height: 26px;
+            min-width: 28px;
+            border: 1px solid #c7d5e6;
+            background: #fff;
+            border-radius: 4px;
+            color: #2f4f79;
+            font-size: 12px;
+            padding: 0 8px;
+        }
+        .auto-pager button:disabled {
+            opacity: .45;
+            cursor: not-allowed;
+        }
+        .auto-pager .auto-pager-info {
+            font-size: 12px;
+            color: #5f7289;
+            min-width: 95px;
+            text-align: center;
         }
     </style>
     {% block extra_css %}{% endblock %}
@@ -87,13 +150,18 @@
             </div>
             
             <nav class="sidebar-nav">
-                <div class="nav-group">
-                    <a href="{% url 'dashboard' %}" class="nav-link {% if active_menu == 'dashboard' %}active{% endif %}">
-                        <i class="fas fa-chart-pie"></i> Tổng quan
+                <div class="nav-item {% if active_menu == 'dashboard' or active_menu == 'so_cai' %}open{% endif %}">
+                    <a href="#" class="nav-link dropdown-toggle" onclick="toggleSubmenu(event, this)">
+                        <i class="fas fa-chart-pie"></i> Hệ thống
+                        <i class="fas fa-chevron-down ms-auto"></i>
                     </a>
+                    <div class="submenu">
+                        <a href="{% url 'dashboard' %}" class="submenu-link {% if active_menu == 'dashboard' %}active{% endif %}">Tổng quan</a>
+                        <a href="{% url 'so_cai' %}" class="submenu-link {% if active_menu == 'so_cai' %}active{% endif %}">Sổ cái</a>
+                    </div>
                 </div>
 
-                <div class="nav-item {% if active_menu == 'don_ban' or active_menu == 'hoa_don_ban' or active_menu == 'gia_ban' or active_menu == 'phieu_thu' or active_menu == 'cong_no_kh' or active_menu == 'bao_cao_bh' %}open{% endif %}">
+                <div class="nav-item {% if active_menu == 'don_ban' or active_menu == 'hoa_don_ban' or active_menu == 'doi_tra' or active_menu == 'gia_ban' or active_menu == 'phieu_thu' or active_menu == 'phieu_chi' or active_menu == 'cong_no_kh' or active_menu == 'bao_cao_cong_no_kh_ct' or active_menu == 'bao_cao_bh' %}open{% endif %}">
                     <a href="#" class="nav-link dropdown-toggle" onclick="toggleSubmenu(event, this)">
                         <i class="fas fa-shopping-cart"></i> Phân hệ Bán Hàng
                         <i class="fas fa-chevron-down ms-auto"></i>
@@ -102,11 +170,14 @@
                         <div class="submenu-title">Bán hàng</div>
                         <a href="{% url 'don_ban_list' %}" class="submenu-link {% if active_menu == 'don_ban' %}active{% endif %}">Đơn bán hàng</a>
                         <a href="{% url 'hoa_don_ban_list' %}" class="submenu-link {% if active_menu == 'hoa_don_ban' %}active{% endif %}">Hóa đơn bán hàng</a>
+                        <a href="{% url 'phieu_doi_tra_list' %}" class="submenu-link {% if active_menu == 'doi_tra' %}active{% endif %}">Quản lý đổi trả</a>
                         <a href="{% url 'gia_ban_list' %}" class="submenu-link {% if active_menu == 'gia_ban' %}active{% endif %}">Quản lý giá bán</a>
                         
                         <div class="submenu-title">Kế toán bán hàng</div>
                         <a href="{% url 'phieu_thu_list' %}" class="submenu-link {% if active_menu == 'phieu_thu' %}active{% endif %}">Phiếu thu tiền</a>
+                        <a href="{% url 'bh_phieu_chi_list' %}" class="submenu-link {% if active_menu == 'phieu_chi' %}active{% endif %}">Phiếu chi tiền</a>
                         <a href="{% url 'cong_no_kh' %}" class="submenu-link {% if active_menu == 'cong_no_kh' %}active{% endif %}">Công nợ khách hàng</a>
+                        <a href="{% url 'bao_cao_cong_no_kh_ct' %}" class="submenu-link {% if active_menu == 'bao_cao_cong_no_kh_ct' %}active{% endif %}">Báo cáo công nợ chi tiết</a>
                         <a href="{% url 'bao_cao_doanh_thu' %}" class="submenu-link {% if active_menu == 'bao_cao_bh' %}active{% endif %}">Báo cáo doanh thu</a>
                     </div>
                 </div>
@@ -133,7 +204,7 @@
                     </div>
                 </div>
 
-                <div class="nav-item {% if active_menu == 'hang_hoa' or active_menu == 'khach_hang' or active_menu == 'kho' or active_menu == 'vi_tri_kho' or active_menu == 'danh_muc' or active_menu == 'tai_khoan_ke_toan' %}open{% endif %}">
+                <div class="nav-item {% if active_menu == 'hang_hoa' or active_menu == 'khach_hang' or active_menu == 'kho' or active_menu == 'vi_tri_kho' or active_menu == 'nhom_hang' or active_menu == 'don_vi_tinh' or active_menu == 'tai_khoan_ke_toan' %}open{% endif %}">
                     <a href="#" class="nav-link dropdown-toggle" onclick="toggleSubmenu(event, this)">
                         <i class="fas fa-database"></i> Danh mục hệ thống
                         <i class="fas fa-chevron-down ms-auto"></i>
@@ -142,8 +213,8 @@
                         <a href="{% url 'kh_list' %}" class="submenu-link {% if active_menu == 'khach_hang' %}active{% endif %}">Khách hàng</a>
                         <a href="{% url 'hang_hoa_list' %}" class="submenu-link {% if active_menu == 'hang_hoa' %}active{% endif %}">Hàng hóa</a>
                         <a href="{% url 'kho_list' %}" class="submenu-link {% if active_menu == 'kho' %}active{% endif %}">Kho</a>
-                        <a href="{% url 'nhom_hang_list' %}" class="submenu-link {% if active_menu == 'danh_muc' %}active{% endif %}">Nhóm hàng</a>
-                        <a href="{% url 'don_vi_tinh_list' %}" class="submenu-link {% if active_menu == 'danh_muc' %}active{% endif %}">Đơn vị tính</a>
+                        <a href="{% url 'nhom_hang_list' %}" class="submenu-link {% if active_menu == 'nhom_hang' %}active{% endif %}">Nhóm hàng</a>
+                        <a href="{% url 'don_vi_tinh_list' %}" class="submenu-link {% if active_menu == 'don_vi_tinh' %}active{% endif %}">Đơn vị tính</a>
                         <a href="{% url 'tai_khoan_ke_toan_list' %}" class="submenu-link {% if active_menu == 'tai_khoan_ke_toan' %}active{% endif %}">Tài khoản kế toán</a>
                         <a href="{% url 'vi_tri_kho_list' %}" class="submenu-link {% if active_menu == 'vi_tri_kho' %}active{% endif %}">Vị trí kho</a>
                     </div>
@@ -196,6 +267,571 @@
             event.preventDefault();
             element.parentElement.classList.toggle('open');
         }
+
+        // Lookup UX shared across forms:
+        // - fields with datalist use custom blue dropdown (and native datalist is disabled)
+        // - Enter on non-datalist lookup opens the related modal and passes keyword
+        (function () {
+            const suggestBoxId = 'globalLookupSuggest';
+
+            function normalizeText(text) {
+                return String(text || '')
+                    .toLowerCase()
+                    .normalize('NFD')
+                    .replace(/[\u0300-\u036f]/g, '')
+                    .replace(/đ/g, 'd')
+                    .replace(/Đ/g, 'd')
+                    .trim();
+            }
+
+            function getListId($input) {
+                return String($input.attr('data-list-source') || $input.attr('list') || '').trim();
+            }
+
+            function ensureSuggestBox() {
+                let $box = $('#' + suggestBoxId);
+                if ($box.length) {
+                    return $box;
+                }
+                $box = $('<div id="' + suggestBoxId + '" class="global-lookup-suggest"></div>');
+                $('body').append($box);
+                return $box;
+            }
+
+            function hideSuggestBox() {
+                $('#' + suggestBoxId).hide().empty().removeData('target-input-id');
+            }
+
+            function parseOptionText(text) {
+                const raw = String(text || '').trim();
+                const idx = raw.indexOf(' - ');
+                if (idx < 0) {
+                    return { code: raw, name: '' };
+                }
+                return { code: raw.slice(0, idx), name: raw.slice(idx + 3) };
+            }
+
+            function collectDatalistOptions($input) {
+                const listId = getListId($input);
+                if (!listId) {
+                    return [];
+                }
+                const $datalist = $('#' + listId);
+                if (!$datalist.length) {
+                    return [];
+                }
+                return $datalist.find('option').map(function () {
+                    const value = String($(this).attr('value') || '').trim();
+                    const label = String($(this).attr('label') || $(this).text() || '').trim();
+                    return {
+                        value: value,
+                        label: label,
+                        search: normalizeText((value + ' ' + label).trim())
+                    };
+                }).get();
+            }
+
+            function filterOptions(options, keyword) {
+                const key = normalizeText(keyword);
+                if (!key) {
+                    return [];
+                }
+                return options.filter(function (opt) {
+                    return opt.search.indexOf(key) >= 0;
+                }).slice(0, 8);
+            }
+
+            function renderSuggestForInput($input) {
+                const keyword = String($input.val() || '').trim();
+                if (!keyword) {
+                    hideSuggestBox();
+                    return;
+                }
+
+                const options = collectDatalistOptions($input);
+                if (!options.length) {
+                    hideSuggestBox();
+                    return;
+                }
+
+                const filtered = filterOptions(options, keyword);
+                if (!filtered.length) {
+                    hideSuggestBox();
+                    return;
+                }
+
+                const inputEl = $input.get(0);
+                if (!inputEl.id) {
+                    inputEl.id = 'lookup_input_' + Math.random().toString(36).slice(2, 10);
+                }
+
+                const rect = inputEl.getBoundingClientRect();
+                const html = filtered.map(function (opt) {
+                    const parsed = parseOptionText(opt.value || opt.label);
+                    return '<div class="global-lookup-item" data-value="' + $('<div>').text(opt.value).html() + '">' +
+                        '<span class="global-lookup-code">' + $('<div>').text(parsed.code).html() + '</span>' +
+                        (parsed.name ? '<span class="global-lookup-name">' + $('<div>').text(parsed.name).html() + '</span>' : '') +
+                        '</div>';
+                }).join('');
+
+                ensureSuggestBox()
+                    .html(html)
+                    .css({
+                        left: rect.left + window.scrollX,
+                        top: rect.bottom + window.scrollY + 4,
+                        width: rect.width
+                    })
+                    .show()
+                    .data('target-input-id', inputEl.id);
+            }
+
+            function disableNativeDatalist($input) {
+                const listId = String($input.attr('list') || '').trim();
+                if (!listId) {
+                    return;
+                }
+                if (!$input.attr('data-list-source')) {
+                    $input.attr('data-list-source', listId);
+                }
+                $input.removeAttr('list');
+            }
+
+            function pickBestOption($input) {
+                const options = collectDatalistOptions($input);
+                if (!options.length) {
+                    return false;
+                }
+                const keyword = String($input.val() || '').trim();
+                if (!keyword) {
+                    return false;
+                }
+                const key = normalizeText(keyword);
+                const exact = options.find(function (opt) {
+                    return normalizeText(opt.value) === key;
+                });
+                const selected = exact || filterOptions(options, keyword)[0];
+                if (!selected) {
+                    return false;
+                }
+                pickOptionToInput($input.get(0), selected.value);
+                return true;
+            }
+
+            function pickOptionToInput(inputEl, value) {
+                if (!inputEl) {
+                    return;
+                }
+                const $input = $(inputEl);
+                $input.val(value);
+                $input.trigger('input').trigger('change').trigger('blur');
+                hideSuggestBox();
+            }
+
+            function fillSearchInputInModal($modal, keyword) {
+                if (!$modal || !$modal.length) {
+                    return false;
+                }
+                const $search = $modal.find('input[id$="SearchInput"], input[type="search"], input[type="text"]').first();
+                if (!$search.length) {
+                    return false;
+                }
+                $search.val(keyword);
+                // Trigger multiple events because different screens bind different listeners.
+                $search.trigger('input').trigger('keyup').trigger('change').focus();
+                return true;
+            }
+
+            function pushKeywordWhenModalReady(keyword, retryLeft) {
+                const $modal = $('.modal.show').last();
+                const done = fillSearchInputInModal($modal, keyword);
+                if (done || retryLeft <= 0) {
+                    return;
+                }
+                setTimeout(function () {
+                    pushKeywordWhenModalReady(keyword, retryLeft - 1);
+                }, 90);
+            }
+
+            function initLookupFields() {
+                $('.lookup-input[list], .lookup-display[list]').each(function () {
+                    disableNativeDatalist($(this));
+                });
+
+                $('.lookup-input, .lookup-display').each(function () {
+                    this.setAttribute('autocomplete', 'off');
+                    this.setAttribute('autocorrect', 'off');
+                    this.setAttribute('autocapitalize', 'off');
+                    this.setAttribute('spellcheck', 'false');
+                });
+            }
+
+            initLookupFields();
+
+            $(document).on('keydown', '.lookup-input, .lookup-display', function (e) {
+                if (e.key !== 'Enter') {
+                    return;
+                }
+
+                const $input = $(this);
+                const hasListSource = !!getListId($input);
+                if (hasListSource) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const matched = pickBestOption($input);
+                    if (!matched) {
+                        const keywordForList = String($input.val() || '').trim();
+                        const $btnForList = $input.siblings('.lookup-btn, .lookup-icon-btn').first();
+                        if ($btnForList.length) {
+                            $btnForList.trigger('click');
+                            pushKeywordWhenModalReady(keywordForList, 10);
+                        }
+                    }
+                    return;
+                }
+
+                const keyword = String($input.val() || '').trim();
+                const $btn = $input.siblings('.lookup-btn, .lookup-icon-btn').first();
+                if (!$btn.length) {
+                    return;
+                }
+
+                e.preventDefault();
+                e.stopPropagation();
+
+                $btn.trigger('click');
+                pushKeywordWhenModalReady(keyword, 10);
+            });
+
+            $(document).on('input', '.lookup-input, .lookup-display', function () {
+                const $input = $(this);
+                if (!getListId($input)) {
+                    return;
+                }
+                renderSuggestForInput($input);
+            });
+
+            $(document).on('blur', '.lookup-input, .lookup-display', function () {
+                setTimeout(function () {
+                    hideSuggestBox();
+                }, 120);
+            });
+
+            $(document).on('mousedown', '.global-lookup-item', function (e) {
+                e.preventDefault();
+                const value = String($(this).data('value') || '');
+                const targetId = $('#' + suggestBoxId).data('target-input-id');
+                const inputEl = targetId ? document.getElementById(targetId) : null;
+                pickOptionToInput(inputEl, value);
+            });
+
+            $(window).on('resize scroll', function () {
+                hideSuggestBox();
+            });
+
+            // For dynamically appended rows in forms.
+            const obs = new MutationObserver(function () {
+                initLookupFields();
+            });
+            obs.observe(document.body, { childList: true, subtree: true });
+        })();
+
+        // Auto paginate list tables: 10 rows/page across screens.
+        (function () {
+            function shouldSkipCard($card) {
+                if (!$card.length) {
+                    return true;
+                }
+                if ($card.is('[data-no-auto-toolbar]') || $card.find('[data-no-auto-toolbar]').length) {
+                    return true;
+                }
+                if ($card.find('.erp-toolbar').length) {
+                    return true;
+                }
+                const $table = $card.find('.table-responsive table.table').first();
+                if (!$table.length) {
+                    return true;
+                }
+                const $tbody = $table.find('tbody').first();
+                if (!$tbody.length || !$tbody.find('tr').length) {
+                    return true;
+                }
+                const hasRowSelection = $tbody.find('input[type="checkbox"]').length > 0;
+                const hasAddAction = $card.find('.card-header a[href*="them"], .card-header a[href*="add"]').length > 0;
+                if (!hasRowSelection && !hasAddAction) {
+                    return true;
+                }
+                if ($tbody.find('input:not([type="checkbox"]), select, textarea').length) {
+                    return true;
+                }
+                return false;
+            }
+
+            function pickAddUrl($card) {
+                const $link = $card.find('.card-header a[href*="them"], .card-header a[href*="add"]').first();
+                return $link.length ? String($link.attr('href') || '') : '';
+            }
+
+            function pickSelectedRow($card) {
+                const $checked = $card.find('tbody input[type="checkbox"]:checked').first().closest('tr');
+                if ($checked.length) {
+                    return $checked;
+                }
+                return $card.find('tbody tr').filter(function () {
+                    return $(this).find('td').length > 0;
+                }).first();
+            }
+
+            function pickRowLink($row) {
+                if (!$row || !$row.length) {
+                    return '';
+                }
+                const $a = $row.find('a[href]:not([href="#"])').first();
+                return $a.length ? String($a.attr('href') || '') : '';
+            }
+
+            function findDeleteTarget($row) {
+                if (!$row || !$row.length) {
+                    return null;
+                }
+                const $deleteFormBtn = $row.find('form button[type="submit"][class*="danger"], form button[type="submit"][class*="delete"], form button[type="submit"] i.fa-trash').first();
+                if ($deleteFormBtn.length) {
+                    return { type: 'form', form: $deleteFormBtn.closest('form') };
+                }
+                const $deleteLink = $row.find('a[href*="xoa"], a[href*="delete"]').first();
+                if ($deleteLink.length) {
+                    return { type: 'link', href: String($deleteLink.attr('href') || '') };
+                }
+                return null;
+            }
+
+            function injectToolbar($card) {
+                const addUrl = pickAddUrl($card);
+                const addButton = addUrl
+                    ? '<a href="' + addUrl + '" class="erp-toolbar-btn" title="Thêm mới" aria-label="Thêm mới"><i class="fas fa-plus"></i></a>'
+                    : '<button type="button" class="erp-toolbar-btn disabled" title="Thêm mới" aria-label="Thêm mới"><i class="fas fa-plus"></i></button>';
+
+                const $toolbar = $('<div class="erp-toolbar erp-toolbar-auto" role="toolbar" aria-label="Thanh thao tác mặc định">' +
+                    addButton +
+                    '<button type="button" class="erp-toolbar-btn js-auto-edit" title="Sửa" aria-label="Sửa"><i class="fas fa-pen-to-square"></i></button>' +
+                    '<button type="button" class="erp-toolbar-btn js-auto-delete" title="Xóa" aria-label="Xóa"><i class="fas fa-trash"></i></button>' +
+                    '<span class="erp-toolbar-sep"></span>' +
+                    '<button type="button" class="erp-toolbar-btn js-auto-search" title="Tìm" aria-label="Tìm"><i class="fas fa-magnifying-glass"></i></button>' +
+                    '<button type="button" class="erp-toolbar-btn js-auto-view" title="Xem" aria-label="Xem"><i class="fas fa-eye"></i></button>' +
+                    '<button type="button" class="erp-toolbar-btn js-auto-refresh" title="Làm mới" aria-label="Làm mới"><i class="fas fa-rotate-right"></i></button>' +
+                '</div>');
+
+                const $cardBody = $card.find('.card-body').first();
+                if ($cardBody.length) {
+                    const $anchor = $cardBody.find('form, .table-responsive').first();
+                    if ($anchor.length) {
+                        $anchor.before($toolbar);
+                    } else {
+                        $cardBody.prepend($toolbar);
+                    }
+                } else {
+                    $card.prepend($toolbar);
+                }
+
+                $toolbar.on('click', '.js-auto-edit, .js-auto-view', function () {
+                    const $row = pickSelectedRow($card);
+                    const href = pickRowLink($row);
+                    if (!href) {
+                        alert('Không tìm thấy dòng dữ liệu để mở chi tiết.');
+                        return;
+                    }
+                    window.location.href = href;
+                });
+
+                $toolbar.on('click', '.js-auto-delete', function () {
+                    const $row = pickSelectedRow($card);
+                    const del = findDeleteTarget($row);
+                    if (!del) {
+                        alert('Màn hình này chưa cấu hình xóa nhanh trên danh sách.');
+                        return;
+                    }
+                    if (!confirm('Bạn có chắc muốn xóa dữ liệu đã chọn?')) {
+                        return;
+                    }
+                    if (del.type === 'form' && del.form && del.form.length) {
+                        del.form.trigger('submit');
+                        return;
+                    }
+                    if (del.type === 'link' && del.href) {
+                        window.location.href = del.href;
+                    }
+                });
+
+                $toolbar.on('click', '.js-auto-search', function () {
+                    const $focusTarget = $card.find('form input[type="text"], form input[type="search"], form select').filter(':visible').first();
+                    if ($focusTarget.length) {
+                        $focusTarget.trigger('focus');
+                    }
+                });
+
+                $toolbar.on('click', '.js-auto-refresh', function () {
+                    window.location.reload();
+                });
+            }
+
+            $(function () {
+                $('.card').each(function () {
+                    const $card = $(this);
+                    if (shouldSkipCard($card)) {
+                        return;
+                    }
+                    injectToolbar($card);
+                });
+            });
+
+            function makePlaceholderButton(iconClass, title) {
+                return $('<button type="button" class="erp-toolbar-btn" title="' + title + '" aria-label="' + title + '"><i class="' + iconClass + '"></i></button>');
+            }
+
+            function activateToolbarNode($node) {
+                if (!$node || !$node.length) {
+                    return $node;
+                }
+                $node.removeClass('disabled');
+                if ($node.is('button')) {
+                    $node.prop('disabled', false);
+                }
+                $node.find('button').prop('disabled', false).removeClass('disabled');
+                return $node;
+            }
+
+            function findToolbarNode($toolbar, selectorList) {
+                for (let i = 0; i < selectorList.length; i += 1) {
+                    const $node = $toolbar.children(selectorList[i]).first();
+                    if ($node.length) {
+                        return $node;
+                    }
+                }
+                return $();
+            }
+
+            function normalizeDanhMucToolbar($toolbar) {
+                const $add = findToolbarNode($toolbar, [
+                    'a.erp-toolbar-btn:has(i.fa-plus)',
+                    'button.erp-toolbar-btn:has(i.fa-plus)'
+                ]);
+                const $edit = findToolbarNode($toolbar, ['button.erp-toolbar-btn:has(i.fa-pen-to-square)']);
+                const $delete = findToolbarNode($toolbar, ['button.erp-toolbar-btn:has(i.fa-trash)']);
+                const $copy = findToolbarNode($toolbar, ['button.erp-toolbar-btn:has(i.fa-copy)']);
+                const $export = findToolbarNode($toolbar, ['a.erp-toolbar-btn:has(i.fa-file-export)']);
+                const $download = findToolbarNode($toolbar, ['a.erp-toolbar-btn:has(i.fa-file-arrow-down)']);
+                const $importBtn = findToolbarNode($toolbar, ['button.erp-toolbar-btn:has(i.fa-file-import)']);
+                const $search = findToolbarNode($toolbar, ['button.erp-toolbar-btn:has(i.fa-magnifying-glass)']);
+                const $view = findToolbarNode($toolbar, ['button.erp-toolbar-btn:has(i.fa-eye)']);
+                const $print = findToolbarNode($toolbar, [
+                    'div.btn-group:has(i.fa-print)',
+                    'button.erp-toolbar-btn:has(i.fa-print)',
+                    'a.erp-toolbar-btn:has(i.fa-print)'
+                ]);
+                const $query = findToolbarNode($toolbar, ['button.erp-toolbar-btn:has(i.fa-filter)']);
+                const $refresh = findToolbarNode($toolbar, ['button.erp-toolbar-btn:has(i.fa-rotate-right)']);
+
+                const nodes = [
+                    $add.length ? activateToolbarNode($add.detach()) : makePlaceholderButton('fas fa-plus', 'Thêm mới'),
+                    $edit.length ? activateToolbarNode($edit.detach()) : makePlaceholderButton('fas fa-pen-to-square', 'Sửa'),
+                    $delete.length ? activateToolbarNode($delete.detach()) : makePlaceholderButton('fas fa-trash', 'Xóa'),
+                    $('<span class="erp-toolbar-sep"></span>'),
+                    $copy.length ? activateToolbarNode($copy.detach()) : makePlaceholderButton('fas fa-copy', 'Chép dữ liệu'),
+                    $export.length ? activateToolbarNode($export.detach()) : makePlaceholderButton('fas fa-file-export', 'Kết xuất dữ liệu'),
+                    $download.length ? activateToolbarNode($download.detach()) : makePlaceholderButton('fas fa-file-arrow-down', 'Tải tệp xuống (mẫu)'),
+                    $importBtn.length ? activateToolbarNode($importBtn.detach()) : makePlaceholderButton('fas fa-file-import', 'Đẩy dữ liệu lên'),
+                    $search.length ? activateToolbarNode($search.detach()) : makePlaceholderButton('fas fa-magnifying-glass', 'Tìm kiếm'),
+                    $view.length ? activateToolbarNode($view.detach()) : makePlaceholderButton('fas fa-eye', 'Xem'),
+                    $print.length ? activateToolbarNode($print.detach()) : makePlaceholderButton('fas fa-print', 'In'),
+                    $query.length ? activateToolbarNode($query.detach()) : makePlaceholderButton('fas fa-filter', 'Truy vấn'),
+                    $refresh.length ? activateToolbarNode($refresh.detach()) : makePlaceholderButton('fas fa-rotate-right', 'Làm mới')
+                ];
+
+                $toolbar.empty();
+                nodes.forEach(function ($node) {
+                    $toolbar.append($node);
+                });
+            }
+
+            $(function () {
+                const isDanhMucPage = window.location.pathname.indexOf('/danh-muc/') >= 0;
+                if (!isDanhMucPage) {
+                    return;
+                }
+                $('.erp-toolbar').not('.erp-toolbar-auto').each(function () {
+                    normalizeDanhMucToolbar($(this));
+                });
+            });
+
+            function shouldSkipTable($table) {
+                if ($table.is('[data-no-auto-paginate]') || $table.closest('[data-no-auto-paginate]').length) {
+                    return true;
+                }
+                const $tbody = $table.find('tbody').first();
+                if (!$tbody.length) {
+                    return true;
+                }
+                if ($tbody.find('input:not([type="checkbox"]), select, textarea').length) {
+                    return true;
+                }
+                if ($table.closest('.card-body').find('.pagination-bar, .pagination').length) {
+                    return true;
+                }
+                return false;
+            }
+
+            function applyAutoPagination($table) {
+                const $tbody = $table.find('tbody').first();
+                const $rows = $tbody.find('tr');
+                const pageSize = 10;
+                if ($rows.length <= pageSize) {
+                    return;
+                }
+
+                let page = 1;
+                const totalPages = Math.ceil($rows.length / pageSize);
+                const $pager = $('<div class="auto-pager" aria-label="Phân trang tự động">' +
+                    '<button type="button" class="auto-prev">Trước</button>' +
+                    '<span class="auto-pager-info"></span>' +
+                    '<button type="button" class="auto-next">Sau</button>' +
+                '</div>');
+
+                function render() {
+                    const start = (page - 1) * pageSize;
+                    const end = start + pageSize;
+                    $rows.hide().slice(start, end).show();
+                    $pager.find('.auto-pager-info').text('Trang ' + page + '/' + totalPages);
+                    $pager.find('.auto-prev').prop('disabled', page <= 1);
+                    $pager.find('.auto-next').prop('disabled', page >= totalPages);
+                }
+
+                $pager.on('click', '.auto-prev', function () {
+                    if (page > 1) {
+                        page -= 1;
+                        render();
+                    }
+                });
+                $pager.on('click', '.auto-next', function () {
+                    if (page < totalPages) {
+                        page += 1;
+                        render();
+                    }
+                });
+
+                $table.closest('.table-responsive').after($pager);
+                render();
+            }
+
+            $(function () {
+                $('.table-responsive table.table').each(function () {
+                    const $table = $(this);
+                    if (shouldSkipTable($table)) {
+                        return;
+                    }
+                    applyAutoPagination($table);
+                });
+            });
+        })();
+
     </script>
     {% block extra_js %}{% endblock %}
 </body>

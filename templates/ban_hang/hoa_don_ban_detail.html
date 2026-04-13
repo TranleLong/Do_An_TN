@@ -7,6 +7,7 @@
         <div class="card-title"><i class="fas fa-file-invoice-dollar text-primary"></i> Chi tiết hóa đơn: {{ hoa_don.so_hoa_don }}</div>
         <div class="d-flex gap-2">
             <a href="{% url 'hoa_don_ban_in' hoa_don.pk %}" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="fas fa-print"></i> In</a>
+            <a href="{% url 'phieu_doi_tra_them' %}?hoa_don_goc={{ hoa_don.pk }}" class="btn btn-outline-warning btn-sm"><i class="fas fa-rotate-left"></i> Đổi trả</a>
             <a href="{% url 'hoa_don_ban_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
         </div>
     </div>
@@ -37,6 +38,8 @@
                         <th class="text-end">Giá bán</th>
                         <th class="text-end">CK %</th>
                         <th class="text-end">Thuế %</th>
+                        <th>TK doanh thu</th>
+                        <th>TK giá vốn</th>
                         <th class="text-end">Tiền hàng</th>
                         <th class="text-end">Tiền thuế</th>
                         <th class="text-end">Thành tiền</th>
@@ -49,16 +52,18 @@
                         <td>{{ ct.hang_hoa.ma_hang }}</td>
                         <td>{{ ct.hang_hoa.ten_hang }}</td>
                         <td>{{ ct.kho.ma_kho }}</td>
-                        <td class="text-end">{{ ct.so_luong }}</td>
+                        <td class="text-end">{{ ct.so_luong|floatformat:0|intcomma }}</td>
                         <td class="text-end">{{ ct.gia_ban|intcomma }}</td>
                         <td class="text-end">{{ ct.ty_le_chiet_khau }}</td>
                         <td class="text-end">{{ ct.thue_suat }}</td>
+                        <td>{{ ct.tk_doanh_thu|default:'-' }}</td>
+                        <td>{{ ct.tk_gia_von|default:'-' }}</td>
                         <td class="text-end">{{ ct.tien_hang|intcomma }}</td>
                         <td class="text-end">{{ ct.tien_thue|intcomma }}</td>
                         <td class="text-end fw-semibold">{{ ct.thanh_tien|intcomma }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="11" class="text-center text-muted">Không có dữ liệu chi tiết.</td></tr>
+                    <tr><td colspan="13" class="text-center text-muted">Không có dữ liệu chi tiết.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -66,7 +71,7 @@
 
         <div class="d-flex justify-content-end mt-3">
             <div style="width: 380px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
-                <div class="d-flex justify-content-between mb-2"><span>Tổng số lượng:</span><strong>{{ hoa_don.tong_so_luong }}</strong></div>
+                <div class="d-flex justify-content-between mb-2"><span>Tổng số lượng:</span><strong>{{ hoa_don.tong_so_luong|floatformat:0|intcomma }}</strong></div>
                 <div class="d-flex justify-content-between mb-2"><span>Tổng chiết khấu:</span><strong>{{ hoa_don.tong_chiet_khau|intcomma }}</strong></div>
                 <div class="d-flex justify-content-between mb-2"><span>Tiền hàng:</span><strong>{{ hoa_don.tien_hang|intcomma }}</strong></div>
                 <div class="d-flex justify-content-between mb-2"><span>Tổng tiền thuế:</span><strong>{{ hoa_don.tong_tien_thue|intcomma }}</strong></div>

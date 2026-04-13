@@ -5,7 +5,20 @@
     <div class="card-header">
         <div class="card-title">Danh sách kho</div>
     </div>
+    <div class="px-3 pt-3">
+        <div class="erp-toolbar" role="toolbar" aria-label="Thanh thao tác kho">
+            <button type="button" class="erp-toolbar-btn disabled" title="Thêm mới"><i class="fas fa-plus"></i></button>
+            <button type="button" class="erp-toolbar-btn disabled" title="Sửa"><i class="fas fa-pen-to-square"></i></button>
+            <button type="button" class="erp-toolbar-btn disabled" title="Xóa"><i class="fas fa-trash"></i></button>
+            <span class="erp-toolbar-sep"></span>
+            <button type="button" class="erp-toolbar-btn" id="btnKhoSearch" title="Tìm"><i class="fas fa-magnifying-glass"></i></button>
+            <button type="button" class="erp-toolbar-btn" onclick="window.location.reload()" title="Làm mới"><i class="fas fa-rotate-right"></i></button>
+        </div>
+    </div>
     <div class="card-body">
+        <div class="mb-3" id="khoFilterBox" style="display:none; max-width:340px;">
+            <input type="text" id="khoFilterInput" class="form-control" placeholder="Tìm mã kho/tên kho/địa chỉ...">
+        </div>
         <div class="table-responsive">
             <table class="table">
                 <thead>
@@ -56,4 +69,37 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+    (function () {
+        const btnSearch = document.getElementById('btnKhoSearch');
+        const box = document.getElementById('khoFilterBox');
+        const input = document.getElementById('khoFilterInput');
+        const rows = Array.from(document.querySelectorAll('.table tbody tr'));
+
+        function norm(v) {
+            return String(v || '').toLowerCase();
+        }
+
+        function filterRows() {
+            const key = norm(input.value).trim();
+            rows.forEach(function (row) {
+                if (row.querySelector('td[colspan]')) {
+                    return;
+                }
+                row.style.display = !key || norm(row.innerText).includes(key) ? '' : 'none';
+            });
+        }
+
+        if (btnSearch && box && input) {
+            btnSearch.addEventListener('click', function () {
+                box.style.display = box.style.display === 'none' ? '' : 'none';
+                if (box.style.display !== 'none') {
+                    input.focus();
+                }
+            });
+            input.addEventListener('input', filterRows);
+        }
+    })();
+</script>
 {% endblock %}

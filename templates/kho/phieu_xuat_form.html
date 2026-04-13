@@ -123,6 +123,24 @@
         color: #6b7d94;
         text-align: right;
     }
+    #chiTietTable {
+        min-width: 1040px;
+    }
+    #chiTietTable th,
+    #chiTietTable td {
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    #chiTietTable select[name="hang_id[]"] {
+        min-width: 280px;
+    }
+    #chiTietTable input[name="so_luong[]"] {
+        min-width: 110px;
+    }
+    #chiTietTable input[name="tk_no[]"],
+    #chiTietTable input[name="tk_co[]"] {
+        min-width: 130px;
+    }
 </style>
 {% endblock %}
 
@@ -137,16 +155,20 @@
         {% csrf_token %}
 
         <div class="form-row">
-            <div class="col col-3 form-group">
+            <div class="col col-2 form-group">
                 <label class="form-label">Số phiếu xuất</label>
                 <input type="text" name="so_phieu" class="form-control" value="{{ so_phieu_default }}" readonly>
             </div>
-            <div class="col col-3 form-group">
-                <label class="form-label">Ngày chứng từ <span class="text-danger">*</span></label>
-                <input type="date" name="ngay_chung_tu" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+            <div class="col col-2 form-group">
+                <label class="form-label">Ngày lập <span class="text-danger">*</span></label>
+                <input type="date" name="ngay_lap" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+            </div>
+            <div class="col col-2 form-group">
+                <label class="form-label">Ngày hạch toán <span class="text-danger">*</span></label>
+                <input type="date" name="ngay_hach_toan" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
                 <small class="text-muted">Ngày dùng để ghi nhận Sổ cái kế toán.</small>
             </div>
-            <div class="col col-3 form-group">
+            <div class="col col-2 form-group">
                 <label class="form-label">Loại xuất</label>
                 <select name="loai_xuat" class="form-control">
                     <option value="ban_hang">1 - Xuất bán hàng</option>
@@ -156,7 +178,7 @@
                 </select>
                 <small class="text-muted">Trạng thái chứng từ: tạo mới = <strong>1 - Lập phiếu</strong>, ghi sổ kho = <strong>2</strong>, chuyển sổ cái = <strong>3</strong>.</small>
             </div>
-            <div class="col col-3 form-group">
+            <div class="col col-4 form-group">
                 <label class="form-label">Kho xuất hàng <span class="text-danger">*</span></label>
                 <select name="kho" class="form-control" required>
                     <option value="">-- Chọn kho xuất --</option>
@@ -209,7 +231,7 @@
                             </div>
                         </td>
                         <td>
-                            <input type="number" name="so_luong[]" class="form-control text-right" min="1" required>
+                            <input type="number" name="so_luong[]" class="form-control text-right" min="1" step="1" required>
                         </td>
                         <td>
                             <div class="lookup-wrap">
@@ -312,7 +334,7 @@
             </div>
         </td>
         <td>
-            <input type="number" name="so_luong[]" class="form-control text-right" min="1" required>
+            <input type="number" name="so_luong[]" class="form-control text-right" min="1" step="1" required>
         </td>
         <td>
             <div class="lookup-wrap">
@@ -349,7 +371,7 @@
 
     function fillXuatRow(row, item) {
         row.find('select[name="hang_id[]"]').val(String(item.hang_id || ''));
-        row.find('input[name="so_luong[]"]').val(item.so_luong || 0);
+        row.find('input[name="so_luong[]"]').val(Math.round(item.so_luong || 0));
         row.find('input[name="tk_no[]"]').val(item.tk_no || '');
         row.find('input[name="tk_co[]"]').val(item.tk_co || '');
     }
@@ -359,7 +381,8 @@
         if (!node) return;
         const data = JSON.parse(node.textContent || '{}');
 
-        if (data.ngay_chung_tu) $('input[name="ngay_chung_tu"]').val(data.ngay_chung_tu);
+        if (data.ngay_lap) $('input[name="ngay_lap"]').val(data.ngay_lap);
+        if (data.ngay_hach_toan) $('input[name="ngay_hach_toan"]').val(data.ngay_hach_toan);
         if (data.loai_xuat) $('select[name="loai_xuat"]').val(data.loai_xuat);
         if (data.kho_id) $('select[name="kho"]').val(data.kho_id);
         if (data.trang_thai) $('select[name="trang_thai"]').val(data.trang_thai);

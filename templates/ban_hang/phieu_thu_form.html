@@ -1,80 +1,802 @@
 {% extends 'base.html' %}
 {% load humanize %}
 
+{% block extra_css %}
+<style>
+    .lookup-box {
+        position: relative;
+        display: block;
+        width: 100%;
+    }
+    .lookup-box > .form-control,
+    .lookup-box > .lookup-input {
+        width: 100%;
+        padding-right: 40px;
+    }
+    .lookup-box > .lookup-icon-btn {
+        position: absolute;
+        top: 50%;
+        right: 10px;
+        transform: translateY(-50%);
+        width: 24px;
+        height: 24px;
+        min-width: 24px;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: #6b7d94;
+        padding: 0;
+        z-index: 2;
+    }
+    .lookup-box > .lookup-icon-btn:hover {
+        background: #eaf2fd;
+        color: #1d5ea8;
+    }
+    .lookup-display {
+        background: #fff !important;
+        color: #334155 !important;
+        cursor: default !important;
+    }
+    #modalKhachHang .modal-dialog,
+    #modalDonBan .modal-dialog,
+    #modalTaiKhoan .modal-dialog {
+        max-width: 900px;
+    }
+    .lookup-scroll {
+        border: 1px solid #cbd5e1;
+        border-radius: 6px;
+        max-height: 320px;
+        overflow-y: auto;
+    }
+    .lookup-head,
+    .lookup-row {
+        display: grid;
+        gap: 10px;
+        padding: 8px 12px;
+        width: 100%;
+        text-align: left;
+    }
+    .lookup-head {
+        background: #eff6ff;
+        color: #1e3a8a;
+        font-size: 13px;
+        font-weight: 700;
+        border-bottom: 1px solid #dbeafe;
+    }
+    .lookup-row {
+        border: 0;
+        border-bottom: 1px solid #e2e8f0;
+        background: #fff;
+    }
+    .lookup-row:hover {
+        background: #f8fafc;
+    }
+    .lookup-head.kh,
+    .lookup-row.kh {
+        grid-template-columns: 180px 1fr 180px;
+    }
+    .lookup-head.don,
+    .lookup-row.don {
+        grid-template-columns: 160px 140px 1fr 170px;
+    }
+    .summary-box {
+        width: 300px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 14px;
+    }
+    .pt-meta-grid {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 12px;
+    }
+    .lookup-box-inline .lookup-input {
+        min-width: 90px;
+        width: 90px;
+        padding-right: 30px;
+    }
+    .lookup-box-inline {
+        width: 90px;
+        min-width: 90px;
+        max-width: 90px;
+    }
+    .lookup-box-inline .lookup-icon-btn {
+        right: 6px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card">
     <div class="card-header">
-        <div class="card-title">Lập phiếu thu</div>
+        <div class="card-title"><i class="fas fa-money-bill-wave {% if loai_form == 'chi' %}text-danger{% else %}text-success{% endif %}"></i> {% if loai_form == 'chi' %}Thêm phiếu chi{% else %}Thêm phiếu thu{% endif %}</div>
+        <a href="{% if loai_form == 'chi' %}{% url 'bh_phieu_chi_list' %}{% else %}{% url 'phieu_thu_list' %}{% endif %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
     </div>
-    <div class="card-body">
-        <form method="post">
-            {% csrf_token %}
-            <div class="form-row">
-                <div class="col">
-                    <label>Số phiếu</label>
-                    <input type="text" name="so_phieu" class="form-control" value="{{ so_phieu_default }}">
+
+    <form method="post" id="phieuThuForm" class="card-body">
+        {% csrf_token %}
+        <div class="row g-3">
+            <div class="col-md-4">
+                        <label class="form-label">Mã khách <span class="text-danger">*</span></label>
+                        <div class="lookup-box">
+                            <input type="text" id="kh_display" class="form-control lookup-input lookup-display" list="kh_lookup_list" placeholder="Nhập mã/tên khách hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                            <button type="button" class="lookup-icon-btn" id="btnSearchKh" title="Tra cứu khách hàng"><i class="fas fa-search"></i></button>
+                        </div>
+                        <select name="khach_hang" id="khach_hang" style="display:none;" required>
+                            <option value="">-- Chọn --</option>
+                            {% for kh in kh_list %}
+                            <option value="{{ kh.pk }}"
+                                    data-ma="{{ kh.ma_kh }}"
+                                    data-ten="{{ kh.ten_kh }}"
+                                    data-dia-chi="{{ kh.dia_chi|default:'' }}"
+                                    data-sdt="{{ kh.so_dien_thoai|default:'' }}"
+                                    data-tong-hoa-don="{{ kh.tong_hoa_don|default:0 }}"
+                                    data-tong-da-thu="{{ kh.tong_da_thu|default:0 }}"
+                                    data-con-no="{{ kh.con_no_hien_tai|default:0 }}"
+                                    {% if form_values.khach_hang|default:'' == kh.pk|stringformat:'s' %}selected{% endif %}>
+                                {{ kh.ma_kh }} - {{ kh.ten_kh }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <datalist id="kh_lookup_list">
+                            {% for kh in kh_list %}
+                            <option value="{{ kh.ma_kh }} - {{ kh.ten_kh }}" label="{{ kh.ten_kh }}"></option>
+                            {% endfor %}
+                        </datalist>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Địa chỉ</label>
+                <input type="text" name="dia_chi" id="dia_chi" class="form-control" value="{{ form_values.dia_chi|default:'' }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Người nộp tiền</label>
+                <input type="text" name="nguoi_nop_tien" id="nguoi_nop_tien" class="form-control" value="{{ form_values.nguoi_nop_tien|default:'' }}">
+            </div>
+
+            <div class="col-md-4">
+                        <label class="form-label">Loại phiếu {% if loai_form == 'chi' %}chi{% else %}thu{% endif %}</label>
+                        <select name="loai_phieu_thu" id="loai_phieu_thu" class="form-control">
+                            {% if loai_form == 'chi' %}
+                            <option value="1" {% if form_values.loai_phieu_thu|default:'2' == '1' %}selected{% endif %}>1 - Chi tiền chi tiết theo hóa đơn</option>
+                            <option value="2" {% if form_values.loai_phieu_thu == '2' %}selected{% endif %}>2 - Chi cho khách hàng</option>
+                            {% else %}
+                            <option value="1" {% if form_values.loai_phieu_thu|default:'1' == '1' %}selected{% endif %}>1 - Thu tiền chi tiết theo hóa đơn</option>
+                            <option value="2" {% if form_values.loai_phieu_thu == '2' %}selected{% endif %}>2 - Thu của khách hàng</option>
+                            {% endif %}
+                        </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Ngày lập <span class="text-danger">*</span></label>
+                <input type="date" name="ngay_thu" id="ngay_thu" class="form-control" value="{% if form_values.ngay_thu %}{{ form_values.ngay_thu }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}" required>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Ngày hạch toán</label>
+                <input type="date" name="ngay_hach_toan" id="ngay_hach_toan" class="form-control" value="{% if form_values.ngay_hach_toan %}{{ form_values.ngay_hach_toan }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}">
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Số phiếu {% if loai_form == 'chi' %}chi{% else %}thu{% endif %} <span class="text-danger">*</span></label>
+                <input type="text" name="so_phieu" id="so_phieu" class="form-control" value="{{ so_phieu_default }}" required>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Ngoại tệ</label>
+                <input type="text" class="form-control" value="VND" readonly>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Tỷ giá</label>
+                <input type="text" class="form-control text-end" value="1.00" readonly>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Trạng thái</label>
+                <select name="trang_thai" id="trang_thai" class="form-control">
+                    <option value="1" {% if form_values.trang_thai|default:'1' == '1' %}selected{% endif %}>1 - Lập chứng từ</option>
+                    <option value="2" {% if form_values.trang_thai == '2' %}selected{% endif %}>2 - Chuyển sổ cái</option>
+                </select>
+            </div>
+            <div class="col-md-8">
+                <label class="form-label">Lý do {% if loai_form == 'chi' %}chi{% else %}nộp{% endif %}</label>
+                <input type="text" name="ly_do_nop" id="ly_do_nop" class="form-control" value="{{ form_values.ly_do_nop|default:'' }}">
+            </div>
+
+            <input type="hidden" name="hinh_thuc_thu" id="hinh_thuc_thu" value="tien_mat">
+            <input type="hidden" name="so_tham_chieu" value="">
+
+            <div class="col-md-4">
+                <label class="form-label">Số tiền {% if loai_form == 'chi' %}chi{% else %}thu{% endif %} <span class="text-danger">*</span></label>
+                <input type="text" name="tong_thu" id="tong_thu" class="form-control currency-input" value="{{ form_values.tong_thu|default:'' }}" required>
+            </div>
+
+            <div class="col-12" id="sectionLoai1">
+                <hr class="my-1">
+                <div class="d-flex align-items-center justify-content-between mt-2 mb-2">
+                    <h5 class="mb-0">Chi tiết chứng từ liên kết</h5>
+                    <div class="d-flex gap-2">
+                        <div class="lookup-box" style="min-width: 380px;">
+                            <input type="text" id="don_display" class="form-control lookup-input lookup-display" list="don_lookup_list" placeholder="Chọn đơn bán liên kết" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                            <button type="button" class="lookup-icon-btn" id="btnSearchDon" title="Tra cứu đơn bán"><i class="fas fa-search"></i></button>
+                        </div>
+                    </div>
                 </div>
-                <div class="col">
-                    <label>Ngày thu</label>
-                    <input type="date" name="ngay_thu" class="form-control" value="{{ today|date:'Y-m-d' }}">
+
+                <select name="don_ban" id="don_ban" style="display:none;">
+                    <option value="">-- Không liên kết --</option>
+                    {% for don in don_ban_list %}
+                    <option value="{{ don.pk }}"
+                            data-so-don="{{ don.so_don }}"
+                            data-ngay="{{ don.ngay_chung_tu|date:'d/m/Y' }}"
+                            data-con-no="{{ don.con_no|default:0 }}"
+                            data-ma-kh="{{ don.khach_hang.ma_kh|default:'' }}"
+                            data-ten-kh="{{ don.ten_kh|default:'' }}"
+                            data-kh-id="{{ don.khach_hang_id|default:'' }}"
+                            {% if form_values.don_ban|default:'' == don.pk|stringformat:'s' %}selected{% endif %}>
+                        {{ don.so_don }} - {{ don.ten_kh }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <datalist id="don_lookup_list">
+                    {% for don in don_ban_list %}
+                    <option value="{{ don.so_don }} - {{ don.ten_kh }}" label="{{ don.ten_kh }}"></option>
+                    {% endfor %}
+                </datalist>
+
+                <div class="table-responsive mt-2">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Số hóa đơn / đơn</th>
+                                <th>Ngày chứng từ</th>
+                                <th class="text-end">Còn nợ</th>
+                                <th class="text-end">Tiền {% if loai_form == 'chi' %}chi{% else %}thu{% endif %}</th>
+                                <th>TK nợ</th>
+                                <th>TK có</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td id="previewSoDon" class="text-muted">Chưa chọn</td>
+                                <td id="previewNgay" class="text-muted">--/--/----</td>
+                                <td id="previewConNo" class="text-end">0</td>
+                                <td id="previewTienThu" class="text-end">0</td>
+                                <td>
+                                    <div class="lookup-box lookup-box-inline">
+                                        <input type="text" class="form-control lookup-input lookup-display tk-no-input" list="tk_lookup_list" placeholder="TK nợ">
+                                        <button type="button" class="lookup-icon-btn btn-search-tk" data-target="tk_no" title="Tra cứu tài khoản"><i class="fas fa-search"></i></button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="lookup-box lookup-box-inline">
+                                        <input type="text" class="form-control lookup-input lookup-display tk-co-input" list="tk_lookup_list" placeholder="TK có">
+                                        <button type="button" class="lookup-icon-btn btn-search-tk" data-target="tk_co" title="Tra cứu tài khoản"><i class="fas fa-search"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <div class="form-row" style="margin-top:12px;">
-                <div class="col">
-                    <label>Khách hàng</label>
-                    <select name="khach_hang" class="form-control" required>
-                        <option value="">-- Chọn khách hàng --</option>
-                        {% for kh in kh_list %}
-                            <option value="{{ kh.id }}" {% if don_selected and don_selected.khach_hang_id == kh.id %}selected{% endif %}>{{ kh.ma_kh }} - {{ kh.ten_kh }}</option>
-                        {% endfor %}
-                    </select>
+            <div class="col-12" id="sectionLoai2" style="display:none;">
+                <hr class="my-1">
+                <div class="d-flex align-items-center justify-content-between mt-2 mb-2">
+                    <h5 class="mb-0">Chi Tiết</h5>
                 </div>
-                <div class="col">
-                    <label>Đơn bán liên kết</label>
-                    <select name="don_ban" class="form-control">
-                        <option value="">-- Không liên kết --</option>
-                        {% for don in don_ban_list %}
-                            <option value="{{ don.id }}" {% if don_selected and don_selected.id == don.id %}selected{% endif %}>{{ don.so_don }} - Còn nợ: {{ don.con_no|intcomma }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-
-            <div class="form-row" style="margin-top:12px;">
-                <div class="col">
-                    <label>Hình thức thu</label>
-                    <select name="hinh_thuc_thu" class="form-control">
-                        <option value="tien_mat">Tiền mặt</option>
-                        <option value="chuyen_khoan">Chuyển khoản</option>
-                    </select>
-                </div>
-                <div class="col">
-                    <label>Số tiền thu</label>
-                    <input type="number" name="tong_thu" class="form-control" min="0" step="1" required>
-                </div>
-            </div>
-            <small class="text-muted d-block" style="margin-top:8px;">Trạng thái chứng từ: tạo mới = <strong>1 - Lập phiếu</strong>, xác nhận thu = <strong>2 - Ghi nhận nghiệp vụ</strong>, chuyển sổ cái = <strong>3</strong>.</small>
-
-            <div class="form-row" style="margin-top:12px;">
-                <div class="col">
-                    <label>Mã tham chiếu</label>
-                    <input type="text" name="so_tham_chieu" class="form-control">
-                </div>
-            </div>
-
-            <div class="form-row" style="margin-top:12px;">
-                <div class="col">
-                    <label>Ghi chú</label>
-                    <textarea name="ghi_chu" class="form-control" rows="3"></textarea>
+                <div class="table-responsive mt-2">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Mã khách</th>
+                                <th>Tên khách</th>
+                                <th class="text-end">Tổng nợ</th>
+                                <th class="text-end">Tổng đã thu</th>
+                                <th class="text-end">Còn phải thu</th>
+                                <th>TK nợ</th>
+                                <th>TK có</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td id="previewKhMa" class="text-muted">--</td>
+                                <td id="previewKhTen" class="text-muted">Chưa chọn khách hàng</td>
+                                <td id="previewKhTongNo" class="text-end">0 đ</td>
+                                <td id="previewKhDaThu" class="text-end">0 đ</td>
+                                <td id="previewKhConNo" class="text-end">0 đ</td>
+                                <td>
+                                    <div class="lookup-box lookup-box-inline">
+                                        <input type="text" class="form-control lookup-input lookup-display tk-no-input" list="tk_lookup_list" placeholder="TK nợ">
+                                        <button type="button" class="lookup-icon-btn btn-search-tk" data-target="tk_no" title="Tra cứu tài khoản"><i class="fas fa-search"></i></button>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="lookup-box lookup-box-inline">
+                                        <input type="text" class="form-control lookup-input lookup-display tk-co-input" list="tk_lookup_list" placeholder="TK có">
+                                        <button type="button" class="lookup-icon-btn btn-search-tk" data-target="tk_co" title="Tra cứu tài khoản"><i class="fas fa-search"></i></button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <div style="margin-top:16px;">
-                <button class="btn btn-primary" type="submit">Lưu phiếu thu</button>
-                <a href="{% url 'phieu_thu_list' %}" class="btn btn-secondary">Quay lại</a>
+            <div class="col-12">
+                <label class="form-label">Ghi chú bổ sung</label>
+                <input type="text" name="ghi_chu" class="form-control" value="{{ form_values.ghi_chu|default:'' }}">
             </div>
-        </form>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-start mt-3">
+            <small class="text-muted" id="thuRuleHint">{% if loai_form == 'chi' %}Quy tắc: Phiếu chi dùng cùng giao diện phiếu thu, nhưng đảo chiều tài khoản hạch toán (Nợ/Có).{% else %}Quy tắc: Loại 1 không vượt công nợ của hóa đơn/đơn liên kết. Loại 2 không vượt công nợ tổng của khách hàng.{% endif %}</small>
+            <div class="summary-box">
+                <div class="d-flex justify-content-between fs-5"><strong>Tổng tiền {% if loai_form == 'chi' %}chi{% else %}thu{% endif %}</strong><strong id="tongThuDisplay">0</strong></div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <button type="submit" class="btn btn-primary px-5"><i class="fas fa-save"></i> Lưu</button>
+        </div>
+    </form>
+</div>
+
+<div class="modal fade" id="modalKhachHang" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Danh mục khách hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="khSearchInput" class="form-control mb-2" placeholder="Tìm nhanh mã/tên/SĐT khách hàng...">
+                <div class="lookup-scroll" id="khSearchResults"></div>
+            </div>
+        </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalDonBan" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Danh mục đơn bán</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="donSearchInput" class="form-control mb-2" placeholder="Tìm nhanh số đơn hoặc mã khách...">
+                <div class="lookup-scroll" id="donSearchResults"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalTaiKhoan" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Danh mục tài khoản</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="tkSearchInput" class="form-control mb-2" placeholder="Tìm nhanh số tài khoản hoặc tên...">
+                <div class="lookup-scroll" id="tkSearchResults"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let khModal = null;
+    let donModal = null;
+    let tkModal = null;
+    let tkTargetField = 'tk_no';
+    const isChiForm = '{{ loai_form|default:"thu" }}' === 'chi';
+    const accountOptions = [
+        {% for tk in tai_khoan_list %}
+        { ma: '{{ tk.ma_tk|escapejs }}', ten: '{{ tk.ten_tk|escapejs }}' }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    function fmtMoney(value) {
+        return (parseFloat(value || 0)).toLocaleString('vi-VN') + ' đ';
+    }
+
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function normLookup(str) {
+        return String(str || '').trim().toLowerCase();
+    }
+
+    function unformatCurrency(str) {
+        return String(str || '').replace(/\./g, '');
+    }
+
+    function formatCurrency(num) {
+        const n = parseInt(unformatCurrency(String(num || 0)), 10) || 0;
+        return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    function syncLookupInputToSelect(inputSelector, selectSelector) {
+        const $input = $(inputSelector);
+        const $select = $(selectSelector);
+        const keyword = normLookup($input.val());
+        if (!keyword) {
+            $select.val('').trigger('change');
+            return false;
+        }
+
+        let matchedValue = '';
+        $select.find('option').each(function() {
+            const $opt = $(this);
+            const optVal = String($opt.val() || '');
+            if (!optVal) return;
+            const text = normLookup($opt.text());
+            const ma = normLookup($opt.data('ma') || '');
+            const ten = normLookup($opt.data('ten') || '');
+            const soDon = normLookup($opt.data('so-don') || '');
+            if (keyword === text || keyword === ma || keyword === soDon || keyword === (ma + ' - ' + ten)) {
+                matchedValue = optVal;
+                return false;
+            }
+        });
+
+        if (matchedValue) {
+            $select.val(matchedValue).trigger('change');
+            return true;
+        }
+        return false;
+    }
+
+    function updateKhDisplayFromSelect() {
+        const opt = $('#khach_hang option:selected');
+        if (!opt.val()) {
+            $('#kh_display').val('');
+            $('#previewKhMa').text('--').addClass('text-muted');
+            $('#previewKhTen').text('Chưa chọn khách hàng').addClass('text-muted');
+            $('#previewKhTongNo').text(fmtMoney(0));
+            $('#previewKhDaThu').text(fmtMoney(0));
+            $('#previewKhConNo').text(fmtMoney(0));
+            return;
+        }
+        const ma = opt.data('ma') || '';
+        const ten = opt.data('ten') || '';
+        $('#kh_display').val(ma + ' - ' + ten);
+        $('#previewKhMa').text(ma || '--').removeClass('text-muted');
+        $('#previewKhTen').text(ten || '').removeClass('text-muted');
+        $('#previewKhTongNo').text(fmtMoney(opt.data('tong-hoa-don') || 0));
+        $('#previewKhDaThu').text(fmtMoney(opt.data('tong-da-thu') || 0));
+        $('#previewKhConNo').text(fmtMoney(opt.data('con-no') || 0));
+        if (!String($('#dia_chi').val() || '').trim()) {
+            $('#dia_chi').val(opt.data('dia-chi') || '');
+        }
+        if (!String($('#nguoi_nop_tien').val() || '').trim()) {
+            $('#nguoi_nop_tien').val(ten);
+        }
+
+        if ($('#loai_phieu_thu').val() === '2') {
+            const tongThuCurrent = parseFloat(unformatCurrency($('#tong_thu').val() || 0));
+            const conNoKh = parseFloat(opt.data('con-no') || 0);
+            if (tongThuCurrent <= 0) {
+                $('#tong_thu').val(formatCurrency(Math.round(conNoKh)));
+            }
+            updateTongThuDisplay();
+        }
+    }
+
+    function updateDonPreviewFromSelect() {
+        if ($('#loai_phieu_thu').val() !== '1') {
+            return;
+        }
+        const opt = $('#don_ban option:selected');
+        const tongThuCurrent = parseFloat(unformatCurrency($('#tong_thu').val() || 0));
+        if (!opt.val()) {
+            $('#don_display').val('');
+            $('#previewSoDon').text('Chưa chọn').addClass('text-muted');
+            $('#previewNgay').text('--/--/----').addClass('text-muted');
+            $('#previewConNo').text(fmtMoney(0));
+            $('#previewTienThu').text(fmtMoney(tongThuCurrent));
+            return;
+        }
+
+        const soDon = opt.data('so-don') || '';
+        const ngay = opt.data('ngay') || '--/--/----';
+        const conNo = parseFloat(opt.data('con-no') || 0);
+        $('#don_display').val((soDon ? soDon + ' - ' : '') + (opt.data('ten-kh') || ''));
+        $('#previewSoDon').text(soDon).removeClass('text-muted');
+        $('#previewNgay').text(ngay).removeClass('text-muted');
+        $('#previewConNo').text(fmtMoney(conNo));
+
+        if (tongThuCurrent <= 0) {
+            $('#tong_thu').val(Math.round(conNo));
+        }
+
+        const khId = String(opt.data('kh-id') || '');
+        if (khId) {
+            $('#khach_hang').val(khId).trigger('change');
+        }
+        updateTongThuDisplay();
+    }
+
+    function updateTkCoPreview() {
+        const hinhThuc = $('#hinh_thuc_thu').val();
+        const tkTien = hinhThuc === 'chuyen_khoan' ? '112' : '111';
+        if (isChiForm) {
+            if (!$('#tk_no').val() || $('#tk_no').val() === '111' || $('#tk_no').val() === '112') {
+                $('#tk_no').val(tkTien);
+            }
+            if (!$('#tk_co').val()) {
+                $('#tk_co').val('131');
+            }
+        } else {
+            if (!$('#tk_no').val()) {
+                $('#tk_no').val('131');
+            }
+            if (!$('#tk_co').val() || $('#tk_co').val() === '111' || $('#tk_co').val() === '112') {
+                $('#tk_co').val(tkTien);
+            }
+        }
+        updateTkPreview();
+    }
+
+    function updateTkPreview() {
+        const tkNo = $('#tk_no').val() || '';
+        const tkCo = $('#tk_co').val() || '';
+        $('.tk-no-input').val(tkNo);
+        $('.tk-co-input').val(tkCo);
+    }
+
+    function syncTkDisplayToSelect(displayValue, selectSelector) {
+        const keyword = normLookup(displayValue);
+        if (!keyword) {
+            $(selectSelector).val('');
+            updateTkPreview();
+            return false;
+        }
+        let matched = '';
+        $(selectSelector).find('option').each(function() {
+            const optVal = String($(this).val() || '');
+            if (!optVal) return;
+            const text = normLookup($(this).text());
+            if (keyword === text || keyword === optVal || text.indexOf(keyword) >= 0) {
+                matched = optVal;
+                return false;
+            }
+        });
+        if (matched) {
+            $(selectSelector).val(matched);
+            const selectedText = $(selectSelector).find('option:selected').text();
+            $(displaySelector).val(selectedText);
+            updateTkPreview();
+            return true;
+        }
+        return false;
+    }
+
+    function loadTkResults() {
+        const q = normLookup($('#tkSearchInput').val());
+        const rows = accountOptions.filter(function(item) {
+            if (!q) return true;
+            return normLookup(item.ma).includes(q) || normLookup(item.ten).includes(q) || normLookup(item.ma + ' - ' + item.ten).includes(q);
+        });
+        if (!rows.length) {
+            $('#tkSearchResults').html('<div class="p-3 text-muted text-center">Không tìm thấy tài khoản</div>');
+            return;
+        }
+        let html = '<div class="lookup-head" style="grid-template-columns:160px 1fr;"><span>Số TK</span><span>Tên tài khoản</span></div>';
+        rows.forEach(function(r) {
+            html += '<button type="button" class="lookup-row btn-tk-select" style="grid-template-columns:160px 1fr;" data-ma="' + escapeHtml(r.ma) + '">'
+                + '<span><strong>' + escapeHtml(r.ma) + '</strong></span>'
+                + '<span>' + escapeHtml(r.ten) + '</span>'
+                + '</button>';
+        });
+        $('#tkSearchResults').html(html);
+    }
+
+    function updateTongThuDisplay() {
+        const rawVal = unformatCurrency($('#tong_thu').val() || 0);
+        const val = parseFloat(rawVal || 0);
+        $('#tongThuDisplay').text(fmtMoney(val));
+        $('#previewTienThu').text(fmtMoney(val));
+    }
+
+    function updateLoaiPhieuUI() {
+        const loai = $('#loai_phieu_thu').val() || '1';
+        const isLoai1 = loai === '1';
+
+        $('#sectionLoai1').toggle(isLoai1);
+        $('#sectionLoai2').toggle(!isLoai1);
+
+        if (!isLoai1) {
+            $('#don_ban').val('').trigger('change');
+            $('#don_display').val('');
+            if (!isChiForm) {
+                $('#thuRuleHint').text('Quy tắc: Loại 2 thu theo khách hàng, không bắt buộc chọn hóa đơn. Số tiền thu không vượt công nợ tổng của khách hàng.');
+            }
+        } else {
+            if (!isChiForm) {
+                $('#thuRuleHint').text('Quy tắc: Loại 1 không vượt công nợ của hóa đơn/đơn liên kết. Loại 2 không vượt công nợ tổng của khách hàng.');
+            }
+            updateDonPreviewFromSelect();
+        }
+        updateKhDisplayFromSelect();
+    }
+
+    function loadKhResults() {
+        const q = $('#khSearchInput').val().trim();
+        $.get('{% url "khach_hang_api_lookup" %}', { q: q, page: 1, page_size: 20 }, function(resp) {
+            const rows = resp.results || [];
+            if (!rows.length) {
+                $('#khSearchResults').html('<div class="p-3 text-muted text-center">Không tìm thấy khách hàng</div>');
+                return;
+            }
+
+            let html = '<div class="lookup-head kh"><span>Mã khách</span><span>Tên khách</span><span>Địa chỉ</span></div>';
+            rows.forEach(function(r) {
+                html += '<button type="button" class="lookup-row kh btn-kh-select" data-id="' + r.id + '">'
+                    + '<span><strong>' + escapeHtml(r.ma_kh || '') + '</strong></span>'
+                    + '<span>' + escapeHtml(r.ten_kh || '') + '</span>'
+                    + '<span class="text-end">' + escapeHtml(r.dia_chi || '') + '</span>'
+                    + '</button>';
+            });
+            $('#khSearchResults').html(html);
+        });
+    }
+
+    function loadDonResults() {
+        const q = $('#donSearchInput').val().trim();
+        const khId = $('#khach_hang').val() || '';
+        $.get('{% url "don_ban_api_lookup" %}', { q: q, khach_hang_id: khId }, function(resp) {
+            const rows = resp.results || [];
+            if (!rows.length) {
+                $('#donSearchResults').html('<div class="p-3 text-muted text-center">Không tìm thấy đơn bán phù hợp</div>');
+                return;
+            }
+
+            let html = '<div class="lookup-head don"><span>Số đơn</span><span>Ngày</span><span>Khách hàng</span><span>Tổng tiền</span></div>';
+            rows.forEach(function(r) {
+                html += '<button type="button" class="lookup-row don btn-don-select" data-id="' + r.id + '">'
+                    + '<span><strong>' + escapeHtml(r.so_don || '') + '</strong></span>'
+                    + '<span>' + escapeHtml(r.ngay_chung_tu || '') + '</span>'
+                    + '<span>' + escapeHtml((r.ma_kh || '') + ' - ' + (r.ten_kh || '')) + '</span>'
+                    + '<span class="text-end">' + fmtMoney(r.tong_thanh_toan || 0) + '</span>'
+                    + '</button>';
+            });
+            $('#donSearchResults').html(html);
+        });
+    }
+
+    $('#khach_hang').on('change', updateKhDisplayFromSelect);
+    $('#don_ban').on('change', updateDonPreviewFromSelect);
+    $('#loai_phieu_thu').on('change', updateLoaiPhieuUI);
+    $('#hinh_thuc_thu').on('change', updateTkCoPreview);
+    $('#tong_thu').on('input', function() {
+        // Format input with thousands separator
+        const curVal = $(this).val();
+        const unformatted = unformatCurrency(curVal);
+        const formatted = formatCurrency(unformatted);
+        if (curVal !== formatted) {
+            $(this).val(formatted);
+        }
+        updateTongThuDisplay();
+    });
+    
+    // Unformat tong_thu before submit
+    $('#phieuThuForm').on('submit', function() {
+        const formatted = $('#tong_thu').val();
+        const unformatted = unformatCurrency(formatted);
+        $('#tong_thu').val(unformatted);
+    });
+    
+    $(document).on('change blur', '.tk-no-input', function() {
+        syncTkDisplayToSelect($(this).val(), '#tk_no');
+    });
+    $(document).on('change blur', '.tk-co-input', function() {
+        syncTkDisplayToSelect($(this).val(), '#tk_co');
+    });
+    $('#tk_no').on('change', updateTkPreview);
+    $('#tk_co').on('change', updateTkPreview);
+
+    $('#kh_display').on('change blur', function() {
+        syncLookupInputToSelect('#kh_display', '#khach_hang');
+    });
+
+    $('#don_display').on('change blur', function() {
+        syncLookupInputToSelect('#don_display', '#don_ban');
+    });
+
+    $('#btnSearchKh').on('click', function() {
+        if (!khModal) {
+            khModal = new bootstrap.Modal(document.getElementById('modalKhachHang'));
+        }
+        khModal.show();
+        $('#khSearchInput').val('');
+        loadKhResults();
+    });
+
+    $('#btnSearchDon').on('click', function() {
+        if (isChiForm) {
+            return;
+        }
+        if ($('#loai_phieu_thu').val() !== '1') {
+            return;
+        }
+        if (!donModal) {
+            donModal = new bootstrap.Modal(document.getElementById('modalDonBan'));
+        }
+        donModal.show();
+        $('#donSearchInput').val('');
+        loadDonResults();
+    });
+
+    $('#khSearchInput').on('input', loadKhResults);
+    $('#donSearchInput').on('input', loadDonResults);
+    $('#tkSearchInput').on('input', loadTkResults);
+
+    $('.btn-search-tk').on('click', function() {
+        tkTargetField = String($(this).data('target') || 'tk_no');
+        if (!tkModal) {
+            tkModal = new bootstrap.Modal(document.getElementById('modalTaiKhoan'));
+        }
+        tkModal.show();
+        $('#tkSearchInput').val('');
+        loadTkResults();
+    });
+
+    $(document).on('click', '.btn-kh-select', function() {
+        const id = String($(this).data('id') || '');
+        $('#khach_hang').val(id).trigger('change');
+        if (khModal) {
+            khModal.hide();
+        }
+    });
+
+    $(document).on('click', '.btn-don-select', function() {
+        const id = String($(this).data('id') || '');
+        $('#don_ban').val(id).trigger('change');
+        if (donModal) {
+            donModal.hide();
+        }
+    });
+
+    $(document).on('click', '.btn-tk-select', function() {
+        const ma = String($(this).data('ma') || '');
+        if (!ma) {
+            return;
+        }
+        const selectId = '#' + tkTargetField;
+        $(selectId).val(ma).trigger('change');
+        updateTkPreview();
+        if (tkModal) {
+            tkModal.hide();
+        }
+    });
+
+    $(document).ready(function() {
+        if (!$('#tk_no').val()) {
+            $('#tk_no').val(isChiForm ? ($('#hinh_thuc_thu').val() === 'chuyen_khoan' ? '112' : '111') : '131');
+        }
+        if (!$('#tk_co').val()) {
+            $('#tk_co').val(isChiForm ? '131' : ($('#hinh_thuc_thu').val() === 'chuyen_khoan' ? '112' : '111'));
+        }
+        updateKhDisplayFromSelect();
+        updateDonPreviewFromSelect();
+        updateTkCoPreview();
+        updateTkPreview();
+        updateTongThuDisplay();
+        updateLoaiPhieuUI();
+        // Format initial value of tong_thu
+        const initTongThu = $('#tong_thu').val();
+        if (initTongThu) {
+            $('#tong_thu').val(formatCurrency(unformatCurrency(initTongThu)));
+        }
+    });
+</script>
 {% endblock %}

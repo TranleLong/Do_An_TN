@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     'apps.kho',
     'apps.ban_hang',
     'apps.mua_hang',
+    'apps.so_cai',
 ]
 
 MIDDLEWARE = [

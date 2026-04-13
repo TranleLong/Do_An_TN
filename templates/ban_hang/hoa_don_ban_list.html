@@ -62,7 +62,7 @@
                             {% if item.trang_thai == '1' %}
                             <span class="badge badge-warning">1 - Lập chứng từ</span>
                             {% else %}
-                            <span class="badge badge-info">3 - Chuyển sổ cái</span>
+                            <span class="badge badge-info">2 - Chuyển sổ cái</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -75,7 +75,7 @@
     </div>
 </div>
 
-<form method="post" id="formHdDelete" style="display:none;">{% csrf_token %}</form>
+<form method="post" id="formHdDelete" action="{% url 'hoa_don_ban_xoa_nhieu' %}" style="display:none;">{% csrf_token %}</form>
 <form method="post" id="formHdCopy" style="display:none;">{% csrf_token %}</form>
 <form method="post" id="formHdImport" action="{% url 'hoa_don_ban_import_excel' %}" enctype="multipart/form-data" style="display:none;">
     {% csrf_token %}
@@ -103,7 +103,7 @@
                         <select name="ma_giao_dich" class="form-control">
                             <option value="">-- Tất cả --</option>
                             <option value="1" {% if ma_giao_dich_filter == '1' %}selected{% endif %}>1 - Hóa đơn kiêm PXB</option>
-                            <option value="2" {% if ma_giao_dich_filter == '2' %}selected{% endif %}>2 - Hóa đơn từ phiếu xuất bán</option>
+                            <option value="2" {% if ma_giao_dich_filter == '2' %}selected{% endif %}>2 - Hóa đơn</option>
                         </select>
                     </div>
                     <div class="col-md-4">
@@ -119,7 +119,7 @@
                         <select name="trang_thai" class="form-control">
                             <option value="">-- Tất cả --</option>
                             <option value="1" {% if trang_thai_filter == '1' %}selected{% endif %}>1 - Lập chứng từ</option>
-                            <option value="3" {% if trang_thai_filter == '3' %}selected{% endif %}>3 - Chuyển sổ cái</option>
+                            <option value="2" {% if trang_thai_filter == '2' or trang_thai_filter == '3' %}selected{% endif %}>2 - Chuyển sổ cái</option>
                         </select>
                     </div>
                     <div class="col-md-3">
@@ -230,26 +230,25 @@
             alert('Vui lòng chọn đúng 1 hóa đơn để sửa.');
             return;
         }
-        if (selected.dataset.trangThai === '3') {
-            alert('Hóa đơn đã chuyển sổ cái, không thể sửa.');
-            return;
-        }
         window.location.href = selected.dataset.editUrl;
     });
 
     document.getElementById('btnHdDelete').addEventListener('click', function() {
-        const selected = getSingleSelectedHd();
-        if (!selected) {
-            alert('Vui lòng chọn đúng 1 hóa đơn để xóa.');
+        const selected = getSelectedHdInputs();
+        if (!selected.length) {
+            alert('Vui lòng chọn ít nhất 1 hóa đơn để xóa.');
             return;
         }
-        if (selected.dataset.trangThai === '3') {
-            alert('Hóa đơn đã chuyển sổ cái, không thể xóa.');
-            return;
-        }
-        if (!confirm('Bạn chắc chắn muốn xóa hóa đơn đã chọn?')) return;
+        if (!confirm('Bạn chắc chắn muốn xóa các hóa đơn đã chọn?')) return;
         const form = document.getElementById('formHdDelete');
-        form.action = selected.dataset.deleteUrl;
+        form.querySelectorAll('input[name="ids[]"]').forEach(function(el) { el.remove(); });
+        selected.forEach(function(input) {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'ids[]';
+            hidden.value = input.value;
+            form.appendChild(hidden);
+        });
         form.submit();
     });
 

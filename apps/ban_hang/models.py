@@ -56,6 +56,7 @@ class DonBan(models.Model):
                                   verbose_name='Đã thu')
     con_no = models.DecimalField(max_digits=18, decimal_places=0, default=0,
                                   verbose_name='Còn nợ')
+    han_thanh_toan = models.DateField(null=True, blank=True, verbose_name='Hạn thanh toán')
     trang_thai = models.CharField(max_length=20, choices=TRANG_THAI, default='1',
                                    verbose_name='Trạng thái')
     ghi_chu = models.TextField(blank=True, verbose_name='Ghi chú')
@@ -125,9 +126,8 @@ class PhieuThu(models.Model):
         ('chuyen_khoan', 'Chuyển khoản'),
     ]
     TRANG_THAI = [
-        ('1', '1 - Lập phiếu'),
-        ('2', '2 - Ghi nhận nghiệp vụ'),
-        ('3', '3 - Sổ cái'),
+        ('1', '1 - Lập chứng từ'),
+        ('2', '2 - Chuyển sổ cái'),
     ]
     so_phieu = models.CharField(max_length=30, unique=True, verbose_name='Số phiếu thu')
     ngay_thu = models.DateField(default=datetime.date.today, verbose_name='Ngày thu')
@@ -153,22 +153,57 @@ class PhieuThu(models.Model):
         return f"{self.so_phieu} - {self.khach_hang.ten_kh}"
 
 
+class CongNoCanhBaoConfig(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cong_no_canh_bao_config')
+    bat_canh_bao_qua_han = models.BooleanField(default=True, verbose_name='Bật cảnh báo nợ quá hạn')
+    ngay_cap_nhat = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'ban_hang_congno_canhbao_config'
+        verbose_name = 'Thiết lập cảnh báo công nợ'
+        verbose_name_plural = 'Thiết lập cảnh báo công nợ'
+
+    def __str__(self):
+        return f"{self.user.username} - {'Bật' if self.bat_canh_bao_qua_han else 'Tắt'}"
+
+
 class PhieuTraHang(models.Model):
+    HINH_THUC_XU_LY = [
+        ('doi_hang', 'Đổi hàng'),
+        ('tra_hang', 'Trả hàng'),
+    ]
     HINH_THUC_HOAN = [
-        ('tien_mat', 'Hoàn tiền mặt'),
-        ('bu_tru_no', 'Bù trừ công nợ'),
-        ('doi_hang', 'Đổi hàng khác'),
+        ('1', '1 - Hoàn tiền mặt'),
+        ('2', '2 - Bù trừ công nợ'),
+        ('3', '3 - Đổi hàng khác'),
+    ]
+    TRANG_THAI = [
+        ('1', '1 - Lập chứng từ'),
+        ('2', '2 - Hoàn tất'),
     ]
     so_phieu = models.CharField(max_length=30, unique=True, verbose_name='Số phiếu trả')
+    ngay_lap = models.DateField(default=datetime.date.today, verbose_name='Ngày lập')
+    ngay_hach_toan = models.DateField(default=datetime.date.today, verbose_name='Ngày hạch toán')
     ngay_tra = models.DateField(default=datetime.date.today, verbose_name='Ngày trả')
+    hoa_don_goc = models.ForeignKey('HoaDonBan', on_delete=models.PROTECT, null=True, blank=True,
+                                     related_name='phieu_doi_tra', verbose_name='Hóa đơn gốc')
     don_ban_goc = models.ForeignKey(DonBan, on_delete=models.SET_NULL, null=True, blank=True,
                                      verbose_name='Đơn bán gốc')
     khach_hang = models.ForeignKey(KhachHang, on_delete=models.SET_NULL, null=True, blank=True,
                                     verbose_name='Khách hàng')
+    tk_no = models.CharField(max_length=20, default='131', verbose_name='TK nợ')
+    tk_co = models.CharField(max_length=20, default='131', verbose_name='TK có')
+    dien_giai = models.TextField(blank=True, verbose_name='Diễn giải')
+    hinh_thuc_xu_ly = models.CharField(max_length=20, choices=HINH_THUC_XU_LY, default='tra_hang', verbose_name='Hình thức')
     ly_do_tra = models.CharField(max_length=200, verbose_name='Lý do trả hàng')
-    hinh_thuc_hoan = models.CharField(max_length=20, choices=HINH_THUC_HOAN, default='tien_mat')
+    hinh_thuc_hoan = models.CharField(max_length=20, choices=HINH_THUC_HOAN, default='1')
+    tong_tien_tra = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name='Tổng tiền hàng trả')
+    tong_tien_doi = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name='Tổng tiền hàng đổi')
     tong_tien_hoan = models.DecimalField(max_digits=18, decimal_places=0, default=0,
                                           verbose_name='Tổng tiền hoàn')
+    chenh_lech_tien = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name='Chênh lệch tiền')
+    trang_thai = models.CharField(max_length=20, choices=TRANG_THAI, default='1', verbose_name='Trạng thái')
+    da_cap_nhat_kho_cong_no = models.BooleanField(default=False, verbose_name='Đã cập nhật kho/công nợ')
     nguoi_tao = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     ngay_tao = models.DateTimeField(auto_now_add=True)
 
@@ -181,16 +216,26 @@ class PhieuTraHang(models.Model):
 class PhieuTraHang_CT(models.Model):
     phieu_tra = models.ForeignKey(PhieuTraHang, on_delete=models.CASCADE,
                                    related_name='chi_tiet')
+    hoa_don_ct_goc = models.ForeignKey('HoaDonBan_CT', on_delete=models.SET_NULL, null=True, blank=True,
+                                        related_name='chi_tiet_doi_tra')
+    kho = models.ForeignKey(Kho, on_delete=models.PROTECT, null=True, blank=True, verbose_name='Kho xử lý')
     hang_hoa = models.ForeignKey(HangHoa, on_delete=models.PROTECT)
     so_luong = models.IntegerField()
     don_gia = models.DecimalField(max_digits=18, decimal_places=0)
     thanh_tien = models.DecimalField(max_digits=18, decimal_places=0, default=0)
+    loai_hang_tra = models.CharField(max_length=20, choices=[('binh_thuong', 'Hàng bình thường'), ('hang_loi', 'Hàng lỗi')], default='binh_thuong')
+    hang_hoa_doi = models.ForeignKey(HangHoa, on_delete=models.SET_NULL, null=True, blank=True,
+                                      related_name='chi_tiet_hang_doi')
+    so_luong_doi = models.IntegerField(default=0)
+    gia_ban_doi = models.DecimalField(max_digits=18, decimal_places=0, default=0)
+    tien_doi = models.DecimalField(max_digits=18, decimal_places=0, default=0)
 
     class Meta:
         db_table = 'ban_hang_phieutrahang_ct'
 
     def save(self, *args, **kwargs):
         self.thanh_tien = self.so_luong * self.don_gia
+        self.tien_doi = self.so_luong_doi * self.gia_ban_doi
         super().save(*args, **kwargs)
 
 
@@ -261,7 +306,7 @@ class PhieuGiaBanChietKhau(models.Model):
 class HoaDonBan(models.Model):
     MA_GIAO_DICH = [
         ('1', '1 - Hóa đơn kiêm phiếu xuất bán'),
-        ('2', '2 - Hóa đơn từ phiếu xuất bán'),
+        ('2', '2 - Hóa đơn'),
     ]
     MA_NGOAI_TE = [
         ('VND', 'VND'),
@@ -269,7 +314,7 @@ class HoaDonBan(models.Model):
     ]
     TRANG_THAI = [
         ('1', '1 - Lập chứng từ'),
-        ('3', '3 - Chuyển sổ cái'),
+        ('2', '2 - Chuyển sổ cái'),
     ]
 
     ma_giao_dich = models.CharField(max_length=5, choices=MA_GIAO_DICH, default='1', verbose_name='Mã giao dịch')
@@ -284,7 +329,9 @@ class HoaDonBan(models.Model):
     so_dien_thoai = models.CharField(max_length=15, blank=True, verbose_name='Số điện thoại')
     mst = models.CharField(max_length=20, blank=True, verbose_name='MST')
     nguoi_mua_hang = models.CharField(max_length=120, blank=True, verbose_name='Người mua hàng')
+    ma_nv_ban_hang = models.CharField(max_length=30, blank=True, verbose_name='Mã nhân viên bán hàng')
     tk_no = models.CharField(max_length=20, default='131', verbose_name='TK nợ')
+    tk_co = models.CharField(max_length=20, default='511', verbose_name='TK có đối ứng')
     dien_giai = models.TextField(blank=True, verbose_name='Diễn giải')
     trang_thai = models.CharField(max_length=20, choices=TRANG_THAI, default='1', verbose_name='Trạng thái')
     don_ban = models.ForeignKey(DonBan, on_delete=models.SET_NULL, null=True, blank=True, related_name='hoa_don_lien_ket', verbose_name='Đơn bán liên kết')
@@ -325,6 +372,7 @@ class HoaDonBan_CT(models.Model):
     gia_ban = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name='Giá bán')
     ty_le_chiet_khau = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name='Tỷ lệ chiết khấu (%)')
     thue_suat = models.DecimalField(max_digits=5, decimal_places=2, default=10, verbose_name='Thuế suất (%)')
+    tk_thue = models.CharField(max_length=20, blank=True, verbose_name='TK thuế')
     tk_vat_tu = models.CharField(max_length=20, blank=True, verbose_name='TK vật tư')
     tk_gia_von = models.CharField(max_length=20, blank=True, verbose_name='TK giá vốn')
     tk_doanh_thu = models.CharField(max_length=20, blank=True, verbose_name='TK doanh thu')

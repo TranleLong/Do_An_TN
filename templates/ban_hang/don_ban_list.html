@@ -136,7 +136,7 @@
     </div>
 </div>
 
-<form method="post" id="formDonDelete" style="display:none;">{% csrf_token %}</form>
+<form method="post" id="formDonDelete" action="{% url 'don_ban_xoa_nhieu' %}" style="display:none;">{% csrf_token %}</form>
 
 <script>
     function getSelectedDonInputs() {
@@ -158,14 +158,21 @@
     });
 
     document.getElementById('btnDonDelete').addEventListener('click', function() {
-        const input = getSelectedSingleDon();
-        if (!input) {
-            alert('Vui lòng chọn đúng 1 đơn hàng để xóa.');
+        const selected = getSelectedDonInputs();
+        if (!selected.length) {
+            alert('Vui lòng chọn ít nhất 1 đơn hàng để xóa.');
             return;
         }
-        if (!confirm('Bạn chắc chắn muốn xóa đơn hàng đã chọn?')) return;
+        if (!confirm('Bạn chắc chắn muốn xóa các đơn hàng đã chọn?')) return;
         const form = document.getElementById('formDonDelete');
-        form.action = input.dataset.deleteUrl;
+        form.querySelectorAll('input[name="ids[]"]').forEach(function(el) { el.remove(); });
+        selected.forEach(function(input) {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'ids[]';
+            hidden.value = input.value;
+            form.appendChild(hidden);
+        });
         form.submit();
     });
 
@@ -187,10 +194,19 @@
         window.location.href = selected[0].dataset.detailUrl;
     });
 
-    document.getElementById('btnDonPrint').addEventListener('click', function() {
+    document.getElementById('btnDonPrintPdf').addEventListener('click', function() {
         const selected = getSelectedDonInputs();
         if (selected.length !== 1) {
-            alert('Vui lòng chọn đúng 1 đơn hàng để in.');
+            alert('Vui lòng chọn đúng 1 đơn hàng để in PDF.');
+            return;
+        }
+        window.open(selected[0].dataset.detailUrl, '_blank');
+    });
+
+    document.getElementById('btnDonPrintExcel').addEventListener('click', function() {
+        const selected = getSelectedDonInputs();
+        if (selected.length !== 1) {
+            alert('Vui lòng chọn đúng 1 đơn hàng để xuất Excel.');
             return;
         }
         window.open(selected[0].dataset.detailUrl, '_blank');

@@ -24,7 +24,8 @@
             <div style="flex: 1;">
                 <h6 class="text-muted text-uppercase mb-3" style="font-size: 0.75rem; font-weight: 600;">Thông tin xuất kho</h6>
                 <table class="table" style="background: transparent;">
-                    <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Ngày chứng từ:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.ngay_chung_tu|date:"d/m/Y" }}</td></tr>
+                    <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Ngày lập:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.ngay_lap|date:"d/m/Y" }}</td></tr>
+                    <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Ngày hạch toán:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.ngay_hach_toan|date:"d/m/Y" }}</td></tr>
                     <tr><th style="border:none; padding: 0.5rem 0;">Loại xuất:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.get_loai_xuat_display }}</td></tr>
                     <tr><th style="border:none; padding: 0.5rem 0;">Kho xuất:</th><td style="border:none; padding: 0.5rem 0; color: var(--info); font-weight: bold;">{{ phieu.kho.ten_kho }}</td></tr>
                     <tr><th style="border:none; padding: 0.5rem 0;">Ghi chú:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.ghi_chu|default:"-" }}</td></tr>
@@ -67,7 +68,7 @@
                         <td>{{ forloop.counter }}</td>
                         <td><strong>{{ ct.hang_hoa.ma_hang }}</strong></td>
                         <td>{{ ct.hang_hoa.ten_hang }}</td>
-                        <td class="text-right fw-semibold">{{ ct.so_luong }}</td>
+                        <td class="text-right fw-semibold">{{ ct.so_luong|floatformat:0|intcomma }}</td>
                         <td class="text-center">{{ ct.tk_no|default:'-' }}</td>
                         <td class="text-center">{{ ct.tk_co|default:'-' }}</td>
                         <td class="text-right">{{ ct.gia_von|floatformat:0|intcomma }} đ</td>

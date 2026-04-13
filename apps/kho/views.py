@@ -999,11 +999,14 @@ def phieu_nhap_them(request):
             return redirect('phieu_nhap_them')
 
         so_phieu = data.get('so_phieu') or _gen_so_phieu('NK')
-        ngay_ct = data.get('ngay_chung_tu') or data.get('ngay_nhap') or date.today()
+        ngay_lap = data.get('ngay_lap') or data.get('ngay_nhap') or data.get('ngay_chung_tu') or date.today()
+        ngay_hach_toan = data.get('ngay_hach_toan') or data.get('ngay_chung_tu') or ngay_lap
         phieu = PhieuNhap.objects.create(
             so_phieu=so_phieu,
-            ngay_chung_tu=ngay_ct,
-            ngay_nhap=ngay_ct,
+            ngay_lap=ngay_lap,
+            ngay_hach_toan=ngay_hach_toan,
+            ngay_chung_tu=ngay_hach_toan,
+            ngay_nhap=ngay_lap,
             loai_nhap=loai_nhap,
             trang_thai='1',
             nha_cung_cap_id=ncc_id,
@@ -1088,7 +1091,8 @@ def phieu_nhap_them(request):
             pk=copy_from,
         )
         copy_data = {
-            'ngay_chung_tu': source.ngay_chung_tu.isoformat(),
+            'ngay_lap': source.ngay_lap.isoformat(),
+            'ngay_hach_toan': source.ngay_hach_toan.isoformat(),
             'loai_nhap': source.loai_nhap,
             'kho_id': str(source.kho_id or ''),
             'ncc_id': str(source.nha_cung_cap_id or ''),
@@ -1163,8 +1167,10 @@ def phieu_nhap_sua(request, pk):
             messages.error(request, 'Loại chứng từ 1 - Mua nhà cung cấp bắt buộc chọn Nhà cung cấp')
             return redirect('phieu_nhap_sua', pk=pk)
 
-        phieu.ngay_chung_tu = data.get('ngay_chung_tu') or date.today()
-        phieu.ngay_nhap = phieu.ngay_chung_tu
+        phieu.ngay_lap = data.get('ngay_lap') or data.get('ngay_nhap') or data.get('ngay_chung_tu') or date.today()
+        phieu.ngay_hach_toan = data.get('ngay_hach_toan') or data.get('ngay_chung_tu') or phieu.ngay_lap
+        phieu.ngay_chung_tu = phieu.ngay_hach_toan
+        phieu.ngay_nhap = phieu.ngay_lap
         phieu.loai_nhap = loai_nhap
         phieu.nha_cung_cap_id = ncc_id
         phieu.so_hd_ncc = data.get('so_hd_ncc', '')
@@ -1172,7 +1178,7 @@ def phieu_nhap_sua(request, pk):
         phieu.kho_id = kho_id
         phieu.ghi_chu = data.get('ghi_chu', '')
         phieu.trang_thai = '1'
-        phieu.save(update_fields=['ngay_chung_tu', 'ngay_nhap', 'loai_nhap', 'nha_cung_cap', 'so_hd_ncc', 'ngay_hd_ncc', 'kho', 'ghi_chu', 'trang_thai'])
+        phieu.save(update_fields=['ngay_lap', 'ngay_hach_toan', 'ngay_chung_tu', 'ngay_nhap', 'loai_nhap', 'nha_cung_cap', 'so_hd_ncc', 'ngay_hd_ncc', 'kho', 'ghi_chu', 'trang_thai'])
 
         phieu.chi_tiet.all().delete()
         hang_ids = data.getlist('hang_id[]')
@@ -1223,7 +1229,8 @@ def phieu_nhap_sua(request, pk):
         return redirect('phieu_nhap_detail', pk=pk)
 
     copy_data = {
-        'ngay_chung_tu': phieu.ngay_chung_tu.isoformat(),
+        'ngay_lap': phieu.ngay_lap.isoformat(),
+        'ngay_hach_toan': phieu.ngay_hach_toan.isoformat(),
         'loai_nhap': phieu.loai_nhap,
         'kho_id': str(phieu.kho_id or ''),
         'ncc_id': str(phieu.nha_cung_cap_id or ''),
@@ -1250,7 +1257,7 @@ def phieu_nhap_sua(request, pk):
         'hang_list': HangHoa.objects.filter(trang_thai='dang_ban'),
         'tai_khoan_list': TaiKhoanKeToan.objects.filter(trang_thai=True).order_by('ma_tk'),
         'so_phieu_default': phieu.so_phieu,
-        'today': phieu.ngay_chung_tu,
+        'today': phieu.ngay_lap,
         'copy_data': copy_data,
         'editing_phieu': phieu,
         'page_title': f'Sửa phiếu nhập {phieu.so_phieu}',
@@ -1350,7 +1357,8 @@ def phieu_xuat_them(request):
         trang_thai_mong_muon = str(data.get('trang_thai', '1') or '1').strip()
         if trang_thai_mong_muon not in ('1', '2', '3'):
             trang_thai_mong_muon = '1'
-        ngay_ct = data.get('ngay_chung_tu') or data.get('ngay_xuat') or date.today()
+        ngay_lap = data.get('ngay_lap') or data.get('ngay_xuat') or data.get('ngay_chung_tu') or date.today()
+        ngay_hach_toan = data.get('ngay_hach_toan') or data.get('ngay_chung_tu') or ngay_lap
         so_phieu_input = (data.get('so_phieu') or '').strip()
         so_phieu_candidate = so_phieu_input if so_phieu_input else _gen_so_phieu('XK')
         if PhieuXuat.objects.filter(so_phieu=so_phieu_candidate).exists():
@@ -1361,8 +1369,10 @@ def phieu_xuat_them(request):
             try:
                 phieu = PhieuXuat.objects.create(
                     so_phieu=so_phieu_candidate,
-                    ngay_chung_tu=ngay_ct,
-                    ngay_xuat=ngay_ct,
+                    ngay_lap=ngay_lap,
+                    ngay_hach_toan=ngay_hach_toan,
+                    ngay_chung_tu=ngay_hach_toan,
+                    ngay_xuat=ngay_lap,
                     loai_xuat=data.get('loai_xuat', 'noi_bo'),
                     kho_id=kho_id,
                     trang_thai='1',
@@ -1424,7 +1434,8 @@ def phieu_xuat_them(request):
             pk=copy_from,
         )
         copy_data = {
-            'ngay_chung_tu': source.ngay_chung_tu.isoformat(),
+            'ngay_lap': source.ngay_lap.isoformat(),
+            'ngay_hach_toan': source.ngay_hach_toan.isoformat(),
             'loai_xuat': source.loai_xuat,
             'kho_id': str(source.kho_id or ''),
             'trang_thai': source.trang_thai,
@@ -1485,13 +1496,15 @@ def phieu_xuat_sua(request, pk):
         trang_thai_mong_muon = str(data.get('trang_thai', '1') or '1').strip()
         if trang_thai_mong_muon not in ('1', '2', '3'):
             trang_thai_mong_muon = '1'
-        phieu.ngay_chung_tu = data.get('ngay_chung_tu') or date.today()
-        phieu.ngay_xuat = phieu.ngay_chung_tu
+        phieu.ngay_lap = data.get('ngay_lap') or data.get('ngay_xuat') or data.get('ngay_chung_tu') or date.today()
+        phieu.ngay_hach_toan = data.get('ngay_hach_toan') or data.get('ngay_chung_tu') or phieu.ngay_lap
+        phieu.ngay_chung_tu = phieu.ngay_hach_toan
+        phieu.ngay_xuat = phieu.ngay_lap
         phieu.loai_xuat = data.get('loai_xuat', 'noi_bo')
         phieu.kho_id = data.get('kho')
         phieu.ghi_chu = data.get('ghi_chu', '')
         phieu.trang_thai = '1'
-        phieu.save(update_fields=['ngay_chung_tu', 'ngay_xuat', 'loai_xuat', 'kho', 'ghi_chu', 'trang_thai'])
+        phieu.save(update_fields=['ngay_lap', 'ngay_hach_toan', 'ngay_chung_tu', 'ngay_xuat', 'loai_xuat', 'kho', 'ghi_chu', 'trang_thai'])
 
         phieu.chi_tiet.all().delete()
         hang_ids = data.getlist('hang_id[]')
@@ -1551,7 +1564,8 @@ def phieu_xuat_sua(request, pk):
         return redirect('phieu_xuat_detail', pk=pk)
 
     copy_data = {
-        'ngay_chung_tu': phieu.ngay_chung_tu.isoformat(),
+        'ngay_lap': phieu.ngay_lap.isoformat(),
+        'ngay_hach_toan': phieu.ngay_hach_toan.isoformat(),
         'loai_xuat': phieu.loai_xuat,
         'kho_id': str(phieu.kho_id or ''),
         'trang_thai': phieu.trang_thai,
@@ -1571,7 +1585,7 @@ def phieu_xuat_sua(request, pk):
         'kho_list': Kho.objects.filter(trang_thai=True),
         'hang_list': HangHoa.objects.filter(trang_thai='dang_ban'),
         'so_phieu_default': phieu.so_phieu,
-        'today': phieu.ngay_chung_tu,
+        'today': phieu.ngay_lap,
         'copy_data': copy_data,
         'editing_phieu': phieu,
         'page_title': f'Sửa phiếu xuất {phieu.so_phieu}',
@@ -1976,6 +1990,7 @@ def bao_cao_ton_kho(request):
     return render(request, 'kho/bao_cao_ton.html', {
         'rows': rows,
         'kho_list': Kho.objects.filter(trang_thai=True),
+        'hang_hoa_list': HangHoa.objects.filter(trang_thai='dang_ban').order_by('ma_hang').values('ma_hang', 'ten_hang')[:1000],
         'kho_filter': kho_id,
         'kho_da_chon': kho_da_chon,
         'q': q,

@@ -66,7 +66,7 @@
                         <td><strong>{{ ct.hang_hoa.ma_hang }}</strong></td>
                         <td>{{ ct.hang_hoa.ten_hang }}</td>
                         <td class="text-center">{{ ct.hang_hoa.don_vi_tinh.ten|default:"-" }}</td>
-                        <td class="text-right fw-semibold">{{ ct.so_luong }}</td>
+                        <td class="text-right fw-semibold">{{ ct.so_luong|floatformat:0|intcomma }}</td>
                         <td class="text-right">{{ ct.don_gia|floatformat:0|intcomma }} đ</td>
                         <td class="text-right">{{ ct.chiet_khau }}%</td>
                         <td class="text-right">{{ ct.thue_vat }}%</td>

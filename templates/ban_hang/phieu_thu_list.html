@@ -12,14 +12,14 @@
             {% if active_menu == 'phieu_thu' %}
                 <a href="{% url 'phieu_thu_them' %}" class="erp-toolbar-btn" title="Thêm mới" aria-label="Thêm mới"><i class="fas fa-plus"></i></a>
             {% elif active_menu == 'phieu_chi' %}
-                <a href="{% url 'phieu_chi_them' %}" class="erp-toolbar-btn" title="Thêm mới" aria-label="Thêm mới"><i class="fas fa-plus"></i></a>
+                <a href="{% url 'bh_phieu_chi_them' %}" class="erp-toolbar-btn" title="Thêm mới" aria-label="Thêm mới"><i class="fas fa-plus"></i></a>
             {% endif %}
-            <button type="button" class="erp-toolbar-btn disabled" title="Sửa" aria-label="Sửa"><i class="fas fa-pen-to-square"></i></button>
-            <button type="button" class="erp-toolbar-btn disabled" title="Xóa" aria-label="Xóa"><i class="fas fa-trash"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnThuEdit" title="Sửa" aria-label="Sửa"><i class="fas fa-pen-to-square"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnThuDelete" title="Xóa" aria-label="Xóa"><i class="fas fa-trash"></i></button>
             <span class="erp-toolbar-sep"></span>
-            <button type="button" class="erp-toolbar-btn disabled" title="Chép dữ liệu" aria-label="Chép dữ liệu"><i class="fas fa-copy"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnThuCopy" title="Chép dữ liệu" aria-label="Chép dữ liệu"><i class="fas fa-copy"></i></button>
             <button type="button" class="erp-toolbar-btn" id="btnThuSearch" title="Tìm" aria-label="Tìm"><i class="fas fa-magnifying-glass"></i></button>
-            <button type="button" class="erp-toolbar-btn disabled" title="Xem" aria-label="Xem"><i class="fas fa-eye"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnThuView" title="Xem" aria-label="Xem"><i class="fas fa-eye"></i></button>
             <button type="button" class="erp-toolbar-btn" id="btnThuPrint" title="In" aria-label="In"><i class="fas fa-print"></i></button>
             <button type="button" class="erp-toolbar-btn" id="btnThuQuery" title="Truy vấn" aria-label="Truy vấn"><i class="fas fa-filter"></i></button>
             <button type="button" class="erp-toolbar-btn" onclick="window.location.reload()" title="Làm mới" aria-label="Làm mới"><i class="fas fa-rotate-right"></i></button>
@@ -32,55 +32,50 @@
                 <thead>
                     <tr>
                         <th style="width:42px;">Chọn</th>
+                        <th>Ngày lập</th>
                         <th>Số phiếu</th>
-                        <th>Ngày</th>
-                        <th>Đối tượng</th>
+                        <th>Mã khách</th>
+                        <th>Tên khách</th>
                         <th class="text-right">Số tiền</th>
-                        <th class="text-center">Trạng thái</th>
+                        <th>Trạng thái</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% if items %}
                         {% for row in items %}
                         <tr>
-                            <td class="text-center"><input type="radio" name="selected_thu" class="erp-row-select" value="{{ row.pk }}"></td>
-                            <td>{{ row.so_phieu }}</td>
-                            <td>{{ row.ngay_thu|default:row.ngay_chi|date:'d/m/Y' }}</td>
-                            <td>{{ row.khach_hang.ten_kh|default:row.nha_cung_cap.ten_ncc }}</td>
-                            <td class="text-right">{{ row.tong_thu|default:row.tong_chi|intcomma }} đ</td>
-                            <td class="text-center">
+                            <td class="text-center"><input type="checkbox" name="selected_thu" class="erp-row-select" value="{{ row.pk }}" 
+                            {% if loai == 'chi' %}
+                            data-edit-url="{% url 'bh_phieu_chi_sua' row.pk %}" data-delete-url="{% url 'bh_phieu_chi_xoa' row.pk %}" data-view-url="{% url 'bh_phieu_chi_xem' row.pk %}"
+                            {% else %}
+                            data-edit-url="{% url 'phieu_thu_sua' row.pk %}" data-delete-url="{% url 'phieu_thu_xoa' row.pk %}" data-view-url="{% url 'phieu_thu_xem' row.pk %}"
+                            {% endif %}
+                            ></td>
+                            {% if loai == 'chi' %}
+                            <td>{{ row.ngay_thu|date:'d/m/Y' }}</td>
+                            <td><a href="#"><strong>{{ row.so_phieu }}</strong></a></td>
+                            <td>{{ row.khach_hang.ma_kh|default:"-" }}</td>
+                            <td>{{ row.khach_hang.ten_kh }}</td>
+                            <td class="text-right fw-semibold">{{ row.tong_thu|intcomma }}</td>
+                            {% else %}
+                            <td>{{ row.ngay_thu|date:'d/m/Y' }}</td>
+                            <td><a href="#"><strong>{{ row.so_phieu }}</strong></a></td>
+                            <td>{{ row.khach_hang.ma_kh|default:"-" }}</td>
+                            <td>{{ row.khach_hang.ten_kh }}</td>
+                            <td class="text-right fw-semibold">{{ row.tong_thu|intcomma }}</td>
+                            {% endif %}
+                            <td>
                                 {% if row.trang_thai == '1' %}
-                                    <span class="badge badge-warning">1 - Lập phiếu</span>
-                                {% elif row.trang_thai == '2' %}
-                                    <span class="badge badge-success">2 - Ghi nhận nghiệp vụ</span>
+                                    <span class="badge badge-warning">1 - Lập chứng từ</span>
                                 {% else %}
-                                    <span class="badge badge-info">3 - Sổ cái</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    {% elif phieu_chi_list %}
-                        {% for row in phieu_chi_list %}
-                        <tr>
-                            <td class="text-center"><input type="radio" name="selected_thu" class="erp-row-select" value="{{ row.pk }}"></td>
-                            <td>{{ row.so_phieu }}</td>
-                            <td>{{ row.ngay_chi|date:'d/m/Y' }}</td>
-                            <td>{{ row.nha_cung_cap.ten_ncc }}</td>
-                            <td class="text-right">{{ row.tong_chi|intcomma }} đ</td>
-                            <td class="text-center">
-                                {% if row.trang_thai == '1' %}
-                                    <span class="badge badge-warning">1 - Lập phiếu</span>
-                                {% elif row.trang_thai == '2' %}
-                                    <span class="badge badge-success">2 - Ghi nhận nghiệp vụ</span>
-                                {% else %}
-                                    <span class="badge badge-info">3 - Sổ cái</span>
+                                    <span class="badge badge-info">2 - Chuyển sổ cái</span>
                                 {% endif %}
                             </td>
                         </tr>
                         {% endfor %}
                     {% else %}
                         <tr>
-                            <td colspan="6" class="text-center text-muted">Chưa có dữ liệu.</td>
+                            <td colspan="7" class="text-center text-muted">Chưa có dữ liệu.</td>
                         </tr>
                     {% endif %}
                 </tbody>
@@ -89,6 +84,7 @@
     </div>
 </div>
 
+{% csrf_token %}
 <div class="modal fade" id="modalThuLoc" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
@@ -105,13 +101,12 @@
                     <label class="form-label">Trạng thái</label>
                     <select name="trang_thai" class="form-control">
                         <option value="">-- Tất cả trạng thái --</option>
-                        <option value="1" {% if trang_thai_filter == '1' %}selected{% endif %}>1 - Lập phiếu</option>
-                        <option value="2" {% if trang_thai_filter == '2' %}selected{% endif %}>2 - Ghi nhận nghiệp vụ</option>
-                        <option value="3" {% if trang_thai_filter == '3' %}selected{% endif %}>3 - Sổ cái</option>
+                        <option value="1" {% if trang_thai_filter == '1' %}selected{% endif %}>1 - Lập chứng từ</option>
+                        <option value="2" {% if trang_thai_filter == '2' %}selected{% endif %}>2 - Chuyển sổ cái</option>
                     </select>
                 </div>
                 <div class="d-flex justify-content-end gap-2">
-                    <a href="{% url 'phieu_thu_list' %}" class="btn btn-light border">Bỏ lọc</a>
+                    <a href="{% if loai == 'chi' %}{% url 'bh_phieu_chi_list' %}{% else %}{% url 'phieu_thu_list' %}{% endif %}" class="btn btn-light border">Bỏ lọc</a>
                     <button type="submit" class="btn btn-primary">Nhận</button>
                 </div>
             </form>
@@ -120,6 +115,72 @@
 </div>
 
 <script>
+    function getSelectedThuInputs() {
+        return Array.from(document.querySelectorAll('input[name="selected_thu"]:checked'));
+    }
+
+    function getSelectedSingleThu() {
+        const selected = getSelectedThuInputs();
+        return selected.length === 1 ? selected[0] : null;
+    }
+
+    document.getElementById('btnThuEdit').addEventListener('click', function() {
+        const input = getSelectedSingleThu();
+        if (!input) {
+            alert('Vui lòng chọn đúng 1 phiếu để sửa.');
+            return;
+        }
+        window.location.href = input.dataset.editUrl;
+    });
+
+    document.getElementById('btnThuDelete').addEventListener('click', function() {
+        const selected = getSelectedThuInputs();
+        if (!selected.length) {
+            alert('Vui lòng chọn ít nhất 1 phiếu để xóa.');
+            return;
+        }
+        if (!confirm('Bạn chắc chắn muốn xóa các phiếu đã chọn?')) return;
+        
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% if loai == "chi" %}{% url "bh_phieu_chi_xoa_nhieu" %}{% else %}{% url "phieu_thu_xoa_nhieu" %}{% endif %}';
+        
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = document.querySelector('[name="csrfmiddlewaretoken"]')?.value || '{% csrf_token %}';
+        form.appendChild(csrfInput);
+        
+        selected.forEach(function(input) {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'ids[]';
+            hidden.value = input.value;
+            form.appendChild(hidden);
+        });
+        document.body.appendChild(form);
+        form.submit();
+    });
+
+    document.getElementById('btnThuView').addEventListener('click', function() {
+        const input = getSelectedSingleThu();
+        if (!input) {
+            alert('Vui lòng chọn đúng 1 phiếu để xem.');
+            return;
+        }
+        window.location.href = input.dataset.viewUrl;
+    });
+
+    document.getElementById('btnThuCopy').addEventListener('click', function() {
+        const input = getSelectedSingleThu();
+        if (!input) {
+            alert('Vui lòng chọn đúng 1 phiếu để chép dữ liệu.');
+            return;
+        }
+        const addUrl = '{% if loai == "chi" %}{% url "bh_phieu_chi_them" %}{% else %}{% url "phieu_thu_them" %}{% endif %}';
+        window.location.href = addUrl;
+    });
+
     document.getElementById('btnThuSearch').addEventListener('click', function() {
         const modal = new bootstrap.Modal(document.getElementById('modalThuLoc'));
         modal.show();

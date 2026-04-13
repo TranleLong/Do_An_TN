@@ -40,7 +40,8 @@
                     <tr>
                         <th class="fw-semibold" style="width:42px;">Chọn</th>
                         <th class="fw-semibold">Số phiếu</th>
-                        <th class="fw-semibold">Ngày chứng từ</th>
+                        <th class="fw-semibold">Ngày lập</th>
+                        <th class="fw-semibold">Ngày hạch toán</th>
                         <th class="fw-semibold">Loại xuất</th>
                         <th class="fw-semibold">Kho xuất</th>
                         <th class="fw-semibold">Người tạo</th>
@@ -55,7 +56,8 @@
                         <td>
                             <a href="{% url 'phieu_xuat_detail' item.pk %}" class="fw-bold text-decoration-none text-primary">{{ item.so_phieu }}</a>
                         </td>
-                        <td>{{ item.ngay_chung_tu|date:"d/m/Y" }}</td>
+                        <td>{{ item.ngay_lap|date:"d/m/Y" }}</td>
+                        <td>{{ item.ngay_hach_toan|date:"d/m/Y" }}</td>
                         <td>
                             <span class="badge bg-light text-dark border"><i class="fas fa-tag me-1 text-muted"></i> {{ item.get_loai_xuat_display }}</span>
                         </td>
@@ -74,7 +76,7 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-5">
+                        <td colspan="9" class="text-center text-muted py-5">
                             <i class="fas fa-box-open fs-1 text-light mb-3"></i>
                             <p class="mb-0">Chưa có dữ liệu xuất kho.</p>
                         </td>
@@ -183,13 +185,48 @@
         form.action = input.dataset.deleteUrl;
         form.submit();
     });
-    document.getElementById('btnXuatPrint').addEventListener('click', function() {
+    document.getElementById('btnXuatPrintPdf').addEventListener('click', function() {
         const input = getSelectedXuatInput();
         if (!input) {
-            alert('Vui lòng chọn đúng 1 phiếu xuất để in.');
+            alert('Vui lòng chọn đúng 1 phiếu xuất để in PDF.');
             return;
         }
         window.open(input.dataset.detailUrl, '_blank');
+    });
+    document.getElementById('btnXuatPrintExcel').addEventListener('click', function() {
+        window.location.href = '{% url "phieu_xuat_export_data" %}?{{ request.GET.urlencode }}';
+    });
+    document.getElementById('btnXuatImport').addEventListener('click', function() {
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.xlsx,.xls';
+        fileInput.onchange = function() {
+            if (!fileInput.files || !fileInput.files.length) {
+                return;
+            }
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = '{% url "phieu_xuat_import_excel" %}';
+            form.enctype = 'multipart/form-data';
+
+            const csrf = document.createElement('input');
+            csrf.type = 'hidden';
+            csrf.name = 'csrfmiddlewaretoken';
+            csrf.value = '{{ csrf_token }}';
+            form.appendChild(csrf);
+
+            const realInput = document.createElement('input');
+            realInput.type = 'file';
+            realInput.name = 'file';
+            const dt = new DataTransfer();
+            dt.items.add(fileInput.files[0]);
+            realInput.files = dt.files;
+            form.appendChild(realInput);
+
+            document.body.appendChild(form);
+            form.submit();
+        };
+        fileInput.click();
     });
 </script>
 {% endblock %}

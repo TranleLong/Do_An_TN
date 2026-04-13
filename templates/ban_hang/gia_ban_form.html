@@ -102,7 +102,7 @@
             <div class="col-md-4 mb-3">
                 <label class="form-label">Nhóm hàng</label>
                 <div class="lookup-box">
-                    <input type="text" id="nhomDisplay" class="form-control lookup-input lookup-display" value="{% if editing and phieu.nhom_hang %}{{ phieu.nhom_hang.ma_nhom }} - {{ phieu.nhom_hang.ten_nhom }}{% endif %}" readonly placeholder="Chọn nhóm hàng bằng kính lúp">
+                    <input type="text" id="nhomDisplay" class="form-control lookup-input lookup-display" list="nhom_lookup_list" value="{% if editing and phieu.nhom_hang %}{{ phieu.nhom_hang.ma_nhom }} - {{ phieu.nhom_hang.ten_nhom }}{% endif %}" placeholder="Nhập mã/tên nhóm hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                     <button type="button" class="lookup-icon-btn" id="btnSearchNhom" title="Tra cứu nhóm hàng"><i class="fas fa-search"></i></button>
                 </div>
                 <select name="nhom_hang" id="nhomHang" style="display:none;">
@@ -111,6 +111,11 @@
                     <option value="{{ nhom.pk }}" data-bien-do="{{ nhom.bien_do_loi_nhuan|default:10 }}" {% if editing and phieu.nhom_hang_id == nhom.pk %}selected{% endif %}>{{ nhom.ma_nhom }} - {{ nhom.ten_nhom }}</option>
                     {% endfor %}
                 </select>
+                <datalist id="nhom_lookup_list">
+                    {% for nhom in nhom_list %}
+                    <option value="{{ nhom.ma_nhom }} - {{ nhom.ten_nhom }}" label="{{ nhom.ten_nhom }}"></option>
+                    {% endfor %}
+                </datalist>
             </div>
             <div class="col-md-4 mb-3">
                 <label class="form-label">Biên độ lợi nhuận (%) <span class="text-danger">*</span></label>
@@ -144,7 +149,7 @@
                         <tr class="item-row">
                             <td>
                                 <div class="lookup-box">
-                                    <input type="text" class="form-control lookup-input lookup-display hang-display" value="{% if ct.hang_hoa %}{{ ct.hang_hoa.ma_hang }} - {{ ct.hang_hoa.ten_hang }}{% endif %}" readonly placeholder="Chọn mã hàng bằng kính lúp">
+                                    <input type="text" class="form-control lookup-input lookup-display hang-display" list="hang_lookup_list" value="{% if ct.hang_hoa %}{{ ct.hang_hoa.ma_hang }} - {{ ct.hang_hoa.ten_hang }}{% endif %}" placeholder="Nhập mã/tên hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                     <button type="button" class="lookup-icon-btn btn-search-hang" title="Tra cứu mã hàng"><i class="fas fa-search"></i></button>
                                 </div>
                                 <select name="hang_id[]" class="form-control hang-select d-none" required>
@@ -165,7 +170,7 @@
                         <tr class="item-row">
                             <td>
                                 <div class="lookup-box">
-                                    <input type="text" class="form-control lookup-input lookup-display hang-display" readonly placeholder="Chọn mã hàng bằng kính lúp">
+                                    <input type="text" class="form-control lookup-input lookup-display hang-display" list="hang_lookup_list" placeholder="Nhập mã/tên hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                                     <button type="button" class="lookup-icon-btn btn-search-hang" title="Tra cứu mã hàng"><i class="fas fa-search"></i></button>
                                 </div>
                                 <select name="hang_id[]" class="form-control hang-select d-none" required>
@@ -192,6 +197,12 @@
                 </tfoot>
             </table>
         </div>
+
+        <datalist id="hang_lookup_list">
+            {% for h in hang_list %}
+            <option value="{{ h.ma_hang }} - {{ h.ten_hang }}" label="{{ h.ten_hang }}"></option>
+            {% endfor %}
+        </datalist>
 
         <h5 class="mt-4 mb-3">Bảng chiết khấu theo số lượng</h5>
         <div class="table-responsive">
@@ -369,6 +380,36 @@ function syncSelectedGroup() {
     $('#nhomDisplay').val(display);
 }
 
+function normLookup(str) {
+    return String(str || '').trim().toLowerCase();
+}
+
+function syncNhomByText() {
+    const keyword = normLookup($('#nhomDisplay').val());
+    if (!keyword) {
+        $('#nhomHang').val('').trigger('change');
+        return;
+    }
+
+    let matched = '';
+    $('#nhomHang option').each(function() {
+        const optVal = String($(this).val() || '');
+        if (!optVal) return;
+        const text = normLookup($(this).text());
+        const code = text.split(' - ')[0] || '';
+        if (keyword === code || keyword === text) {
+            matched = optVal;
+            return false;
+        }
+    });
+
+    if (matched) {
+        $('#nhomHang').val(matched).trigger('change');
+    } else {
+        $('#nhomHang').val('');
+    }
+}
+
 function filterNhomRows() {
     const q = $('#nhomSearchInput').val().trim().toLowerCase();
     $('#nhomSearchResults .btn-nhom-select').each(function() {
@@ -402,6 +443,32 @@ function syncHangDisplayForRow(row) {
     const selected = row.find('.hang-select option:selected');
     const display = selected.val() ? (selected.text() || '') : '';
     row.find('.hang-display').val(display);
+}
+
+function syncHangSelectByText(row) {
+    const inputVal = normLookup(row.find('.hang-display').val());
+    if (!inputVal) {
+        row.find('.hang-select').val('').trigger('change');
+        return;
+    }
+
+    let matched = '';
+    row.find('.hang-select option').each(function() {
+        const optVal = String($(this).val() || '');
+        if (!optVal) return;
+        const text = normLookup($(this).text());
+        const code = text.split(' - ')[0] || '';
+        if (inputVal === code || inputVal === text) {
+            matched = optVal;
+            return false;
+        }
+    });
+
+    if (matched) {
+        row.find('.hang-select').val(matched).trigger('change');
+    } else {
+        row.find('.hang-select').val('');
+    }
 }
 
 $(document).on('change', '.hang-select', function() {
@@ -516,6 +583,15 @@ $('#btnSearchNhom').on('click', function() {
 
 $('#nhomSearchInput').on('input', function() {
     filterNhomRows();
+});
+
+$('#nhomDisplay').on('change blur', function() {
+    syncNhomByText();
+});
+
+$(document).on('change blur', '.hang-display', function() {
+    const row = $(this).closest('tr');
+    syncHangSelectByText(row);
 });
 
 $(document).on('click', '.btn-nhom-select', function() {

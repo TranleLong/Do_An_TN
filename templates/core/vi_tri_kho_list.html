@@ -15,6 +15,16 @@
             {% endif %}
         </div>
     </div>
+    <div class="px-3 pt-3">
+        <div class="erp-toolbar" role="toolbar" aria-label="Thanh thao tác vị trí kho">
+            <button type="button" class="erp-toolbar-btn disabled" title="Thêm mới"><i class="fas fa-plus"></i></button>
+            <button type="button" class="erp-toolbar-btn disabled" title="Sửa"><i class="fas fa-pen-to-square"></i></button>
+            <button type="button" class="erp-toolbar-btn disabled" title="Xóa"><i class="fas fa-trash"></i></button>
+            <span class="erp-toolbar-sep"></span>
+            <button type="button" class="erp-toolbar-btn" title="Tìm" onclick="document.querySelector('input[name=\'q\']')?.focus()"><i class="fas fa-magnifying-glass"></i></button>
+            <button type="button" class="erp-toolbar-btn" onclick="window.location.reload()" title="Làm mới"><i class="fas fa-rotate-right"></i></button>
+        </div>
+    </div>
     <div class="card-body">
         <form method="get" class="form-row align-items-center">
             <div class="col col-5">
@@ -36,8 +46,8 @@
     </div>
 </div>
 
-<div class="card">
-    <div class="card-body">
+<div class="card" data-no-auto-toolbar>
+    <div class="card-body" data-no-auto-paginate>
         <div class="table-responsive">
             <table class="table">
                 <thead>

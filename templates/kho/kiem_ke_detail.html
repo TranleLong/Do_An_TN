@@ -62,12 +62,12 @@
                             <input type="hidden" name="ct_id[]" value="{{ ct.pk }}">
                             <td><code class="text-primary">{{ ct.hang_hoa.ma_hang }}</code></td>
                             <td>{{ ct.hang_hoa.ten_hang }}</td>
-                            <td class="text-center fw-bold text-primary">{{ ct.so_luong_so_sach }}</td>
+                            <td class="text-center fw-bold text-primary">{{ ct.so_luong_so_sach|floatformat:0|intcomma }}</td>
                             <td class="text-center">
                                 {% if kk.trang_thai == '1' %}
-                                    <input type="number" name="sl_thuc_te[]" class="form-control form-control-sm text-center text-warning fw-bold" value="{{ ct.so_luong_thuc_te }}" style="width: 90px; margin: 0 auto;">
+                                    <input type="number" name="sl_thuc_te[]" class="form-control form-control-sm text-center text-warning fw-bold" value="{{ ct.so_luong_thuc_te|floatformat:0 }}" style="width: 90px; margin: 0 auto;" step="1" min="0">
                                 {% else %}
-                                    <span class="fw-bold text-warning">{{ ct.so_luong_thuc_te }}</span>
+                                    <span class="fw-bold text-warning">{{ ct.so_luong_thuc_te|floatformat:0|intcomma }}</span>
                                 {% endif %}
                             </td>
                             <td class="text-center">

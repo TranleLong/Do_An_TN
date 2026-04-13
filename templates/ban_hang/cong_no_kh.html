@@ -1,34 +1,269 @@
 {% extends 'base.html' %}
 {% load humanize %}
 
+{% block extra_css %}
+<style>
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 12px;
+        border: 1px solid transparent;
+    }
+    .status-khong-no {
+        color: #166534;
+        background: #dcfce7;
+        border-color: #86efac;
+    }
+    .status-con-no {
+        color: #1d4ed8;
+        background: #dbeafe;
+        border-color: #93c5fd;
+    }
+    .status-qua-han {
+        color: #b91c1c;
+        background: #fee2e2;
+        border-color: #fca5a5;
+    }
+    .status-qua-han-muted {
+        color: #374151;
+        background: #f3f4f6;
+        border-color: #d1d5db;
+    }
+    .row-overdue {
+        background: #fff7ed;
+    }
+    .table td, .table th {
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="card">
-    <div class="card-header">
-        <div class="card-title">Công nợ khách hàng</div>
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap">
+        <div class="card-title mb-0">Báo cáo công nợ khách hàng</div>
+        <button type="button" class="btn btn-outline-warning btn-sm" data-bs-toggle="modal" data-bs-target="#modalCanhBao">
+            <i class="fas fa-bell me-1"></i>Thiết lập cảnh báo
+        </button>
     </div>
+
+    <div class="card-body">
+        <form method="get" class="row g-2">
+            <div class="col-md-2">
+                <label class="form-label">Mã khách hàng</label>
+                <input type="text" name="ma_kh" value="{{ filters.ma_kh }}" class="form-control" placeholder="VD: KH001">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Tên khách hàng</label>
+                <input type="text" name="ten_kh" value="{{ filters.ten_kh }}" class="form-control" placeholder="Nhập tên khách hàng">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Số điện thoại</label>
+                <input type="text" name="so_dien_thoai" value="{{ filters.so_dien_thoai }}" class="form-control" placeholder="090...">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Loại khách</label>
+                <select name="loai_kh" class="form-control">
+                    <option value="">-- Tất cả --</option>
+                    <option value="1" {% if filters.loai_kh == '1' %}selected{% endif %}>Cá nhân</option>
+                    <option value="2" {% if filters.loai_kh == '2' %}selected{% endif %}>Doanh nghiệp</option>
+                    <option value="3" {% if filters.loai_kh == '3' %}selected{% endif %}>Khác</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Trạng thái</label>
+                <select name="trang_thai" class="form-control">
+                    <option value="">-- Tất cả --</option>
+                    <option value="khong_no" {% if filters.trang_thai == 'khong_no' %}selected{% endif %}>Không nợ</option>
+                    <option value="con_no" {% if filters.trang_thai == 'con_no' %}selected{% endif %}>Còn nợ</option>
+                    <option value="qua_han" {% if filters.trang_thai == 'qua_han' %}selected{% endif %}>Quá hạn</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Từ ngày</label>
+                <input type="date" name="tu_ngay" value="{{ filters.tu_ngay }}" class="form-control">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Đến ngày</label>
+                <input type="date" name="den_ngay" value="{{ filters.den_ngay }}" class="form-control">
+            </div>
+            <div class="col-12 d-flex justify-content-end gap-2 mt-2">
+                <a href="{% url 'cong_no_kh' %}" class="btn btn-light border">Bỏ lọc</a>
+                <button class="btn btn-primary" type="submit">Tìm kiếm</button>
+            </div>
+        </form>
+    </div>
+
     <div class="table-responsive">
-        <table class="table">
+        <table class="table mb-0">
             <thead>
                 <tr>
                     <th>Mã KH</th>
                     <th>Tên khách hàng</th>
-                    <th class="text-right">Công nợ</th>
+                    <th>Số điện thoại</th>
+                    <th class="text-end">Tổng giá trị hóa đơn</th>
+                    <th class="text-end">Tổng đã thanh toán</th>
+                    <th class="text-end">Công nợ hiện tại</th>
+                    <th>Hạn thanh toán</th>
+                    <th class="text-end">Số ngày quá hạn</th>
+                    <th>Trạng thái</th>
+                    <th class="text-center">Chi tiết</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in data %}
-                <tr>
-                    <td>{{ item.kh.ma_kh }}</td>
-                    <td>{{ item.kh.ten_kh }}</td>
-                    <td class="text-right">{{ item.no|intcomma }} đ</td>
+                <tr class="{% if bat_canh_bao_qua_han and item.trang_thai == 'qua_han' %}row-overdue{% endif %}">
+                    <td>{{ item.ma_kh }}</td>
+                    <td>{{ item.ten_kh }}</td>
+                    <td>{{ item.so_dien_thoai|default:'-' }}</td>
+                    <td class="text-end">{{ item.tong_gia_tri_hoa_don|floatformat:0|intcomma }} đ</td>
+                    <td class="text-end text-success">{{ item.tong_da_thanh_toan|floatformat:0|intcomma }} đ</td>
+                    <td class="text-end fw-semibold {% if bat_canh_bao_qua_han and item.trang_thai == 'qua_han' %}text-danger{% elif item.trang_thai == 'con_no' %}text-primary{% else %}text-success{% endif %}">
+                        {{ item.cong_no_hien_tai|floatformat:0|intcomma }} đ
+                    </td>
+                    <td>
+                        {% if item.han_thanh_toan %}
+                            {{ item.han_thanh_toan|date:'d/m/Y' }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="text-end {% if bat_canh_bao_qua_han and item.so_ngay_qua_han > 0 %}text-danger fw-semibold{% endif %}">
+                        {% if item.so_ngay_qua_han > 0 %}
+                            {{ item.so_ngay_qua_han }} ngày
+                        {% else %}
+                            0
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.trang_thai == 'khong_no' %}
+                            <span class="status-pill status-khong-no">Không nợ</span>
+                        {% elif item.trang_thai == 'con_no' %}
+                            <span class="status-pill status-con-no">Còn nợ</span>
+                        {% else %}
+                            <span class="status-pill {% if bat_canh_bao_qua_han %}status-qua-han{% else %}status-qua-han-muted{% endif %}">Quá hạn</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <a href="{% url 'cong_no_kh' %}?{% if query_without_selected %}{{ query_without_selected }}&{% endif %}khach_hang={{ item.khach_hang_id }}" class="btn btn-outline-secondary btn-sm">Xem</a>
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="3" class="text-center text-muted">Chưa có công nợ khách hàng.</td>
+                    <td colspan="10" class="text-center text-muted py-4">Không có dữ liệu công nợ</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card-title mb-0">
+            Chi tiết công nợ theo hóa đơn
+            {% if khach_hang_duoc_chon %}
+                - {{ khach_hang_duoc_chon.ma_kh }} - {{ khach_hang_duoc_chon.ten_kh }}
+            {% endif %}
+        </div>
+        {% if selected_khach_hang_id %}
+        <a href="{% url 'cong_no_kh' %}?{{ query_without_selected }}" class="btn btn-light border btn-sm">Bỏ chọn khách hàng</a>
+        {% endif %}
+    </div>
+    {% if selected_khach_hang_id and thu_theo_kh_bo_sung > 0 %}
+    <div class="card-body pb-0">
+        <div class="alert alert-info mb-3">
+            Khách hàng có thêm khoản thu không gắn hóa đơn: <strong>{{ thu_theo_kh_bo_sung|floatformat:0|intcomma }} đ</strong>.
+            Khoản này đã được tính vào "Tổng đã thanh toán" ở danh sách tổng hợp công nợ.
+        </div>
+    </div>
+    {% endif %}
+    <div class="table-responsive">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>Mã hóa đơn</th>
+                    <th>Ngày hóa đơn</th>
+                    <th class="text-end">Tổng tiền</th>
+                    <th class="text-end">Đã thanh toán</th>
+                    <th class="text-end">Còn nợ</th>
+                    <th>Hạn thanh toán</th>
+                    <th class="text-end">Số ngày quá hạn</th>
+                    <th>Trạng thái thanh toán</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ct in chi_tiet_cong_no %}
+                <tr class="{% if bat_canh_bao_qua_han and ct.trang_thai == 'qua_han' %}row-overdue{% endif %}">
+                    <td>{{ ct.ma_hoa_don }}</td>
+                    <td>{{ ct.ngay_hoa_don|date:'d/m/Y' }}</td>
+                    <td class="text-end">{{ ct.tong_tien|floatformat:0|intcomma }} đ</td>
+                    <td class="text-end text-success">{{ ct.da_thanh_toan|floatformat:0|intcomma }} đ</td>
+                    <td class="text-end fw-semibold {% if bat_canh_bao_qua_han and ct.trang_thai == 'qua_han' %}text-danger{% elif ct.trang_thai == 'con_no' %}text-primary{% else %}text-success{% endif %}">
+                        {{ ct.con_no|floatformat:0|intcomma }} đ
+                    </td>
+                    <td>{% if ct.han_thanh_toan %}{{ ct.han_thanh_toan|date:'d/m/Y' }}{% else %}-{% endif %}</td>
+                    <td class="text-end {% if bat_canh_bao_qua_han and ct.so_ngay_qua_han > 0 %}text-danger fw-semibold{% endif %}">
+                        {% if ct.so_ngay_qua_han > 0 %}{{ ct.so_ngay_qua_han }} ngày{% else %}0{% endif %}
+                    </td>
+                    <td>
+                        {% if ct.trang_thai == 'khong_no' %}
+                            <span class="status-pill status-khong-no">Không nợ</span>
+                        {% elif ct.trang_thai == 'con_no' %}
+                            <span class="status-pill status-con-no">Còn nợ</span>
+                        {% else %}
+                            <span class="status-pill {% if bat_canh_bao_qua_han %}status-qua-han{% else %}status-qua-han-muted{% endif %}">Quá hạn</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">Chưa chọn khách hàng để xem chi tiết.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            {% if chi_tiet_cong_no %}
+            <tfoot>
+                <tr>
+                    <th colspan="2" class="text-end">Tổng</th>
+                    <th class="text-end">{{ tong_chi_tiet.tong_tien|floatformat:0|intcomma }} đ</th>
+                    <th class="text-end">{{ tong_chi_tiet.da_thanh_toan|floatformat:0|intcomma }} đ</th>
+                    <th class="text-end">{{ tong_chi_tiet.con_no|floatformat:0|intcomma }} đ</th>
+                    <th colspan="3"></th>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="modalCanhBao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Thiết lập cảnh báo nợ quá hạn</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <div class="modal-body">
+                    <label class="form-label">Trạng thái cảnh báo</label>
+                    <select name="bat_canh_bao_qua_han" class="form-control">
+                        <option value="1" {% if bat_canh_bao_qua_han %}selected{% endif %}>Bật cảnh báo</option>
+                        <option value="0" {% if not bat_canh_bao_qua_han %}selected{% endif %}>Tắt cảnh báo</option>
+                    </select>
+                    <div class="form-text mt-2">Khi bật, các khoản quá hạn sẽ được hiển thị nổi bật bằng nhãn và màu cảnh báo.</div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Đóng</button>
+                    <button type="submit" class="btn btn-primary">Lưu thiết lập</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

@@ -9,8 +9,8 @@
     <div class="px-3 pt-3">
         <div class="erp-toolbar" role="toolbar" aria-label="Thanh thao tác nhóm hàng">
             <button type="button" class="erp-toolbar-btn" id="btnNhomAdd" title="Thêm mới" aria-label="Thêm mới"><i class="fas fa-plus"></i></button>
-            <button type="button" class="erp-toolbar-btn disabled" title="Sửa" aria-label="Sửa"><i class="fas fa-pen-to-square"></i></button>
-            <button type="button" class="erp-toolbar-btn disabled" title="Xóa" aria-label="Xóa"><i class="fas fa-trash"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnNhomEdit" title="Sửa" aria-label="Sửa"><i class="fas fa-pen-to-square"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnNhomDelete" title="Xóa" aria-label="Xóa"><i class="fas fa-trash"></i></button>
             <span class="erp-toolbar-sep"></span>
             <button type="button" class="erp-toolbar-btn" id="btnNhomSearch" title="Tìm" aria-label="Tìm"><i class="fas fa-magnifying-glass"></i></button>
             <button type="button" class="erp-toolbar-btn" onclick="window.location.reload()" title="Làm mới" aria-label="Làm mới"><i class="fas fa-rotate-right"></i></button>
@@ -25,20 +25,22 @@
                         <th style="width:42px;">Chọn</th>
                         <th>Mã nhóm</th>
                         <th>Tên nhóm</th>
+                        <th class="text-right">Số hàng</th>
                         <th>Mô tả</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in items %}
                     <tr>
-                        <td class="text-center"><input type="checkbox" name="selected_nhom" class="erp-row-select" value="{{ item.pk }}"></td>
+                        <td class="text-center"><input type="checkbox" name="selected_nhom" class="erp-row-select" value="{{ item.pk }}" data-ma="{{ item.ma_nhom }}" data-ten="{{ item.ten_nhom }}" data-mo-ta="{{ item.mo_ta|default:'' }}" data-hang-ids="{{ item.hang_ids_csv }}"></td>
                         <td>{{ item.ma_nhom }}</td>
                         <td>{{ item.ten_nhom }}</td>
+                        <td class="text-right">{{ item.so_hang|default:0 }}</td>
                         <td>{{ item.mo_ta|default:'-' }}</td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="4" class="text-center text-muted">Chưa có nhóm hàng.</td>
+                        <td colspan="5" class="text-center text-muted">Chưa có nhóm hàng.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -72,6 +74,7 @@
             </div>
             <form method="post" class="modal-body">
                 {% csrf_token %}
+                <input type="hidden" name="action" value="create">
                 <div class="mb-3">
                     <label class="form-label">Mã nhóm <span class="text-danger">*</span></label>
                     <input type="text" name="ma_nhom" class="form-control" required>
@@ -80,9 +83,63 @@
                     <label class="form-label">Tên nhóm <span class="text-danger">*</span></label>
                     <input type="text" name="ten_nhom" class="form-control" required>
                 </div>
+                <div class="mb-3">
+                    <label class="form-label">Mô tả</label>
+                    <input type="text" name="mo_ta" class="form-control" placeholder="Mô tả nhóm hàng...">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Hàng hóa thuộc nhóm</label>
+                    <select name="hang_ids[]" class="form-control" multiple size="8">
+                        {% for hh in hang_list %}
+                        <option value="{{ hh.pk }}">{{ hh.ma_hang }} - {{ hh.ten_hang }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted">Giữ Ctrl để chọn nhiều hàng hóa.</small>
+                </div>
                 <div class="d-flex justify-content-end gap-2">
                     <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Hủy</button>
                     <button type="submit" class="btn btn-primary">Thêm</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalNhomEdit" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Sửa nhóm hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" class="modal-body" id="formNhomEdit">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" name="nhom_id" id="editNhomId">
+                <div class="mb-3">
+                    <label class="form-label">Mã nhóm <span class="text-danger">*</span></label>
+                    <input type="text" name="ma_nhom" id="editMaNhom" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Tên nhóm <span class="text-danger">*</span></label>
+                    <input type="text" name="ten_nhom" id="editTenNhom" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mô tả</label>
+                    <input type="text" name="mo_ta" id="editMoTa" class="form-control" placeholder="Mô tả nhóm hàng...">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Hàng hóa thuộc nhóm</label>
+                    <select name="hang_ids[]" id="editHangIds" class="form-control" multiple size="8">
+                        {% for hh in hang_list %}
+                        <option value="{{ hh.pk }}">{{ hh.ma_hang }} - {{ hh.ten_hang }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted">Giữ Ctrl để chọn nhiều hàng hóa.</small>
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu</button>
                 </div>
             </form>
         </div>
@@ -111,9 +168,71 @@
 </div>
 
 <script>
+    function getSelectedNhomInputs() {
+        return Array.from(document.querySelectorAll('input[name="selected_nhom"]:checked'));
+    }
+
     document.getElementById('btnNhomAdd').addEventListener('click', function() {
         const modal = new bootstrap.Modal(document.getElementById('modalNhomAdd'));
         modal.show();
+    });
+
+    document.getElementById('btnNhomEdit').addEventListener('click', function() {
+        const selected = getSelectedNhomInputs();
+        if (selected.length !== 1) {
+            alert('Vui lòng chọn đúng 1 nhóm để sửa.');
+            return;
+        }
+        const row = selected[0];
+        document.getElementById('editNhomId').value = row.value;
+        document.getElementById('editMaNhom').value = row.dataset.ma || '';
+        document.getElementById('editTenNhom').value = row.dataset.ten || '';
+        document.getElementById('editMoTa').value = row.dataset.moTa || '';
+
+        const selectedIds = new Set(String(row.dataset.hangIds || '').split(',').filter(Boolean));
+        const sel = document.getElementById('editHangIds');
+        Array.from(sel.options).forEach(function(opt) {
+            opt.selected = selectedIds.has(opt.value);
+        });
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalNhomEdit')).show();
+    });
+
+    document.getElementById('btnNhomDelete').addEventListener('click', function() {
+        const selected = getSelectedNhomInputs();
+        if (!selected.length) {
+            alert('Vui lòng chọn ít nhất 1 nhóm để xóa.');
+            return;
+        }
+        if (!confirm('Bạn chắc chắn muốn xóa các nhóm đã chọn?')) {
+            return;
+        }
+        const form = document.createElement('form');
+        form.method = 'post';
+        form.action = '{% url "nhom_hang_list" %}';
+
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = 'csrfmiddlewaretoken';
+        csrf.value = '{{ csrf_token }}';
+        form.appendChild(csrf);
+
+        const action = document.createElement('input');
+        action.type = 'hidden';
+        action.name = 'action';
+        action.value = 'delete';
+        form.appendChild(action);
+
+        selected.forEach(function(input) {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'ids[]';
+            hidden.value = input.value;
+            form.appendChild(hidden);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
     });
 
     document.getElementById('btnNhomSearch').addEventListener('click', function() {

@@ -124,13 +124,107 @@ def phieu_chi_them(request):
 
 
 @login_required
+def phieu_chi_sua(request, pk):
+    from apps.danh_muc.models import NhaCungCap
+    
+    phieu = get_object_or_404(PhieuChi, pk=pk)
+    if request.method == 'POST':
+        data = request.POST
+        try:
+            tong_chi = Decimal(data.get('so_tien', phieu.tong_chi or 0) or 0)
+        except InvalidOperation:
+            messages.error(request, 'Số tiền chi không hợp lệ')
+            return render(request, 'ban_hang/phieu_thu_chi_form.html', {
+                'loai': 'chi',
+                'phieu': phieu,
+                'ncc_list': NhaCungCap.objects.filter(trang_thai=True),
+                'page_title': 'Cập nhật Phiếu Chi',
+                'today': date.today(),
+                'active_menu': 'phieu_chi',
+            })
+        
+        if tong_chi <= 0:
+            messages.error(request, 'Số tiền chi phải lớn hơn 0')
+            return render(request, 'ban_hang/phieu_thu_chi_form.html', {
+                'loai': 'chi',
+                'phieu': phieu,
+                'ncc_list': NhaCungCap.objects.filter(trang_thai=True),
+                'page_title': 'Cập nhật Phiếu Chi',
+                'today': date.today(),
+                'active_menu': 'phieu_chi',
+            })
+        
+        ncc_id = data.get('doi_tuong') or phieu.nha_cung_cap_id
+        if not ncc_id:
+            messages.error(request, 'Vui lòng chọn nhà cung cấp cho phiếu chi')
+            return render(request, 'ban_hang/phieu_thu_chi_form.html', {
+                'loai': 'chi',
+                'phieu': phieu,
+                'ncc_list': NhaCungCap.objects.filter(trang_thai=True),
+                'page_title': 'Cập nhật Phiếu Chi',
+                'today': date.today(),
+                'active_menu': 'phieu_chi',
+            })
+        
+        phieu.ngay_chi = data.get('ngay') or phieu.ngay_chi or date.today()
+        phieu.nha_cung_cap_id = ncc_id
+        phieu.hinh_thuc = data.get('hinh_thuc', 'tien_mat')
+        phieu.tong_chi = tong_chi
+        phieu.ghi_chu = data.get('ly_do', '')
+        phieu.save()
+        
+        messages.success(request, f'Đã cập nhật phiếu chi {phieu.so_phieu} thành công!')
+        return redirect('phieu_chi_list')
+    
+    return render(request, 'ban_hang/phieu_thu_chi_form.html', {
+        'loai': 'chi',
+        'phieu': phieu,
+        'ncc_list': NhaCungCap.objects.filter(trang_thai=True),
+        'page_title': 'Cập nhật Phiếu Chi',
+        'today': date.today(),
+        'active_menu': 'phieu_chi',
+    })
+
+
+@login_required
+def phieu_chi_xoa(request, pk):
+    phieu = get_object_or_404(PhieuChi, pk=pk)
+    if request.method == 'POST':
+        so_phieu = phieu.so_phieu
+        phieu.delete()
+        messages.success(request, f'Đã xóa phiếu chi {so_phieu}')
+        return redirect('phieu_chi_list')
+    
+    return render(request, 'ban_hang/phieu_thu_chi_form.html', {
+        'loai': 'chi',
+        'phieu': phieu,
+        'confirm_delete': True,
+    })
+
+
+@login_required
+def phieu_chi_xoa_nhieu(request):
+    if request.method == 'POST':
+        ids = request.POST.getlist('ids[]')
+        phieus = PhieuChi.objects.filter(pk__in=ids)
+        count = phieus.count()
+        phieus.delete()
+        messages.success(request, f'Đã xóa {count} phiếu chi')
+        return redirect('phieu_chi_list')
+    
+    return redirect('phieu_chi_list')
+
+
+@login_required
 def phieu_chi_xac_nhan(request, pk):
     phieu = get_object_or_404(PhieuChi, pk=pk)
     if request.method == 'POST':
-        if phieu.trang_thai == '1':
+        if phieu.trang_thai == '2':
+            messages.info(request, f'Phiếu chi {phieu.so_phieu} đã ở trạng thái Chuyển sổ cái')
+        elif phieu.trang_thai == '1':
             phieu.trang_thai = '2'
             phieu.save(update_fields=['trang_thai'])
-            messages.success(request, f'Đã ghi nhận nghiệp vụ phiếu chi {phieu.so_phieu}')
+            messages.success(request, f'Đã chuyển phiếu chi {phieu.so_phieu} sang Sổ cái')
         else:
             messages.error(request, 'Chỉ phiếu chi ở bước 1 mới xác nhận được')
     return redirect('phieu_chi_list')
@@ -141,9 +235,11 @@ def phieu_chi_chuyen_so_cai(request, pk):
     phieu = get_object_or_404(PhieuChi, pk=pk)
     if request.method == 'POST':
         if phieu.trang_thai == '2':
-            phieu.trang_thai = '3'
+            messages.info(request, f'Phiếu chi {phieu.so_phieu} đã ở trạng thái Chuyển sổ cái')
+        elif phieu.trang_thai == '1':
+            phieu.trang_thai = '2'
             phieu.save(update_fields=['trang_thai'])
             messages.success(request, f'Đã chuyển phiếu chi {phieu.so_phieu} sang Sổ cái')
         else:
-            messages.error(request, 'Phiếu chi phải ở bước 2 mới chuyển được Sổ cái')
+            messages.error(request, 'Chỉ phiếu chi ở bước 1 mới chuyển được Sổ cái')
     return redirect('phieu_chi_list')

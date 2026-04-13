@@ -111,9 +111,8 @@ class PhieuChi(models.Model):
         ('chuyen_khoan', 'Chuyển khoản'),
     ]
     TRANG_THAI = [
-        ('1', '1 - Lập phiếu'),
-        ('2', '2 - Ghi nhận nghiệp vụ'),
-        ('3', '3 - Sổ cái'),
+        ('1', '1 - Lập chứng từ'),
+        ('2', '2 - Chuyển sổ cái'),
     ]
     so_phieu = models.CharField(max_length=30, unique=True, verbose_name='Số phiếu chi')
     ngay_chi = models.DateField(default=datetime.date.today, verbose_name='Ngày chi')

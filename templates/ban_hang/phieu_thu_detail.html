@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card-title mb-0">
+            <i class="fas fa-file-invoice-dollar text-success"></i>
+            {{ is_chi_mode|yesno:"Chi tiết Phiếu Chi,Chi tiết Phiếu Thu" }}: {{ phieu.so_phieu }}
+            {% if phieu.trang_thai == '1' %}
+            <span class="badge bg-warning text-dark ms-2">1 - Lập chứng từ</span>
+            {% else %}
+            <span class="badge bg-info ms-2">{{ phieu.trang_thai }} - Chuyển sổ cái</span>
+            {% endif %}
+        </div>
+        <div class="d-flex gap-2">
+            {% if is_chi_mode %}
+            <a href="{% url 'bh_phieu_chi_sua' phieu.pk %}" class="btn btn-outline-primary btn-sm"><i class="fas fa-edit"></i> Sửa</a>
+            <a href="{% url 'bh_phieu_chi_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
+            {% else %}
+            <a href="{% url 'phieu_thu_sua' phieu.pk %}" class="btn btn-outline-primary btn-sm"><i class="fas fa-edit"></i> Sửa</a>
+            <a href="{% url 'phieu_thu_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <h6 class="text-muted text-uppercase mb-3" style="font-size: 0.75rem; font-weight: 600;">Thông tin chứng từ</h6>
+                <table class="table table-sm" style="background: transparent;">
+                    <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Ngày chứng từ:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.ngay_thu|date:"d/m/Y" }}</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Số phiếu:</th><td style="border:none; padding: 0.5rem 0;"><strong>{{ phieu.so_phieu }}</strong></td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Loại phiếu:</th><td style="border:none; padding: 0.5rem 0;">{{ is_chi_mode|yesno:"Chi tiền cho khách hàng,Thu tiền từ khách hàng" }}</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Hình thức thanh toán:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.get_hinh_thuc_thu_display }}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6 class="text-muted text-uppercase mb-3" style="font-size: 0.75rem; font-weight: 600;">Thông tin khách hàng / Thanh toán</h6>
+                <table class="table table-sm" style="background: transparent;">
+                    <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Khách hàng:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.khach_hang.ten_kh|default:"-" }}</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Mã khách:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.khach_hang.ma_kh|default:"-" }}</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Số tiền:</th><td style="border:none; padding: 0.5rem 0; color: var(--danger); font-weight: bold; font-size: 1.1em;">{{ phieu.tong_thu|floatformat:0|intcomma }} đ</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Người tạo:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.nguoi_tao.username|default:"-" }}</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Ghi chú:</th><td style="border:none; padding: 0.5rem 0;">{{ ghi_chu_hien_thi|default:"-" }}</td></tr>
+                </table>
+            </div>
+        </div>
+
+        {% if phieu.trang_thai != '1' %}
+        <h6 class="text-muted text-uppercase mb-3 mt-4" style="font-size: 0.75rem; font-weight: 600;">Thông tin hạch toán (nếu đã chuyển sổ cái)</h6>
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <label class="form-label text-muted mb-1">Tài khoản nợ</label>
+                <div>{{ phieu_tk_no|default:"-" }}</div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label text-muted mb-1">Tài khoản có</label>
+                <div>{{ phieu_tk_co|default:"-" }}</div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

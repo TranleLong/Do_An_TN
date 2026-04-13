@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-file-lines text-info"></i> {{ page_title }}</div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'gia_ban_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
+            <a href="{% url 'gia_ban_sua' phieu.pk %}" class="btn btn-primary btn-sm"><i class="fas fa-pen-to-square"></i> Sửa</a>
+            <form method="post" action="{% url 'gia_ban_xoa' phieu.pk %}" onsubmit="return confirm('Bạn chắc chắn muốn xóa phiếu giá bán này?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i> Xóa</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <label class="form-label text-muted mb-1">Mã phiếu</label>
+                <div><strong>{{ phieu.ma_phieu }}</strong></div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label text-muted mb-1">Ngày lập</label>
+                <div>{{ phieu.ngay_lap|date:'d/m/Y' }}</div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label text-muted mb-1">Ngày hiệu lực</label>
+                <div>{{ phieu.ngay_hieu_luc|date:'d/m/Y' }}</div>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label text-muted mb-1">Trạng thái</label>
+                <div>
+                    {% if phieu.trang_thai_duyet == '1' %}
+                        <span class="badge badge-success">1 - Sử dụng</span>
+                    {% else %}
+                        <span class="badge badge-secondary">0 - Không sử dụng</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label text-muted mb-1">Nhóm hàng</label>
+                <div>
+                    {% if phieu.nhom_hang %}
+                        {{ phieu.nhom_hang.ma_nhom }} - {{ phieu.nhom_hang.ten_nhom }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label text-muted mb-1">Biên độ lợi nhuận</label>
+                <div>{{ phieu.bien_do_loi_nhuan|floatformat:2 }}%</div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label text-muted mb-1">Loại tiền</label>
+                <div>{{ phieu.loai_tien_te }}</div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label text-muted mb-1">Người lập</label>
+                <div>{{ phieu.nguoi_lap.username|default:'-' }}</div>
+            </div>
+        </div>
+
+        <h6 class="mb-2">Chi tiết mặt hàng</h6>
+        <div class="table-responsive mb-4">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>STT</th>
+                        <th>Mã hàng</th>
+                        <th>Tên hàng</th>
+                        <th>ĐVT</th>
+                        <th class="text-right">Giá vốn</th>
+                        <th class="text-right">Giá bán chuẩn</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ct in chi_tiet %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ ct.hang_hoa.ma_hang }}</td>
+                        <td>{{ ct.hang_hoa.ten_hang }}</td>
+                        <td>{{ ct.hang_hoa.don_vi_tinh.ten|default:'-' }}</td>
+                        <td class="text-right">{{ ct.gia_von|floatformat:0|intcomma }}</td>
+                        <td class="text-right fw-semibold">{{ ct.gia_ban_chuan|floatformat:0|intcomma }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted">Không có chi tiết mặt hàng.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <h6 class="mb-2">Bảng chiết khấu theo số lượng</h6>
+        <div class="table-responsive mb-4">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>STT</th>
+                        <th>Từ số lượng</th>
+                        <th>Đến số lượng</th>
+                        <th class="text-right">% Chiết khấu</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ck in bang_ck %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ ck.tu_so_luong }}</td>
+                        <td>{{ ck.den_so_luong }}</td>
+                        <td class="text-right">{{ ck.phan_tram_chiet_khau|floatformat:2 }}%</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted">Chưa có khoảng chiết khấu.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div>
+            <label class="form-label text-muted mb-1">Ghi chú</label>
+            <div class="border rounded p-2 bg-light">{{ phieu.ghi_chu|default:'-' }}</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

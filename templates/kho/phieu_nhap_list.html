@@ -56,7 +56,8 @@
                     <tr>
                         <th style="width:42px;">Chọn</th>
                         <th>Số phiếu</th>
-                        <th>Ngày chứng từ</th>
+                        <th>Ngày lập</th>
+                        <th>Ngày hạch toán</th>
                         <th>Loại chứng từ</th>
                         <th>Kho nhận</th>
                         <th>Người tạo</th>
@@ -69,7 +70,8 @@
                     <tr>
                         <td class="text-center"><input type="checkbox" name="selected_nhap" class="erp-row-select" value="{{ item.pk }}" data-detail-url="{% url 'phieu_nhap_detail' item.pk %}" data-edit-url="{% url 'phieu_nhap_sua' item.pk %}" data-delete-url="{% url 'phieu_nhap_xoa' item.pk %}" data-print-url="{% url 'phieu_nhap_in' item.pk %}"></td>
                         <td><a href="{% url 'phieu_nhap_detail' item.pk %}"><strong>{{ item.so_phieu }}</strong></a></td>
-                        <td>{{ item.ngay_chung_tu|date:"d/m/Y" }}</td>
+                        <td>{{ item.ngay_lap|date:"d/m/Y" }}</td>
+                        <td>{{ item.ngay_hach_toan|date:"d/m/Y" }}</td>
                         <td>{{ item.get_loai_nhap_display }}</td>
                         <td>{{ item.kho.ten_kho }}</td>
                         <td>{{ item.nguoi_tao.username }}</td>
@@ -81,7 +83,7 @@
                         </td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="8" class="text-center text-muted">Chưa có phiếu nhập kho.</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted">Chưa có phiếu nhập kho.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -203,15 +205,50 @@
         form.action = input.dataset.deleteUrl;
         form.submit();
     });
-    document.getElementById('btnNhapPrint').addEventListener('click', function() {
+    document.getElementById('btnNhapPrintPdf').addEventListener('click', function() {
         const input = getSelectedNhapInput();
         if (!input) {
-            alert('Vui lòng chọn đúng 1 phiếu nhập để in.');
+            alert('Vui lòng chọn đúng 1 phiếu nhập để in PDF.');
             return;
         }
         document.getElementById('modalNhapPrintFrame').src = input.dataset.printUrl;
         const modal = new bootstrap.Modal(document.getElementById('modalNhapPrint'));
         modal.show();
+    });
+    document.getElementById('btnNhapPrintExcel').addEventListener('click', function() {
+        window.location.href = '{% url "phieu_nhap_export_data" %}?{{ request.GET.urlencode }}';
+    });
+    document.getElementById('btnNhapImport').addEventListener('click', function() {
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = '.xlsx,.xls';
+        fileInput.onchange = function() {
+            if (!fileInput.files || !fileInput.files.length) {
+                return;
+            }
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = '{% url "phieu_nhap_import_excel" %}';
+            form.enctype = 'multipart/form-data';
+
+            const csrf = document.createElement('input');
+            csrf.type = 'hidden';
+            csrf.name = 'csrfmiddlewaretoken';
+            csrf.value = '{{ csrf_token }}';
+            form.appendChild(csrf);
+
+            const realInput = document.createElement('input');
+            realInput.type = 'file';
+            realInput.name = 'file';
+            const dt = new DataTransfer();
+            dt.items.add(fileInput.files[0]);
+            realInput.files = dt.files;
+            form.appendChild(realInput);
+
+            document.body.appendChild(form);
+            form.submit();
+        };
+        fileInput.click();
     });
     document.getElementById('btnPrintFromPreview').addEventListener('click', function() {
         const frame = document.getElementById('modalNhapPrintFrame');

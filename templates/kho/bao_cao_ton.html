@@ -187,7 +187,21 @@
             <div class="col col-3 form-group mb-0">
                 <label class="form-label">Vật tư</label>
                 <div class="lookup-wrap">
-                    <input type="text" name="q" id="hangReportFilterInput" value="{{ q }}" class="form-control lookup-input" placeholder="Mã hoặc tên vật tư" autocomplete="off">
+                    <input
+                        type="text"
+                        name="q"
+                        id="hangReportFilterInput"
+                        value="{{ q }}"
+                        class="form-control lookup-input lookup-display"
+                        placeholder="Mã hoặc tên vật tư"
+                        autocomplete="off"
+                        list="hang_report_lookup_list"
+                    >
+                    <datalist id="hang_report_lookup_list">
+                        {% for hh in hang_hoa_list %}
+                        <option value="{{ hh.ma_hang }}" label="{{ hh.ten_hang }}"></option>
+                        {% endfor %}
+                    </datalist>
                     <button type="button" class="lookup-btn" id="btnOpenHangLookup" title="Tra cứu hàng hóa"><i class="fas fa-search"></i></button>
                 </div>
             </div>

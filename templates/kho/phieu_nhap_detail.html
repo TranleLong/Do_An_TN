@@ -44,7 +44,8 @@
             <div style="flex: 1;">
                 <h6 class="text-muted text-uppercase mb-3" style="font-size: 0.75rem; font-weight: 600;">Thông tin nhập kho</h6>
                 <table class="table" style="background: transparent;">
-                    <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Ngày chứng từ:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.ngay_chung_tu|date:"d/m/Y" }}</td></tr>
+                    <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Ngày lập:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.ngay_lap|date:"d/m/Y" }}</td></tr>
+                    <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Ngày hạch toán:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.ngay_hach_toan|date:"d/m/Y" }}</td></tr>
                     <tr><th style="border:none; padding: 0.5rem 0;">Loại nhập:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.get_loai_nhap_display }}</td></tr>
                     <tr><th style="border:none; padding: 0.5rem 0;">Kho nhận:</th><td style="border:none; padding: 0.5rem 0; color: var(--info); font-weight: bold;">{{ phieu.kho.ten_kho }}</td></tr>
                     <tr><th style="border:none; padding: 0.5rem 0;">Ghi chú:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.ghi_chu|default:"-" }}</td></tr>
@@ -91,7 +92,7 @@
                         <td><strong>{{ ct.hang_hoa.ma_hang }}</strong></td>
                         <td>{{ ct.hang_hoa.ten_hang }}</td>
                         <td class="text-center">{{ ct.hang_hoa.don_vi_tinh.ten|default:"-" }}</td>
-                        <td class="text-right fw-semibold text-success">+{{ ct.so_luong_nhan }}</td>
+                        <td class="text-right fw-semibold text-success">+{{ ct.so_luong_nhan|floatformat:0|intcomma }}</td>
                         <td class="text-right">{{ ct.don_gia|floatformat:0|intcomma }} đ</td>
                         <td class="text-center">{{ ct.tk_no|default:"-" }}</td>
                         <td class="text-center">{{ ct.tk_co|default:"-" }}</td>

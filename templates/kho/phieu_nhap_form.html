@@ -123,6 +123,30 @@
         color: #6b7d94;
         text-align: right;
     }
+    #chiTietTable {
+        min-width: 1280px;
+    }
+    #chiTietTable th,
+    #chiTietTable td {
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    #chiTietTable select[name="hang_id[]"] {
+        min-width: 260px;
+    }
+    #chiTietTable input[name="so_luong_nhan[]"] {
+        min-width: 96px;
+    }
+    #chiTietTable input[name="don_gia[]"] {
+        min-width: 130px;
+    }
+    #chiTietTable input[name="tk_no[]"],
+    #chiTietTable input[name="tk_co[]"] {
+        min-width: 120px;
+    }
+    #chiTietTable .thanh-tien {
+        min-width: 140px;
+    }
 </style>
 {% endblock %}
 
@@ -137,16 +161,20 @@
         {% csrf_token %}
 
         <div class="form-row">
-            <div class="col col-3 form-group">
+            <div class="col col-2 form-group">
                 <label class="form-label">Số phiếu <span class="text-danger">*</span></label>
                 <input type="text" name="so_phieu" class="form-control" value="{{ so_phieu_default }}" required>
             </div>
-            <div class="col col-3 form-group">
-                <label class="form-label">Ngày chứng từ <span class="text-danger">*</span></label>
-                <input type="date" name="ngay_chung_tu" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+            <div class="col col-2 form-group">
+                <label class="form-label">Ngày lập <span class="text-danger">*</span></label>
+                <input type="date" name="ngay_lap" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+            </div>
+            <div class="col col-2 form-group">
+                <label class="form-label">Ngày hạch toán <span class="text-danger">*</span></label>
+                <input type="date" name="ngay_hach_toan" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
                 <small class="text-muted">Ngày dùng để ghi nhận Sổ cái kế toán.</small>
             </div>
-            <div class="col col-3 form-group">
+            <div class="col col-2 form-group">
                 <label class="form-label">Loại chứng từ <span class="text-danger">*</span></label>
                 <select name="loai_nhap" id="loaiChungTu" class="form-control" required style="font-weight:600;">
                     <option value="1" selected>1 - Mua nhà cung cấp</option>
@@ -154,7 +182,7 @@
                     <option value="3">3 - Điều chỉnh tồn kho</option>
                 </select>
             </div>
-            <div class="col col-3 form-group">
+            <div class="col col-4 form-group">
                 <label class="form-label">Kho nhận <span class="text-danger">*</span></label>
                 <select name="kho" class="form-control" required>
                     {% for k in kho_list %}
@@ -174,9 +202,14 @@
                     {% endfor %}
                 </select>
                 <div class="lookup-wrap">
-                    <input type="text" id="nccDisplay" class="form-control lookup-input" placeholder="-- Chọn Nhà cung cấp --" readonly>
+                    <input type="text" id="nccDisplay" class="form-control lookup-input" list="ncc_lookup_list" placeholder="Nhập mã/tên NCC hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                     <button type="button" class="lookup-btn" id="btnOpenNccModal" title="Chọn nhà cung cấp"><i class="fas fa-search"></i></button>
                 </div>
+                <datalist id="ncc_lookup_list">
+                    {% for ncc in ncc_list %}
+                    <option value="{{ ncc.ma_ncc }} - {{ ncc.ten_ncc }}" label="{{ ncc.ten_ncc }}"></option>
+                    {% endfor %}
+                </datalist>
                 <small id="nccHint" class="text-muted">Chỉ hiện khách hàng có tích Nhà cung cấp.</small>
             </div>
             <div class="col col-5 form-group">
@@ -222,7 +255,7 @@
                                 <button type="button" class="lookup-btn btn-search-hang" title="Tra cứu vật tư"><i class="fas fa-search"></i></button>
                             </div>
                         </td>
-                        <td><input type="number" name="so_luong_nhan[]" class="form-control so-luong calc-input" min="1" required></td>
+                        <td><input type="number" name="so_luong_nhan[]" class="form-control so-luong calc-input" min="1" step="1" required></td>
                         <td><input type="number" name="don_gia[]" class="form-control don-gia calc-input" min="0" required></td>
                         <td>
                             <div class="lookup-wrap">
@@ -383,7 +416,7 @@
 
     function fillNhapRow(row, item) {
         row.find('select[name="hang_id[]"]').val(String(item.hang_id || ''));
-        row.find('input[name="so_luong_nhan[]"]').val(item.so_luong_nhan || 0);
+        row.find('input[name="so_luong_nhan[]"]').val(Math.round(item.so_luong_nhan || 0));
         row.find('input[name="don_gia[]"]').val(item.don_gia || 0);
         row.find('input[name="tk_no[]"]').val(item.tk_no || '');
         row.find('input[name="tk_co[]"]').val(item.tk_co || '');
@@ -398,7 +431,8 @@
         if (!node) return;
         const data = JSON.parse(node.textContent || '{}');
 
-        if (data.ngay_chung_tu) $('input[name="ngay_chung_tu"]').val(data.ngay_chung_tu);
+        if (data.ngay_lap) $('input[name="ngay_lap"]').val(data.ngay_lap);
+        if (data.ngay_hach_toan) $('input[name="ngay_hach_toan"]').val(data.ngay_hach_toan);
         if (data.loai_nhap) $('#loaiChungTu').val(data.loai_nhap);
         if (data.kho_id) $('select[name="kho"]').val(data.kho_id);
         if (data.so_hd_ncc !== undefined) $('input[name="so_hd_ncc"]').val(data.so_hd_ncc || '');
@@ -426,8 +460,51 @@
     }
 
     function setSelectedNcc(nccId, label) {
-        $('#nccSelect').val(String(nccId || ''));
-        $('#nccDisplay').val(label || '');
+        const normalizedId = String(nccId || '');
+        $('#nccSelect').val(normalizedId);
+        if (label) {
+            $('#nccDisplay').val(label);
+            return;
+        }
+        const selectedText = normalizedId ? ($('#nccSelect option:selected').text() || '') : '';
+        $('#nccDisplay').val(selectedText);
+    }
+
+    function normLookup(str) {
+        return String(str || '').trim().toLowerCase();
+    }
+
+    function syncNccFromDisplay() {
+        const keyword = normLookup($('#nccDisplay').val());
+        if (!keyword) {
+            setSelectedNcc('', '');
+            return;
+        }
+
+        let matchedValue = '';
+        let matchedLabel = '';
+        $('#nccSelect option').each(function() {
+            const optVal = String($(this).val() || '');
+            if (!optVal) return;
+
+            const label = String($(this).text() || '').trim();
+            const parts = label.split(' - ');
+            const maNcc = normLookup(parts[0] || '');
+            const full = normLookup(label);
+
+            if (keyword === maNcc || keyword === full) {
+                matchedValue = optVal;
+                matchedLabel = label;
+                return false;
+            }
+        });
+
+        if (matchedValue) {
+            setSelectedNcc(matchedValue, matchedLabel);
+            return;
+        }
+
+        setSelectedNcc('', $('#nccDisplay').val());
     }
 
     function renderGoiY(row, data) {
@@ -618,6 +695,10 @@
         $('#nccSearchInput').val('');
         loadNccPage(1);
         setTimeout(() => $('#nccSearchInput').focus(), 300);
+    });
+
+    $('#nccDisplay').on('change blur', function() {
+        syncNccFromDisplay();
     });
 
     $(document).on('click', '.btn-search-hang', function(e) {

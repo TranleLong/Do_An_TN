@@ -161,7 +161,7 @@ def dashboard(request):
         'don_ban_gan_day': don_ban_gan_day,
         'chart_labels': ','.join(chart_labels),
         'chart_data': ','.join(str(x) for x in chart_data),
-        'page_title': 'Dashboard',
+        'page_title': 'Trang chủ',
         'active_menu': 'dashboard',
     })
 
@@ -699,26 +699,81 @@ def kho_list(request):
 def nhom_hang_list(request):
     q = request.GET.get('q', '').strip()
     if request.method == 'POST':
-        ma = request.POST.get('ma_nhom', '').strip()
-        ten = request.POST.get('ten_nhom', '').strip()
-        if ma and ten:
-            if NhomHang.objects.filter(ma_nhom=ma).exists():
+        action = (request.POST.get('action') or 'create').strip()
+        if action == 'create':
+            ma = request.POST.get('ma_nhom', '').strip()
+            ten = request.POST.get('ten_nhom', '').strip()
+            mo_ta = request.POST.get('mo_ta', '').strip()
+            hang_ids = [x for x in request.POST.getlist('hang_ids[]') if str(x).isdigit()]
+            if not ma or not ten:
+                messages.error(request, 'Vui lòng nhập đủ mã nhóm và tên nhóm')
+            elif NhomHang.objects.filter(ma_nhom=ma).exists():
                 messages.error(request, 'Mã nhóm đã tồn tại')
             else:
-                NhomHang.objects.create(ma_nhom=ma, ten_nhom=ten)
+                nhom = NhomHang.objects.create(ma_nhom=ma, ten_nhom=ten, mo_ta=mo_ta)
+                if hang_ids:
+                    HangHoa.objects.filter(pk__in=hang_ids).update(nhom_hang=nhom)
                 messages.success(request, 'Đã thêm nhóm hàng')
+        elif action == 'update':
+            nhom_id = request.POST.get('nhom_id')
+            if not str(nhom_id).isdigit():
+                messages.error(request, 'Nhóm hàng không hợp lệ')
+            else:
+                nhom = get_object_or_404(NhomHang, pk=nhom_id)
+                ma = request.POST.get('ma_nhom', '').strip()
+                ten = request.POST.get('ten_nhom', '').strip()
+                mo_ta = request.POST.get('mo_ta', '').strip()
+                hang_ids = [int(x) for x in request.POST.getlist('hang_ids[]') if str(x).isdigit()]
+                if not ma or not ten:
+                    messages.error(request, 'Vui lòng nhập đủ mã nhóm và tên nhóm')
+                elif NhomHang.objects.exclude(pk=nhom.pk).filter(ma_nhom=ma).exists():
+                    messages.error(request, 'Mã nhóm đã tồn tại')
+                else:
+                    nhom.ma_nhom = ma
+                    nhom.ten_nhom = ten
+                    nhom.mo_ta = mo_ta
+                    nhom.save(update_fields=['ma_nhom', 'ten_nhom', 'mo_ta'])
+                    HangHoa.objects.filter(nhom_hang=nhom).exclude(pk__in=hang_ids).update(nhom_hang=None)
+                    if hang_ids:
+                        HangHoa.objects.filter(pk__in=hang_ids).update(nhom_hang=nhom)
+                    messages.success(request, 'Đã cập nhật nhóm hàng')
+        elif action == 'delete':
+            ids = [int(x) for x in request.POST.getlist('ids[]') if str(x).isdigit()]
+            if not ids:
+                messages.error(request, 'Vui lòng chọn nhóm hàng để xóa')
+            else:
+                qs = NhomHang.objects.filter(pk__in=ids)
+                so_nhom = qs.count()
+                HangHoa.objects.filter(nhom_hang__in=qs).update(nhom_hang=None)
+                qs.delete()
+                messages.success(request, f'Đã xóa {so_nhom} nhóm hàng')
+        return redirect('nhom_hang_list')
 
     items = NhomHang.objects.order_by('ten_nhom')
     if q:
         items = items.filter(Q(ma_nhom__icontains=q) | Q(ten_nhom__icontains=q))
     items = _paginate_queryset(request, items)
 
+    nhom_ids = [x.pk for x in items]
+    nhom_meta = {nid: {'count': 0, 'hang_ids': []} for nid in nhom_ids}
+    for hh in HangHoa.objects.filter(nhom_hang_id__in=nhom_ids).values('pk', 'nhom_hang_id'):
+        data = nhom_meta.get(hh['nhom_hang_id'])
+        if data is not None:
+            data['count'] += 1
+            data['hang_ids'].append(str(hh['pk']))
+    for item in items:
+        meta = nhom_meta.get(item.pk, {'count': 0, 'hang_ids': []})
+        item.so_hang = meta['count']
+        item.hang_ids_csv = ','.join(meta['hang_ids'])
+
     return render(request, 'core/nhom_hang.html', {
         'items': items,
         'page_obj': items,
         'q': q,
+        'hang_list': HangHoa.objects.filter(trang_thai='dang_ban').order_by('ma_hang'),
+        'nhom_meta': nhom_meta,
         'page_title': 'Nhóm hàng',
-        'active_menu': 'danh_muc',
+        'active_menu': 'nhom_hang',
     })
 
 
@@ -747,7 +802,7 @@ def don_vi_tinh_list(request):
         'q': q,
         'ten_default': ten,
         'page_title': 'Đơn vị tính',
-        'active_menu': 'danh_muc',
+        'active_menu': 'don_vi_tinh',
     })
 
 
@@ -811,10 +866,10 @@ def tai_khoan_ke_toan_list(request):
     items = TaiKhoanKeToan.objects.select_related('tk_me')
     if q:
         items = items.filter(Q(ma_tk__icontains=q) | Q(ten_tk__icontains=q))
-    page_obj = _paginate_queryset(request, items.order_by('ma_tk'))
+    items = items.order_by('ma_tk')
     return render(request, 'core/tai_khoan_ke_toan.html', {
-        'items': page_obj,
-        'page_obj': page_obj,
+        'items': items,
+        'page_obj': None,
         'q': q,
         'tk_me_list': TaiKhoanKeToan.objects.filter(trang_thai=True).order_by('ma_tk'),
         'page_title': 'Danh mục tài khoản kế toán',

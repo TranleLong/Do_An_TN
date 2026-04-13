@@ -1,0 +1,144 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card-title"><i class="fas fa-book text-primary"></i> So cai tong hop</div>
+        <button class="btn btn-sm btn-secondary" onclick="window.print()"><i class="fas fa-print"></i> In</button>
+    </div>
+
+    <div class="card-body">
+        <form method="get" class="form-row mb-3 align-items-end p-3" style="background: rgba(0,0,0,0.04); border-radius: var(--radius-sm);">
+            <div class="col col-3 form-group mb-0">
+                <label class="form-label">Tai khoan</label>
+                <select name="tai_khoan" class="form-control">
+                    <option value="">-- Chon tai khoan --</option>
+                    {% for acc in accounts %}
+                    <option value="{{ acc.ma_tk }}" {% if account_code == acc.ma_tk %}selected{% endif %}>{{ acc.ma_tk }} - {{ acc.ten_tk }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col col-2 form-group mb-0">
+                <label class="form-label">Tu ngay</label>
+                <input type="date" name="tu_ngay" class="form-control" value="{{ from_date|date:'Y-m-d' }}">
+            </div>
+            <div class="col col-2 form-group mb-0">
+                <label class="form-label">Den ngay</label>
+                <input type="date" name="den_ngay" class="form-control" value="{{ to_date|date:'Y-m-d' }}">
+            </div>
+            <div class="col col-2 form-group mb-0">
+                <label class="form-label">Loai chung tu</label>
+                <select name="loai_ct" class="form-control">
+                    {% for val, label in doc_type_choices %}
+                    <option value="{{ val }}" {% if document_type == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col col-3 form-group mb-0">
+                <label class="form-label">So chung tu</label>
+                <input type="text" name="so_ct" class="form-control" value="{{ document_number }}" placeholder="Nhap so chung tu...">
+            </div>
+            <div class="col col-2 form-group mb-0 mt-2">
+                <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter"></i> Loc</button>
+            </div>
+        </form>
+
+        <form method="post" action="{% url 'so_cai_post_document' %}" class="form-row mb-4 align-items-end p-3" style="background: #eef6ff; border: 1px solid #d9e9ff; border-radius: var(--radius-sm);">
+            {% csrf_token %}
+            <div class="col col-3 form-group mb-0">
+                <label class="form-label">Loai chung tu nguon</label>
+                <select name="document_type" class="form-control" required>
+                    <option value="hoa_don_ban">Hoa don ban hang</option>
+                    <option value="phieu_thu">Phieu thu</option>
+                    <option value="phieu_nhap">Phieu nhap kho</option>
+                    <option value="phieu_xuat">Phieu xuat kho</option>
+                    <option value="phieu_dieu_chinh_kho">Phieu dieu chinh kho</option>
+                    <option value="hang_ban_tra_lai">Hang ban bi tra lai</option>
+                </select>
+            </div>
+            <div class="col col-2 form-group mb-0">
+                <label class="form-label">ID chung tu</label>
+                <input type="number" name="document_id" class="form-control" min="1" required>
+            </div>
+            <div class="col col-4 form-group mb-0">
+                <small class="text-muted">Chi ghi so khi chung tu da o trang thai duyet/so cai. Moi chung tu chi ghi 1 lan.</small>
+            </div>
+            <div class="col col-3 form-group mb-0">
+                <button type="submit" class="btn btn-outline-primary w-100"><i class="fas fa-file-signature"></i> Ghi so tu chung tu</button>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <h5 class="mb-3 mt-2 text-center text-uppercase fw-bold" style="color: var(--accent-color); letter-spacing: 1px;">
+                SO CAI {% if report.account %}- TK {{ report.account.ma_tk }}: {{ report.account.ten_tk }}{% endif %}
+            </h5>
+
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Ngay ghi so</th>
+                        <th>Ngay CT</th>
+                        <th>So ghi so</th>
+                        <th>Loai CT</th>
+                        <th>So CT</th>
+                        <th>Dien giai</th>
+                        <th class="text-right">No</th>
+                        <th class="text-right">Co</th>
+                        <th class="text-right">So du luy ke</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if report.account %}
+                    <tr style="background:#fffbe6;">
+                        <td colspan="8"><strong>So du dau ky</strong></td>
+                        <td class="text-right"><strong>{{ report.opening_balance|floatformat:0|intcomma }}</strong></td>
+                    </tr>
+                    {% for row in report.rows %}
+                    <tr>
+                        <td>{{ row.posting_date|date:'d/m/Y' }}</td>
+                        <td>{{ row.document_date|date:'d/m/Y' }}</td>
+                        <td>{{ row.entry_number }}</td>
+                        <td>{{ row.document_type }}</td>
+                        <td>{{ row.document_number }}</td>
+                        <td>{{ row.description }}</td>
+                        <td class="text-right">{{ row.debit|floatformat:0|intcomma }}</td>
+                        <td class="text-right">{{ row.credit|floatformat:0|intcomma }}</td>
+                        <td class="text-right fw-bold">{{ row.running_balance|floatformat:0|intcomma }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted">Khong co phat sinh trong ky loc.</td>
+                    </tr>
+                    {% endfor %}
+                    <tr style="background:#f8fafc;">
+                        <td colspan="6"><strong>Cong phat sinh trong ky</strong></td>
+                        <td class="text-right"><strong>{{ report.total_debit|floatformat:0|intcomma }}</strong></td>
+                        <td class="text-right"><strong>{{ report.total_credit|floatformat:0|intcomma }}</strong></td>
+                        <td></td>
+                    </tr>
+                    <tr style="background:#eaf9ef;">
+                        <td colspan="8"><strong>So du cuoi ky</strong></td>
+                        <td class="text-right"><strong>{{ report.closing_balance|floatformat:0|intcomma }}</strong></td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted">Vui long chon tai khoan de xem so cai.</td>
+                    </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .table-bordered th, .table-bordered td { border: 1px solid rgba(0,0,0,0.05); }
+    @media print {
+        body { background: white; color: black; }
+        .sidebar, .header, .btn, form { display: none !important; }
+        .main-wrapper { margin: 0; padding: 0; }
+        .card { box-shadow: none; border: none; }
+    }
+</style>
+{% endblock %}

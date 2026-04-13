@@ -4,7 +4,7 @@
 {% block content %}
 <div class="card" style="max-width: 600px; margin: 0 auto;">
     <div class="card-header">
-        <div class="card-title"><i class="fas fa-hand-holding-dollar text-success"></i> {% if loai == 'thu' %}Lập Phiếu Thu Tiền{% else %}Lập Phiếu Chi Tiền{% endif %}</div>
+        <div class="card-title"><i class="fas fa-hand-holding-dollar text-success"></i> {{ page_title|default:'Lập Phiếu Thu/Chi' }}</div>
         <a href="javascript:history.back()" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
     </div>
 
@@ -13,11 +13,11 @@
         <div class="form-row">
             <div class="col col-6 form-group">
                 <label class="form-label">Số phiếu <span class="text-danger">*</span></label>
-                <input type="text" name="so_phieu" class="form-control" value="{{ so_phieu_default }}" required>
+                <input type="text" name="so_phieu" class="form-control" value="{{ form_values.so_phieu|default:so_phieu_default }}" required>
             </div>
             <div class="col col-6 form-group">
                 <label class="form-label">Ngày hiệu lực <span class="text-danger">*</span></label>
-                <input type="date" name="ngay" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+                <input type="date" name="ngay" class="form-control" value="{{ today_str }}" required>
             </div>
         </div>
 
@@ -33,12 +33,12 @@
         </div>
         {% else %}
         <div class="form-group">
-            <label class="form-label">Người nhận tiền (Nhà cung cấp)</label>
+            <label class="form-label">Người nhận tiền (Khách hàng)</label>
             <select name="doi_tuong" class="form-control" id="ncc_select">
-                <option value="">-- Chi phí khác / NV --</option>
-                {% for n in ncc_list %}
-                <option value="{{ n.pk }}" data-no="{{ n.get_cong_no }}">
-                    {{ n.ma_ncc }} - {{ n.ten_ncc }}
+                <option value="">-- Chọn khách hàng --</option>
+                {% for n in kh_list %}
+                <option value="{{ n.pk }}" data-no="{{ n.get_cong_no }}" {% if n.pk|stringformat:"s" == kh_id_default %}selected{% endif %}>
+                    {{ n.ma_kh }} - {{ n.ten_kh }}
                 </option>
                 {% endfor %}
             </select>
@@ -53,21 +53,21 @@
             <div class="col col-6 form-group">
                 <label class="form-label">Hình thức thanh toán <span class="text-danger">*</span></label>
                 <select name="hinh_thuc" class="form-control" required>
-                    <option value="tien_mat">Tiền mặt</option>
-                    <option value="chuyen_khoan">Chuyển khoản</option>
-                    <option value="the">Quẹt thẻ</option>
+                    <option value="tien_mat" {% if form_values.hinh_thuc == 'tien_mat' %}selected{% endif %}>Tiền mặt</option>
+                    <option value="chuyen_khoan" {% if form_values.hinh_thuc == 'chuyen_khoan' %}selected{% endif %}>Chuyển khoản</option>
+                    <option value="the" {% if form_values.hinh_thuc == 'the' %}selected{% endif %}>Quẹt thẻ</option>
                 </select>
             </div>
             <div class="col col-6 form-group">
                 <label class="form-label">Số tiền (VNĐ) <span class="text-danger">*</span></label>
-                <input type="number" name="so_tien" id="soTien" class="form-control text-right" style="font-size: 1.2rem; font-weight: bold; color: var(--{% if loai == 'thu'%}success{% else %}danger{% endif %});" value="0" min="1" required>
+                <input type="number" name="so_tien" id="soTien" class="form-control text-right" style="font-size: 1.2rem; font-weight: bold; color: var(--{% if loai == 'thu'%}success{% else %}danger{% endif %});" value="{{ form_values.so_tien|default:'0' }}" min="1" required>
             </div>
         </div>
-        <small class="text-muted d-block" style="margin-top:8px;">Trạng thái chứng từ: tạo mới = <strong>1 - Lập phiếu</strong>, xác nhận chi = <strong>2 - Ghi nhận nghiệp vụ</strong>, chuyển sổ cái = <strong>3</strong>.</small>
+        <small class="text-muted d-block" style="margin-top:8px;">Trạng thái chứng từ: tạo mới = <strong>1 - Lập chứng từ</strong>, chuyển sổ cái = <strong>2</strong>.</small>
 
         <div class="form-group">
             <label class="form-label">Lý do {% if loai == 'thu' %}thu{% else %}chi{% endif %} / Ghi chú diễn giải <span class="text-danger">*</span></label>
-            <textarea name="ly_do" class="form-control" rows="3" required placeholder="VD: Thu tiền đơn hàng #DB001, Chi trả tiền hàng tháng 3..."></textarea>
+            <textarea name="ly_do" class="form-control" rows="3" required placeholder="VD: Thu tiền đơn hàng #DB001, Chi trả tiền hàng tháng 3...">{{ form_values.ly_do|default:'' }}</textarea>
         </div>
 
         <div class="mt-4 pt-3 text-center" style="border-top: 1px solid rgba(0,0,0,0.05);">

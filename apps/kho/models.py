@@ -74,6 +74,8 @@ class PhieuNhap(models.Model):
         ('3', '3 - Sổ cái'),
     ]
     so_phieu = models.CharField(max_length=30, unique=True, verbose_name='Số phiếu nhập')
+    ngay_lap = models.DateField(default=datetime.date.today, verbose_name='Ngày lập')
+    ngay_hach_toan = models.DateField(default=datetime.date.today, verbose_name='Ngày hạch toán')
     ngay_chung_tu = models.DateField(default=datetime.date.today, verbose_name='Ngày chứng từ')
     ngay_nhap = models.DateField(default=datetime.date.today, verbose_name='Ngày nhập')
     loai_nhap = models.CharField(max_length=20, choices=LOAI_NHAP, default='1',
@@ -96,7 +98,7 @@ class PhieuNhap(models.Model):
         db_table = 'kho_phieunhap'
         verbose_name = 'Phiếu nhập kho'
         verbose_name_plural = 'Phiếu nhập kho'
-        ordering = ['-ngay_chung_tu', '-ngay_nhap', '-ngay_tao']
+        ordering = ['-ngay_hach_toan', '-ngay_lap', '-ngay_tao']
 
     def __str__(self):
         return f"{self.so_phieu} ({self.get_trang_thai_display()})"
@@ -178,6 +180,8 @@ class PhieuXuat(models.Model):
         ('3', '3 - Sổ cái'),
     ]
     so_phieu = models.CharField(max_length=30, unique=True, verbose_name='Số phiếu xuất')
+    ngay_lap = models.DateField(default=datetime.date.today, verbose_name='Ngày lập')
+    ngay_hach_toan = models.DateField(default=datetime.date.today, verbose_name='Ngày hạch toán')
     ngay_chung_tu = models.DateField(default=datetime.date.today, verbose_name='Ngày chứng từ')
     ngay_xuat = models.DateField(default=datetime.date.today, verbose_name='Ngày xuất')
     loai_xuat = models.CharField(max_length=20, choices=LOAI_XUAT, default='ban_hang',
@@ -195,7 +199,7 @@ class PhieuXuat(models.Model):
     class Meta:
         db_table = 'kho_phieuxuat'
         verbose_name = 'Phiếu xuất kho'
-        ordering = ['-ngay_chung_tu', '-ngay_xuat', '-ngay_tao']
+        ordering = ['-ngay_hach_toan', '-ngay_lap', '-ngay_tao']
 
     def __str__(self):
         return f"{self.so_phieu}"

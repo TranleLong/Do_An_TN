@@ -9,12 +9,21 @@
         border-radius: 10px;
         padding: 20px;
     }
+    .print-wrap table {
+        table-layout: fixed;
+        width: 100%;
+    }
     @media print {
         .header, .sidebar, .btn, .card-header { display: none !important; }
         .main-wrapper { margin: 0 !important; }
         .content { padding: 0 !important; }
         .card { border: 0 !important; box-shadow: none !important; }
         .print-wrap { border: 0 !important; padding: 0 !important; }
+        .table-responsive { overflow: visible !important; }
+        .print-wrap { font-size: 12px; }
+        .print-wrap table th,
+        .print-wrap table td { white-space: normal !important; }
+        .print-hide-col { display: none !important; }
     }
 </style>
 {% endblock %}
@@ -53,7 +62,7 @@
                     <thead>
                         <tr>
                             <th>STT</th>
-                            <th>Mã hàng</th>
+                            <th class="print-hide-col">Mã hàng</th>
                             <th>Tên mặt hàng</th>
                             <th>ĐVT</th>
                             <th class="text-end">SL</th>
@@ -67,10 +76,10 @@
                         {% for ct in chi_tiet %}
                         <tr>
                             <td>{{ forloop.counter }}</td>
-                            <td>{{ ct.hang_hoa.ma_hang }}</td>
+                            <td class="print-hide-col">{{ ct.hang_hoa.ma_hang }}</td>
                             <td>{{ ct.hang_hoa.ten_hang }}</td>
                             <td>{{ ct.hang_hoa.don_vi_tinh.ten|default:'-' }}</td>
-                            <td class="text-end">{{ ct.so_luong }}</td>
+                            <td class="text-end">{{ ct.so_luong|floatformat:0|intcomma }}</td>
                             <td class="text-end">{{ ct.gia_ban|intcomma }}</td>
                             <td class="text-end">{{ ct.tien_hang|intcomma }}</td>
                             <td class="text-end">{{ ct.tien_thue|intcomma }}</td>
