@@ -1,31 +1,8 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block content %}
-
-<div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);">
-    <div class="kpi-card" style="border-left:4px solid #3b82f6;">
-        <div class="kpi-icon" style="background:#eff6ff;"><i class="fas fa-file-export" style="color:#3b82f6; font-size:1.4rem;"></i></div>
-        <div class="kpi-info">
-            <h4>Phiếu xuất tháng {{ thang }}</h4>
-            <div class="kpi-value" style="color:#3b82f6;">{{ tong_phieu_xuat }}</div>
-        </div>
-    </div>
-    <div class="kpi-card" style="border-left:4px solid #f59e0b;">
-        <div class="kpi-icon" style="background:#fef3c7;"><i class="fas fa-hand-holding-usd" style="color:#f59e0b; font-size:1.4rem;"></i></div>
-        <div class="kpi-info">
-            <h4>Tổng giá vốn hàng xuất</h4>
-            <div class="kpi-value" style="color:#f59e0b; font-size:1.2rem;">{{ tong_gia_von_xuat|intcomma }} đ</div>
-        </div>
-    </div>
-    <div class="kpi-card" style="border-left:4px solid #10b981;">
-        <div class="kpi-icon" style="background:#d1fae5;"><i class="fas fa-coins" style="color:#10b981; font-size:1.4rem;"></i></div>
-        <div class="kpi-info">
-            <h4>Tổng giá trị tồn kho</h4>
-            <div class="kpi-value" style="color:#10b981; font-size:1.2rem;">{{ tong_ton_kho|intcomma }} đ</div>
-        </div>
-    </div>
-</div>
 
 <div class="card mb-4">
     <div class="card-header">
@@ -35,13 +12,11 @@
     </div>
     <div class="card-body">
 
-        <div class="alert alert-info" style="border-radius:10px; font-size:0.92rem; border-left:4px solid #3b82f6;">
-            <i class="fas fa-info-circle me-2"></i>
-            Hệ thống sử dụng phương pháp <strong>Bình quân gia quyền (WA)</strong>. Giá vốn được tính lại tự động mỗi khi có nhập/xuất kho.
-            Bảng dưới đây hiển thị giá vốn trung bình hiện tại của từng mặt hàng để kế toán kiểm tra.
-        </div>
-
         <form method="get" class="d-flex gap-3 mb-4 align-items-center flex-wrap">
+            <div>
+                <label class="form-label fw-semibold text-muted small mb-1">Kỳ tính</label>
+                <input type="month" name="thang" class="form-control" value="{{ thang_hien_tai }}" style="min-width:160px;">
+            </div>
             <div>
                 <label class="form-label fw-semibold text-muted small mb-1">Chọn kho</label>
                 <select name="kho" class="form-control" style="min-width:180px;">
@@ -66,13 +41,68 @@
             </div>
         </form>
 
+        <div class="table-responsive mb-4">
+            <table class="table table-sm table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th rowspan="2">Mã hàng</th>
+                        <th rowspan="2">Tên hàng hóa</th>
+                        <th rowspan="2">Kho</th>
+                        <th rowspan="2" class="text-center">ĐVT</th>
+                        <th colspan="2" class="text-center">Tồn đầu kỳ</th>
+                        <th colspan="2" class="text-center">Nhập trong kỳ</th>
+                        <th colspan="2" class="text-center">Xuất trong kỳ</th>
+                        <th colspan="2" class="text-center">Tồn cuối kỳ</th>
+                    </tr>
+                    <tr>
+                        <th class="text-end">SL</th>
+                        <th class="text-end">Giá trị</th>
+                        <th class="text-end">SL</th>
+                        <th class="text-end">Giá trị</th>
+                        <th class="text-end">SL</th>
+                        <th class="text-end">Giá trị</th>
+                        <th class="text-end">SL</th>
+                        <th class="text-end">Giá trị</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in input_rows %}
+                    <tr>
+                        <td><strong>{{ row.ma_hang }}</strong></td>
+                        <td>{{ row.ten_hang }}</td>
+                        <td>{{ row.kho_ma }}</td>
+                        <td class="text-center">{{ row.dvt }}</td>
+                        <td class="text-end">{{ row.sl_dau_ky|intcomma }}</td>
+                        <td class="text-end">{{ row.gt_dau_ky|vnd }} đ</td>
+                        <td class="text-end">{{ row.sl_nhap|intcomma }}</td>
+                        <td class="text-end">{{ row.gt_nhap|vnd }} đ</td>
+                        <td class="text-end">{{ row.sl_xuat|intcomma }}</td>
+                        <td class="text-end">{{ row.gt_xuat|vnd }} đ</td>
+                        <td class="text-end">{{ row.sl_cuoi_ky|intcomma }}</td>
+                        <td class="text-end">{{ row.gt_cuoi_ky|vnd }} đ</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="12" class="text-center text-muted py-3">Không có dữ liệu đầu vào để tính giá trong phạm vi đã chọn.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
         <form method="post" class="mb-3">
             {% csrf_token %}
+            <input type="hidden" name="thang" value="{{ thang_hien_tai }}">
             <input type="hidden" name="kho" value="{{ kho_filter }}">
             <input type="hidden" name="hang_hoa" value="{{ hang_filter }}">
-            <button type="submit" class="btn btn-success">
-                <i class="fas fa-calculator me-1"></i> Tính giá bình quân
-            </button>
+            <div class="d-flex gap-2">
+                <button type="submit" name="action" value="calculate" class="btn btn-success" {% if not input_rows or not period_has_data %}disabled{% endif %}>
+                    <i class="fas fa-calculator me-1"></i> Tính giá bình quân
+                </button>
+                <button type="submit" name="action" value="cancel" class="btn btn-outline-secondary">
+                    <i class="fas fa-times me-1"></i> Hủy
+                </button>
+            </div>
         </form>
 
         <div class="table-responsive">
@@ -98,10 +128,10 @@
                         </td>
                         <td><i class="fas fa-warehouse text-muted me-1" style="font-size:0.8rem;"></i>{{ item.kho.ten_kho }}</td>
                         <td class="text-center fw-bold text-primary">{{ item.so_luong }} <span class="text-muted fw-normal" style="font-size:0.8rem;">{{ item.hang_hoa.don_vi_tinh.ten }}</span></td>
-                        <td class="text-end fw-semibold" style="color:#f59e0b;">{{ item.gia_von_tb|intcomma }} đ</td>
+                        <td class="text-end fw-semibold" style="color:#f59e0b;">{{ item.gia_von_tb|vnd }} đ</td>
                         <td class="text-end fw-bold text-success">
                             {% widthratio item.gia_von_tb 1 item.so_luong as tong %}
-                            {{ tong|default:"0"|intcomma }} đ
+                            {{ tong|default:"0"|vnd }} đ
                         </td>
                         <td class="text-center text-muted" style="font-size:0.82rem;">{{ item.ngay_cap_nhat|date:"d/m/Y H:i" }}</td>
                     </tr>
@@ -112,7 +142,7 @@
                 <tfoot class="table-light fw-bold">
                     <tr>
                         <td colspan="5" class="text-end">Tổng giá trị tồn kho:</td>
-                        <td class="text-end text-success fw-bold fs-6">{{ tong_gia_tri_ton|intcomma }} đ</td>
+                        <td class="text-end text-success fw-bold fs-6">{{ tong_gia_tri_ton|vnd }} đ</td>
                         <td></td>
                     </tr>
                 </tfoot>

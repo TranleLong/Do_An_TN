@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize %}
+{% load money_filters %}
 
 {% block extra_css %}
 <style>
@@ -79,11 +79,11 @@
                             <td class="print-hide-col">{{ ct.hang_hoa.ma_hang }}</td>
                             <td>{{ ct.hang_hoa.ten_hang }}</td>
                             <td>{{ ct.hang_hoa.don_vi_tinh.ten|default:'-' }}</td>
-                            <td class="text-end">{{ ct.so_luong|floatformat:0|intcomma }}</td>
-                            <td class="text-end">{{ ct.gia_ban|intcomma }}</td>
-                            <td class="text-end">{{ ct.tien_hang|intcomma }}</td>
-                            <td class="text-end">{{ ct.tien_thue|intcomma }}</td>
-                            <td class="text-end">{{ ct.thanh_tien|intcomma }}</td>
+                            <td class="text-end">{{ ct.so_luong|floatformat:0|vnd }}</td>
+                            <td class="text-end">{{ ct.gia_ban|vnd }}</td>
+                            <td class="text-end">{{ ct.tien_hang|vnd }}</td>
+                            <td class="text-end">{{ ct.tien_thue|vnd }}</td>
+                            <td class="text-end">{{ ct.thanh_tien|vnd }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -92,9 +92,9 @@
 
             <div class="row justify-content-end mt-3">
                 <div class="col-5">
-                    <div class="d-flex justify-content-between"><span>Tiền hàng:</span><strong>{{ hoa_don.tien_hang|intcomma }}</strong></div>
-                    <div class="d-flex justify-content-between"><span>Tổng tiền thuế:</span><strong>{{ hoa_don.tong_tien_thue|intcomma }}</strong></div>
-                    <div class="d-flex justify-content-between"><span>Tổng cộng:</span><strong>{{ hoa_don.tong_cong|intcomma }}</strong></div>
+                    <div class="d-flex justify-content-between"><span>Tiền hàng:</span><strong>{{ hoa_don.tien_hang|vnd }}</strong></div>
+                    <div class="d-flex justify-content-between"><span>Tổng tiền thuế:</span><strong>{{ hoa_don.tong_tien_thue|vnd }}</strong></div>
+                    <div class="d-flex justify-content-between"><span>Tổng cộng:</span><strong>{{ hoa_don.tong_cong|vnd }}</strong></div>
                 </div>
             </div>
         </div>

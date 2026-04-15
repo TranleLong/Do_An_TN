@@ -101,7 +101,7 @@
     .report-table {
         font-size: 14px;
         margin-bottom: 0;
-        min-width: 1100px;
+        min-width: 1450px;
     }
     .report-table thead th {
         background: #f5f7fa;
@@ -125,11 +125,6 @@
         background: #fff;
         cursor: pointer;
     }
-    .group-row td {
-        background: #f7f8fb;
-        color: #3b6ea6;
-        font-weight: 700;
-    }
     @media print {
         .sidebar, .header, .btn, .lookup-btn, form { display: none !important; }
         .main-wrapper { margin: 0; padding: 0; }
@@ -141,17 +136,13 @@
 {% block content %}
 <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap">
-        <div class="card-title mb-0"><i class="fas fa-chart-bar text-warning"></i> Tổng hợp nhập xuất tồn</div>
+        <div class="card-title mb-0"><i class="fas fa-boxes text-success"></i> Báo cáo tồn kho hiện tại</div>
         <button class="btn btn-sm btn-secondary" onclick="window.print()"><i class="fas fa-print"></i> In báo cáo</button>
     </div>
 
     <div class="card-body">
         <form method="get" class="row g-3 align-items-end">
-            <div class="col-lg-3">
-                <label class="form-label">Tháng báo cáo</label>
-                <input type="month" name="thang" class="form-control" value="{{ thang_hien_tai }}">
-            </div>
-            <div class="col-lg-3">
+            <div class="col-lg-4">
                 <label class="form-label">Kho</label>
                 <div class="lookup-wrap">
                     <input type="text" id="khoDisplay" class="form-control lookup-input lookup-display" value="{{ kho_da_chon|default:'Tất cả kho' }}" readonly placeholder="Bấm kính lúp để chọn kho">
@@ -159,60 +150,70 @@
                     <button type="button" class="lookup-btn" data-lookup-target="kho" title="Tra cứu kho"><i class="fas fa-search"></i></button>
                 </div>
             </div>
-            <div class="col-lg-4">
-                <label class="form-label">Vật tư</label>
+            <div class="col-lg-5">
+                <label class="form-label">Hàng hóa</label>
                 <div class="lookup-wrap">
-                    <input type="text" id="hangDisplay" name="q" class="form-control lookup-input lookup-display" value="{{ q }}" readonly placeholder="Bấm kính lúp để chọn vật tư">
-                    <button type="button" class="lookup-btn" data-lookup-target="hang" title="Tra cứu vật tư"><i class="fas fa-search"></i></button>
+                    <input type="text" id="hangDisplay" name="q" class="form-control lookup-input lookup-display" value="{{ q }}" readonly placeholder="Bấm kính lúp để chọn hàng hóa">
+                    <button type="button" class="lookup-btn" data-lookup-target="hang" title="Tra cứu hàng hóa"><i class="fas fa-search"></i></button>
                 </div>
             </div>
-            <div class="col-lg-2 d-flex gap-2 justify-content-lg-end">
-                <a href="{% url 'bao_cao_xuat_nhap_ton' %}" class="btn btn-light border flex-fill">Bỏ lọc</a>
+            <div class="col-lg-3 d-flex gap-2 justify-content-lg-end">
+                <a href="{% url 'bao_cao_ton_hien_tai' %}" class="btn btn-light border flex-fill">Bỏ lọc</a>
                 <button type="submit" class="btn btn-primary flex-fill"><i class="fas fa-filter"></i> Lọc</button>
             </div>
         </form>
     </div>
 </div>
-                    <th colspan="3" class="text-end">Tổng</th>
+
 <div class="report-shell">
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th class="text-right-num">{{ tong_gia_tri|floatformat:0|vnd }}</th>
-        tháng {{ thang_hien_tai|slice:'5:7' }}/{{ thang_hien_tai|slice:'0:4' }}
+    <div class="report-title">Tồn kho hiện tại</div>
+    <div class="report-subtitle">
+        Kho: {{ kho_da_chon|default:'Tất cả kho' }}, hàng hóa: {{ q|default:'Tất cả' }}
     </div>
     <div class="table-responsive">
         <table class="table table-bordered table-hover report-table">
             <thead>
                 <tr>
-                    <th rowspan="2" class="align-middle text-center">Mã vật tư</th>
-                    <th rowspan="2" class="align-middle text-center">Tên vật tư</th>
-                    <th rowspan="2" class="align-middle text-center">ĐVT</th>
-                    <th class="text-right-num">SL đầu kỳ</th>
-                    <th class="text-right-num">SL nhập</th>
-                    <th class="text-right-num">SL xuất</th>
-                    <th class="text-right-num">SL cuối kỳ</th>
+                    <th>Mã hàng</th>
+                    <th>Tên hàng</th>
+                    <th>ĐVT</th>
+                    <th>Mã kho</th>
+                    <th class="text-right-num">Số lượng tồn</th>
+                    <th class="text-right-num">Giá vốn TB</th>
+                    <th class="text-right-num">Giá bán hiện tại</th>
                     <th class="text-right-num">Giá trị tồn</th>
+                    <th class="text-right-num">Giá trị bán</th>
                 </tr>
             </thead>
             <tbody>
-                {% for item in data %}
+                {% for row in rows %}
                 <tr>
-                    <td><strong>{{ item.ma_hang }}</strong></td>
-                    <td>{{ item.ten_hang }}</td>
-                    <td class="text-center">{{ item.dvt }}</td>
-                    <td class="text-right-num">{{ item.sl_dau_ky|intcomma }}</td>
-                    <td class="text-right-num">{{ item.sl_nhap|intcomma }}</td>
-                    <td class="text-right-num">{{ item.sl_xuat|intcomma }}</td>
-                    <td class="text-right-num fw-semibold">{{ item.sl_cuoi_ky|intcomma }}</td>
-                    <td class="text-right-num fw-semibold">{{ item.gt_cuoi_ky|floatformat:0|vnd }}</td>
+                    <td><strong>{{ row.ma_hang }}</strong></td>
+                    <td>{{ row.ten_hang }}</td>
+                    <td class="text-center">{{ row.dvt }}</td>
+                    <td>{{ row.ma_kho }}</td>
+                    <td class="text-right-num">{{ row.so_luong|intcomma }}</td>
+                    <td class="text-right-num">{{ row.gia_von_tb|floatformat:0|vnd }}</td>
+                    <td class="text-right-num fw-semibold text-primary">{{ row.gia_ban_hien_tai|floatformat:0|vnd }}</td>
+                    <td class="text-right-num fw-semibold">{{ row.gia_tri_ton|floatformat:0|vnd }}</td>
+                    <td class="text-right-num fw-semibold text-success">{{ row.gia_tri_ban|floatformat:0|vnd }}</td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="8" class="text-center py-4 text-muted">Không có dữ liệu phát sinh trong kỳ báo cáo.</td>
+                    <td colspan="9" class="text-center py-4 text-muted">Không có dữ liệu tồn kho phù hợp.</td>
                 </tr>
                 {% endfor %}
             </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="4" class="text-end">Tổng</th>
+                    <th class="text-right-num">{{ tong_so_luong|intcomma }}</th>
+                    <th></th>
+                    <th></th>
+                    <th class="text-right-num">{{ tong_gia_tri|floatformat:0|vnd }}</th>
+                    <th class="text-right-num text-success">{{ tong_gia_tri_ban|floatformat:0|vnd }}</th>
+                </tr>
+            </tfoot>
         </table>
     </div>
 </div>
@@ -285,7 +286,7 @@
         lookupState.page = 1;
         lookupSearch.value = '';
         if (lookupTitle) {
-            lookupTitle.textContent = mode === 'kho' ? 'Tra cứu kho' : 'Tra cứu vật tư';
+            lookupTitle.textContent = mode === 'kho' ? 'Tra cứu kho' : 'Tra cứu hàng hóa';
         }
         renderLookup();
         lookupModal.show();
@@ -330,7 +331,7 @@
                 lookupState.totalPages = resp.total_pages || 1;
 
                 if (!items.length) {
-                    lookupResults.innerHTML = '<div class="text-warning" style="padding: 1rem; text-align: center;">Không tìm thấy vật tư</div>';
+                    lookupResults.innerHTML = '<div class="text-warning" style="padding: 1rem; text-align: center;">Không tìm thấy hàng hóa</div>';
                 } else {
                     let html = '<div class="lookup-head lookup-grid-hang"><span>Mã hàng</span><span>Tên hàng</span><span>ĐVT</span></div>';
                     items.forEach((item) => {
@@ -343,12 +344,12 @@
                     lookupResults.innerHTML = html;
                 }
 
-                lookupPaging.textContent = `Trang ${lookupState.page}/${lookupState.totalPages} - ${resp.total || 0} vật tư`;
+                lookupPaging.textContent = `Trang ${lookupState.page}/${lookupState.totalPages} - ${resp.total || 0} hàng hóa`;
                 btnLookupPrev.disabled = lookupState.page <= 1;
                 btnLookupNext.disabled = lookupState.page >= lookupState.totalPages;
             })
             .catch(() => {
-                lookupResults.innerHTML = '<div class="text-danger" style="padding: 1rem; text-align: center;">Lỗi tải dữ liệu vật tư</div>';
+                lookupResults.innerHTML = '<div class="text-danger" style="padding: 1rem; text-align: center;">Lỗi tải dữ liệu hàng hóa</div>';
             });
     }
 

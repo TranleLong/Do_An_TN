@@ -1,6 +1,6 @@
 """Views cho app Kho: PhieuXuat, TonKho, KiemKe, SoDo, TinhGia, DoiChieu"""
 import re
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal
 
 from django.contrib import messages
@@ -13,14 +13,47 @@ from django.utils import timezone
 from django.views.decorators.clickjacking import xframe_options_exempt
 from openpyxl import Workbook
 
+from apps.ban_hang.models import PhieuTraHang
 from apps.danh_muc.models import (HangHoa, KhachHang, Kho, NhaCungCap,
-                                  TaiKhoanKeToan, ViTriKho)
+                                  NhomHang, TaiKhoanKeToan, ViTriKho)
 
-from .models import (KiemKe, KiemKe_CT, MucTonKho, PhieuNhap, PhieuNhap_CT,
+from .models import (KiemKe, KiemKe_CT, MucTonKho, PhieuDieuChinhKiemKe,
+                     PhieuDieuChinhKiemKe_CT, PhieuNhap, PhieuNhap_CT,
                      PhieuXuat, PhieuXuat_CT, TonKho, TonKhoViTri)
 
 SLOT_TAG_REGEX = re.compile(r"\[SLOT=(?P<size>[1-5])\]")
 SUC_CHUA_O_MAC_DINH = 50
+
+
+def _parse_money_input(value, default=Decimal('0')):
+    if value in (None, ''):
+        return default
+    try:
+        raw = str(value).strip()
+        if not raw:
+            return default
+
+        if ',' in raw and '.' in raw:
+            if raw.rfind(',') > raw.rfind('.'):
+                raw = raw.replace('.', '').replace(',', '.')
+            else:
+                raw = raw.replace(',', '')
+        elif ',' in raw:
+            if raw.count(',') == 1 and len(raw.split(',')[1]) <= 2:
+                raw = raw.replace(',', '.')
+            else:
+                raw = raw.replace(',', '')
+        elif '.' in raw:
+            if raw.count('.') > 1:
+                raw = raw.replace('.', '')
+            else:
+                left, right = raw.split('.', 1)
+                if right.isdigit() and len(right) == 3 and left.replace('-', '').isdigit():
+                    raw = left + right
+
+        return Decimal(raw)
+    except Exception:
+        return default
 
 
 def _can_access_inventory(user):
@@ -135,6 +168,173 @@ def _recalculate_weighted_average(kho_id=None, hang_hoa_id=None):
     return True, [], updated
 
 
+def _parse_period_month(thang_raw):
+    """Parse tham số tháng (YYYY-MM) thành ngày đầu/kết thúc kỳ."""
+    today = timezone.localdate()
+    if not thang_raw:
+        month_start = today.replace(day=1)
+    else:
+        try:
+            y_str, m_str = str(thang_raw).split('-', 1)
+            year = int(y_str)
+            month = int(m_str)
+            month_start = date(year, month, 1)
+        except Exception:
+            month_start = today.replace(day=1)
+
+    next_month = (month_start.replace(day=28) + timedelta(days=4)).replace(day=1)
+    month_end = next_month - timedelta(days=1)
+    return month_start, month_end, month_start.strftime('%Y-%m')
+
+
+def _build_weighted_average_input_rows(kho_id=None, hang_hoa_id=None, start_date=None, end_date=None):
+    """Tổng hợp đầu vào tính giá theo kỳ: tồn đầu, nhập kỳ, xuất kỳ, tồn cuối."""
+    nhap_ct_qs = PhieuNhap_CT.objects.select_related(
+        'phieu_nhap', 'hang_hoa', 'hang_hoa__don_vi_tinh', 'phieu_nhap__kho'
+    ).filter(phieu_nhap__trang_thai__in=('2', '3'))
+    xuat_ct_qs = PhieuXuat_CT.objects.select_related(
+        'phieu_xuat', 'hang_hoa', 'hang_hoa__don_vi_tinh', 'phieu_xuat__kho'
+    ).filter(phieu_xuat__trang_thai__in=('2', '3'))
+
+    if kho_id:
+        nhap_ct_qs = nhap_ct_qs.filter(phieu_nhap__kho_id=kho_id)
+        xuat_ct_qs = xuat_ct_qs.filter(phieu_xuat__kho_id=kho_id)
+    if hang_hoa_id:
+        nhap_ct_qs = nhap_ct_qs.filter(hang_hoa_id=hang_hoa_id)
+        xuat_ct_qs = xuat_ct_qs.filter(hang_hoa_id=hang_hoa_id)
+
+    if end_date:
+        nhap_ct_qs = nhap_ct_qs.filter(phieu_nhap__ngay_chung_tu__lte=end_date)
+        xuat_ct_qs = xuat_ct_qs.filter(phieu_xuat__ngay_chung_tu__lte=end_date)
+
+    movements = []
+    for ct in nhap_ct_qs.order_by('phieu_nhap__ngay_chung_tu', 'phieu_nhap_id', 'id'):
+        movements.append({
+            'type': 'N',
+            'kho_id': ct.phieu_nhap.kho_id,
+            'kho_ma': ct.phieu_nhap.kho.ma_kho,
+            'hang_hoa_id': ct.hang_hoa_id,
+            'hang_ma': ct.hang_hoa.ma_hang,
+            'hang_ten': ct.hang_hoa.ten_hang,
+            'dvt': ct.hang_hoa.don_vi_tinh.ten if ct.hang_hoa.don_vi_tinh else '',
+            'date': ct.phieu_nhap.ngay_chung_tu,
+            'qty': Decimal(int(ct.so_luong_nhan or 0)),
+            'value': Decimal(int(ct.thanh_tien or 0)),
+        })
+
+    for ct in xuat_ct_qs.order_by('phieu_xuat__ngay_chung_tu', 'phieu_xuat_id', 'id'):
+        movements.append({
+            'type': 'X',
+            'kho_id': ct.phieu_xuat.kho_id,
+            'kho_ma': ct.phieu_xuat.kho.ma_kho,
+            'hang_hoa_id': ct.hang_hoa_id,
+            'hang_ma': ct.hang_hoa.ma_hang,
+            'hang_ten': ct.hang_hoa.ten_hang,
+            'dvt': ct.hang_hoa.don_vi_tinh.ten if ct.hang_hoa.don_vi_tinh else '',
+            'date': ct.phieu_xuat.ngay_chung_tu,
+            'qty': Decimal(int(ct.so_luong or 0)),
+            'value': Decimal(int(ct.tong_gia_von or 0)),
+        })
+
+    movements.sort(key=lambda m: (m['date'], 0 if m['type'] == 'N' else 1))
+
+    state = {}
+    period_has_data = False
+
+    for mv in movements:
+        key = (mv['kho_id'], mv['hang_hoa_id'])
+        if key not in state:
+            state[key] = {
+                'kho_ma': mv['kho_ma'],
+                'hang_ma': mv['hang_ma'],
+                'hang_ten': mv['hang_ten'],
+                'dvt': mv['dvt'],
+                'opening_qty': Decimal(0),
+                'opening_value': Decimal(0),
+                'in_qty': Decimal(0),
+                'in_value': Decimal(0),
+                'out_qty': Decimal(0),
+                'out_value': Decimal(0),
+                'closing_qty': Decimal(0),
+                'closing_value': Decimal(0),
+                '_running_qty': Decimal(0),
+                '_running_value': Decimal(0),
+                '_opening_captured': False,
+                '_period_activity': False,
+            }
+
+        row = state[key]
+        in_period = (start_date is None or mv['date'] >= start_date) and (end_date is None or mv['date'] <= end_date)
+
+        if in_period and not row['_opening_captured']:
+            row['opening_qty'] = row['_running_qty']
+            row['opening_value'] = row['_running_value']
+            row['_opening_captured'] = True
+
+        if mv['type'] == 'N':
+            row['_running_qty'] += mv['qty']
+            row['_running_value'] += mv['value']
+            if in_period:
+                row['in_qty'] += mv['qty']
+                row['in_value'] += mv['value']
+                row['_period_activity'] = True
+                period_has_data = True
+        else:
+            avg = (row['_running_value'] / row['_running_qty']) if row['_running_qty'] > 0 else Decimal(0)
+            out_value = mv['value'] if mv['value'] > 0 else (avg * mv['qty'])
+            row['_running_qty'] -= mv['qty']
+            row['_running_value'] -= out_value
+            if in_period:
+                row['out_qty'] += mv['qty']
+                row['out_value'] += out_value
+                row['_period_activity'] = True
+                period_has_data = True
+
+        row['closing_qty'] = row['_running_qty']
+        row['closing_value'] = row['_running_value']
+
+    rows = []
+    for (_, _), row in state.items():
+        if hang_hoa_id or kho_id or row['_period_activity']:
+            rows.append({
+                'kho_ma': row['kho_ma'],
+                'ma_hang': row['hang_ma'],
+                'ten_hang': row['hang_ten'],
+                'dvt': row['dvt'],
+                'sl_dau_ky': int(row['opening_qty']),
+                'gt_dau_ky': int(round(row['opening_value'], 0)),
+                'sl_nhap': int(row['in_qty']),
+                'gt_nhap': int(round(row['in_value'], 0)),
+                'sl_xuat': int(row['out_qty']),
+                'gt_xuat': int(round(row['out_value'], 0)),
+                'sl_cuoi_ky': int(round(row['closing_qty'], 0)),
+                'gt_cuoi_ky': int(round(row['closing_value'], 0)),
+            })
+
+    rows.sort(key=lambda r: (r['kho_ma'], r['ma_hang']))
+    return rows, period_has_data
+
+
+def _validate_weighted_average_input(kho_id=None, hang_hoa_id=None, start_date=None, end_date=None):
+    """Kiểm tra dữ liệu đầu vào hợp lệ trước khi tính giá."""
+    nhap_bad = PhieuNhap_CT.objects.filter(phieu_nhap__trang_thai__in=('2', '3'))
+    xuat_bad = PhieuXuat_CT.objects.filter(phieu_xuat__trang_thai__in=('2', '3'))
+
+    if kho_id:
+        nhap_bad = nhap_bad.filter(phieu_nhap__kho_id=kho_id)
+        xuat_bad = xuat_bad.filter(phieu_xuat__kho_id=kho_id)
+    if hang_hoa_id:
+        nhap_bad = nhap_bad.filter(hang_hoa_id=hang_hoa_id)
+        xuat_bad = xuat_bad.filter(hang_hoa_id=hang_hoa_id)
+    if start_date and end_date:
+        nhap_bad = nhap_bad.filter(phieu_nhap__ngay_chung_tu__range=[start_date, end_date])
+        xuat_bad = xuat_bad.filter(phieu_xuat__ngay_chung_tu__range=[start_date, end_date])
+
+    has_bad_nhap = nhap_bad.filter(Q(so_luong_nhan__lte=0) | Q(don_gia__lt=0)).exists()
+    has_bad_xuat = xuat_bad.filter(so_luong__lte=0).exists()
+    return not (has_bad_nhap or has_bad_xuat)
+
+
 def _extract_so_don_from_ghi_chu(ghi_chu):
     text = (ghi_chu or '').strip()
     if not text:
@@ -240,8 +440,30 @@ def _xac_nhan_phieu_xuat(phieu):
 
 
 def _gen_so_phieu(prefix):
+    normalized_prefix = (prefix or '').strip().upper()
+    if normalized_prefix == 'XK':
+        normalized_prefix = 'PX'
+
+    model_map = {
+        'NK': (PhieuNhap, 'so_phieu'),
+        'PX': (PhieuXuat, 'so_phieu'),
+    }
+    model_info = model_map.get(normalized_prefix)
+    if model_info:
+        model_cls, field_name = model_info
+        max_index = 0
+        filter_key = {f'{field_name}__istartswith': normalized_prefix}
+        for code in model_cls.objects.filter(**filter_key).values_list(field_name, flat=True):
+            text = str(code or '').strip().upper()
+            if not text.startswith(normalized_prefix):
+                continue
+            suffix = text[len(normalized_prefix):]
+            if suffix.isdigit():
+                max_index = max(max_index, int(suffix))
+        return f'{normalized_prefix}{max_index + 1:05d}'
+
     now = timezone.now()
-    return f"{prefix}-{now.strftime('%Y%m%d-%H%M%S')}"
+    return f"{normalized_prefix}-{now.strftime('%Y%m%d-%H%M%S')}"
 
 
 def _hang_slot_size(hang_hoa):
@@ -255,12 +477,67 @@ def _normalize_loai_nhap(value):
     mapping = {
         '1': '1',
         '2': '2',
-        '3': '3',
+        '3': '2',
         'mua_ncc': '1',
         'tra_hang_kh': '2',
-        'dieu_chinh': '3',
+        'dieu_chinh': '2',
     }
     return mapping.get(str(value or '').strip(), '1')
+
+
+def _extract_doi_tra_id_from_ghi_chu(ghi_chu):
+    text = str(ghi_chu or '')
+    m = re.search(r'\[DOI_TRA_PHIEU:(\d+)\]', text)
+    return int(m.group(1)) if m else None
+
+
+def _build_doi_tra_pending_payload(selected_id=None):
+    qs = PhieuTraHang.objects.select_related('khach_hang', 'hoa_don_goc').prefetch_related(
+        'chi_tiet__hang_hoa',
+        'chi_tiet__kho',
+    )
+    pending_qs = qs.filter(trang_thai='1')
+    if selected_id:
+        pending_qs = (pending_qs | qs.filter(pk=selected_id)).distinct()
+
+    payload = []
+    for phieu in pending_qs.order_by('-ngay_lap', '-id')[:200]:
+        rows = []
+        for ct in phieu.chi_tiet.all():
+            if int(ct.so_luong or 0) <= 0:
+                continue
+            rows.append({
+                'doi_tra_ct_id': ct.id,
+                'hang_id': ct.hang_hoa_id,
+                'ma_hang': ct.hang_hoa.ma_hang if ct.hang_hoa else '',
+                'ten_hang': ct.hang_hoa.ten_hang if ct.hang_hoa else '',
+                'so_luong_nhan': int(ct.so_luong or 0),
+                'don_gia': float(ct.don_gia or 0),
+                'kho_id': ct.kho_id,
+                'tk_no': '156',
+                'tk_co': '131',
+            })
+
+        if not rows:
+            continue
+
+        kh = phieu.khach_hang
+        kho_ids = {int(r.get('kho_id') or 0) for r in rows if int(r.get('kho_id') or 0) > 0}
+        payload.append({
+            'id': phieu.id,
+            'so_phieu': phieu.so_phieu,
+            'hoa_don': phieu.hoa_don_goc.so_hoa_don if phieu.hoa_don_goc else '',
+            'ma_kh': kh.ma_kh if kh else '',
+            'ten_kh': kh.ten_kh if kh else '',
+            'ngay_lap': phieu.ngay_lap.isoformat() if phieu.ngay_lap else '',
+            'ngay_hach_toan': phieu.ngay_hach_toan.isoformat() if phieu.ngay_hach_toan else '',
+            'dien_giai': (phieu.dien_giai or '').strip(),
+            'ly_do_tra': (phieu.ly_do_tra or '').strip(),
+            'kho_id_mac_dinh': next(iter(kho_ids)) if len(kho_ids) == 1 else None,
+            'rows': rows,
+        })
+
+    return payload
 
 
 def _de_xuat_vi_tri_nhap(kho_id, hang_hoa, so_luong_nhap):
@@ -428,36 +705,27 @@ def ton_kho_list(request):
 
     kho_id = request.GET.get('kho', '').strip()
     q = request.GET.get('q', '').strip()
-    ma_hang = request.GET.get('ma_hang', '').strip()
-    ten_hang = request.GET.get('ten_hang', '').strip()
-    barcode = request.GET.get('barcode', '').strip()
     nhom_hang_id = request.GET.get('nhom_hang', '').strip()
     vi_tri = request.GET.get('vi_tri', '').strip()
     trang_thai_ton = request.GET.get('trang_thai_ton', '').strip()
 
     items = TonKho.objects.select_related(
         'hang_hoa', 'kho', 'hang_hoa__nhom_hang', 'hang_hoa__don_vi_tinh', 'hang_hoa__thuong_hieu'
-    )
+    ).filter(hang_hoa__trang_thai='dang_ban')
 
     if kho_id:
         items = items.filter(kho_id=kho_id)
     if q:
         items = items.filter(Q(hang_hoa__ma_hang__icontains=q) | Q(hang_hoa__ten_hang__icontains=q))
-    if ma_hang:
-        items = items.filter(hang_hoa__ma_hang__icontains=ma_hang)
-    if ten_hang:
-        items = items.filter(hang_hoa__ten_hang__icontains=ten_hang)
-    if barcode:
-        items = items.filter(Q(hang_hoa__ma_hang__icontains=barcode) | Q(hang_hoa__ten_hang__icontains=barcode))
     if nhom_hang_id:
         items = items.filter(hang_hoa__nhom_hang_id=nhom_hang_id)
 
     items = list(items.order_by('hang_hoa__ma_hang', 'kho__ma_kho'))
 
+    vi_tri_map = {}
     ton_vitri_qs = TonKhoViTri.objects.select_related('vi_tri').filter(so_luong__gt=0)
     if vi_tri:
         ton_vitri_qs = ton_vitri_qs.filter(vi_tri__ma_vi_tri__icontains=vi_tri)
-    vi_tri_map = {}
     for row in ton_vitri_qs:
         key = (row.hang_hoa_id, row.kho_id)
         vi_tri_map.setdefault(key, []).append(row.vi_tri.ma_vi_tri)
@@ -558,13 +826,27 @@ def ton_kho_list(request):
 
     context = {
         'items': filtered_items,
-        'kho_list': Kho.objects.filter(trang_thai=True),
-        'nhom_hang_list': HangHoa.objects.exclude(nhom_hang__isnull=True).values('nhom_hang__id', 'nhom_hang__ten_nhom').distinct().order_by('nhom_hang__ten_nhom'),
+        'kho_options': [
+            {'id': str(k.pk), 'label': k.ten_kho}
+            for k in Kho.objects.filter(trang_thai=True).order_by('ten_kho')
+        ],
+        'nhom_hang_options': [
+            {'id': str(row['nhom_hang__id']), 'label': row['nhom_hang__ten_nhom']}
+            for row in HangHoa.objects.exclude(nhom_hang__isnull=True)
+            .values('nhom_hang__id', 'nhom_hang__ten_nhom')
+            .distinct()
+            .order_by('nhom_hang__ten_nhom')
+        ],
+        'vi_tri_options': [
+            {'label': vi_tri_ma}
+            for vi_tri_ma in TonKhoViTri.objects.select_related('vi_tri')
+            .filter(so_luong__gt=0)
+            .values_list('vi_tri__ma_vi_tri', flat=True)
+            .distinct()
+            .order_by('vi_tri__ma_vi_tri')
+        ],
         'kho_filter': kho_id,
         'q': q,
-        'ma_hang': ma_hang,
-        'ten_hang': ten_hang,
-        'barcode': barcode,
         'nhom_hang_filter': nhom_hang_id,
         'vi_tri_filter': vi_tri,
         'trang_thai_ton_filter': trang_thai_ton,
@@ -832,34 +1114,75 @@ def tinh_gia_xuat(request):
         messages.error(request, 'Bạn không có quyền tính giá xuất kho')
         return redirect('dashboard')
 
+    thang_raw = request.GET.get('thang', '')
     kho_filter = request.GET.get('kho', '')
     hang_filter = request.GET.get('hang_hoa', '')
+    ky_tu_ngay, ky_den_ngay, thang_hien_tai = _parse_period_month(thang_raw)
 
     if request.method == 'POST':
+        action = (request.POST.get('action') or 'calculate').strip()
+        thang_raw = request.POST.get('thang', '').strip()
+        ky_tu_ngay, ky_den_ngay, thang_hien_tai = _parse_period_month(thang_raw)
         kho_filter = request.POST.get('kho', '').strip()
         hang_filter = request.POST.get('hang_hoa', '').strip()
-        with transaction.atomic():
-            ok, errors, updated = _recalculate_weighted_average(
+        if action == 'cancel':
+            messages.info(request, 'Đã hủy thao tác tính giá xuất kho')
+            return redirect(
+                f"{request.path}?thang={thang_hien_tai}&kho={kho_filter}&hang_hoa={hang_filter}"
+            )
+
+        if not _validate_weighted_average_input(
+            kho_id=kho_filter or None,
+            hang_hoa_id=hang_filter or None,
+            start_date=ky_tu_ngay,
+            end_date=ky_den_ngay,
+        ):
+            messages.error(request, 'Dữ liệu tồn kho không hợp lệ, vui lòng kiểm tra lại')
+        else:
+            input_rows, period_has_data = _build_weighted_average_input_rows(
                 kho_id=kho_filter or None,
                 hang_hoa_id=hang_filter or None,
+                start_date=ky_tu_ngay,
+                end_date=ky_den_ngay,
             )
-            if not ok:
-                messages.error(request, 'Không thể tính giá do tồn kho âm')
-                for err in errors[:5]:
-                    hang = HangHoa.objects.filter(pk=err['hang_hoa_id']).first()
-                    kho = Kho.objects.filter(pk=err['kho_id']).first()
-                    messages.error(
-                        request,
-                        f"{hang.ma_hang if hang else err['hang_hoa_id']} - {kho.ma_kho if kho else err['kho_id']}: "
-                        f"xuất {err['so_luong_xuat']} > tồn {err['so_luong_hien_co']}"
-                    )
-            elif updated == 0:
+            if not input_rows or not period_has_data:
                 messages.warning(request, 'Không có dữ liệu để tính giá xuất kho')
             else:
-                messages.success(request, f'Tính giá bình quân xuất kho thành công ({updated} tồn kho đã cập nhật)')
+                try:
+                    with transaction.atomic():
+                        ok, errors, updated = _recalculate_weighted_average(
+                            kho_id=kho_filter or None,
+                            hang_hoa_id=hang_filter or None,
+                        )
+                        if not ok:
+                            messages.error(request, 'Không thể tính giá do tồn kho âm')
+                            for err in errors[:5]:
+                                hang = HangHoa.objects.filter(pk=err['hang_hoa_id']).first()
+                                kho = Kho.objects.filter(pk=err['kho_id']).first()
+                                messages.error(
+                                    request,
+                                    f"{hang.ma_hang if hang else err['hang_hoa_id']} - {kho.ma_kho if kho else err['kho_id']}: "
+                                    f"xuất {err['so_luong_xuat']} > tồn {err['so_luong_hien_co']}"
+                                )
+                        elif updated == 0:
+                            messages.warning(request, 'Không có dữ liệu để tính giá xuất kho')
+                        else:
+                            messages.success(request, 'Tính giá bình quân xuất kho thành công')
+                except Exception:
+                    messages.error(request, 'Không thể tính giá bình quân xuất kho')
+
+    input_rows, period_has_data = _build_weighted_average_input_rows(
+        kho_id=kho_filter or None,
+        hang_hoa_id=hang_filter or None,
+        start_date=ky_tu_ngay,
+        end_date=ky_den_ngay,
+    )
 
     items = TonKho.objects.select_related(
         'hang_hoa', 'kho', 'hang_hoa__nhom_hang', 'hang_hoa__don_vi_tinh'
+    ).filter(
+        so_luong__gt=0,
+        hang_hoa__trang_thai='dang_ban',
     ).order_by('hang_hoa__ma_hang')
 
     if kho_filter:
@@ -868,7 +1191,7 @@ def tinh_gia_xuat(request):
         items = items.filter(hang_hoa_id=hang_filter)
 
     tong_gia_tri_ton = sum(t.so_luong * t.gia_von_tb for t in items)
-    thang = timezone.now().strftime('%m/%Y')
+    thang = ky_tu_ngay.strftime('%m/%Y')
 
     # Thống kê xuất kho tháng này
     now = timezone.now()
@@ -882,6 +1205,11 @@ def tinh_gia_xuat(request):
 
     return render(request, 'kho/tinh_gia_xuat.html', {
         'items': items,
+        'input_rows': input_rows,
+        'period_has_data': period_has_data,
+        'ky_tu_ngay': ky_tu_ngay,
+        'ky_den_ngay': ky_den_ngay,
+        'thang_hien_tai': thang_hien_tai,
         'kho_list': Kho.objects.filter(trang_thai=True),
         'hang_hoa_list': HangHoa.objects.filter(trang_thai='dang_ban').order_by('ma_hang')[:500],
         'kho_filter': kho_filter,
@@ -986,10 +1314,14 @@ def phieu_nhap_them(request):
         data = request.POST
         kho_id = data.get('kho')
         loai_nhap = _normalize_loai_nhap(data.get('loai_nhap', '1'))
+        if loai_nhap not in ('1', '2'):
+            loai_nhap = '1'
         trang_thai_mong_muon = str(data.get('trang_thai', '1') or '1').strip()
         if trang_thai_mong_muon not in ('1', '2', '3'):
             trang_thai_mong_muon = '1'
         ncc_id = data.get('ncc') or None
+        phieu_doi_tra_id = (data.get('phieu_doi_tra_id') or '').strip()
+        phieu_doi_tra = None
         if not kho_id:
             messages.error(request, 'Vui lòng chọn kho nhận')
             return redirect('phieu_nhap_them')
@@ -997,6 +1329,18 @@ def phieu_nhap_them(request):
         if loai_nhap == '1' and not ncc_id:
             messages.error(request, 'Loại chứng từ 1 - Mua nhà cung cấp bắt buộc chọn Nhà cung cấp')
             return redirect('phieu_nhap_them')
+
+        if loai_nhap == '2':
+            if not phieu_doi_tra_id:
+                messages.error(request, 'Loại chứng từ 2 - Khách hàng trả hàng bắt buộc chọn Phiếu đổi trả kế thừa')
+                return redirect('phieu_nhap_them')
+            phieu_doi_tra = PhieuTraHang.objects.select_related('khach_hang').prefetch_related('chi_tiet').filter(
+                pk=phieu_doi_tra_id,
+                trang_thai='1',
+            ).first()
+            if not phieu_doi_tra:
+                messages.error(request, 'Phiếu đổi trả không hợp lệ hoặc đã hoàn tất')
+                return redirect('phieu_nhap_them')
 
         so_phieu = data.get('so_phieu') or _gen_so_phieu('NK')
         ngay_lap = data.get('ngay_lap') or data.get('ngay_nhap') or data.get('ngay_chung_tu') or date.today()
@@ -1013,28 +1357,61 @@ def phieu_nhap_them(request):
             so_hd_ncc=data.get('so_hd_ncc', ''),
             ngay_hd_ncc=data.get('ngay_hd_ncc') or None,
             kho_id=kho_id,
-            ghi_chu=data.get('ghi_chu', ''),
+            ghi_chu=(data.get('ghi_chu', '') or '').strip(),
             nguoi_tao=request.user,
         )
+        if phieu_doi_tra:
+            link_tag = f'[DOI_TRA_PHIEU:{phieu_doi_tra.pk}]'
+            phieu.ghi_chu = f"{(phieu.ghi_chu + ' ') if phieu.ghi_chu else ''}{link_tag}".strip()
+            phieu.save(update_fields=['ghi_chu'])
 
         # Xử lý chi tiết
         hang_ids = data.getlist('hang_id[]')
+        doi_tra_ct_ids = data.getlist('doi_tra_ct_id[]')
         sl_nhans = data.getlist('so_luong_nhan[]')
         don_gias = data.getlist('don_gia[]')
         tk_nos = data.getlist('tk_no[]')
         tk_cos = data.getlist('tk_co[]')
         so_dong_hop_le = 0
+        doi_tra_so_luong_con_lai = {}
+        doi_tra_ct_map = {}
+
+        if phieu_doi_tra:
+            for ct in phieu_doi_tra.chi_tiet.all():
+                doi_tra_so_luong_con_lai[ct.id] = int(ct.so_luong or 0)
+                doi_tra_ct_map[ct.id] = ct
 
         for i in range(len(hang_ids)):
             if hang_ids[i] and sl_nhans[i] and don_gias[i]:
                 try:
                     sl_nhan = int(sl_nhans[i])
-                    don_gia = float(don_gias[i])
+                    don_gia = _parse_money_input(don_gias[i])
                 except (ValueError, TypeError):
                     continue
 
                 if sl_nhan <= 0 or don_gia < 0:
                     continue
+
+                if phieu_doi_tra:
+                    ct_id_raw = (doi_tra_ct_ids[i] if i < len(doi_tra_ct_ids) else '').strip()
+                    if not ct_id_raw or not ct_id_raw.isdigit():
+                        phieu.delete()
+                        messages.error(request, 'Dòng kế thừa phiếu đổi trả không hợp lệ')
+                        return redirect('phieu_nhap_them')
+                    ct_id = int(ct_id_raw)
+                    if ct_id not in doi_tra_ct_map:
+                        phieu.delete()
+                        messages.error(request, 'Có dòng hàng không thuộc phiếu đổi trả đã chọn')
+                        return redirect('phieu_nhap_them')
+                    if int(hang_ids[i]) != int(doi_tra_ct_map[ct_id].hang_hoa_id):
+                        phieu.delete()
+                        messages.error(request, 'Sai mặt hàng kế thừa từ phiếu đổi trả')
+                        return redirect('phieu_nhap_them')
+                    if sl_nhan > doi_tra_so_luong_con_lai.get(ct_id, 0):
+                        phieu.delete()
+                        messages.error(request, 'Số lượng nhập vượt quá số lượng hàng trả')
+                        return redirect('phieu_nhap_them')
+                    doi_tra_so_luong_con_lai[ct_id] = doi_tra_so_luong_con_lai.get(ct_id, 0) - sl_nhan
 
                 tk_no = tk_nos[i].strip() if i < len(tk_nos) else ''
                 tk_co = tk_cos[i].strip() if i < len(tk_cos) else ''
@@ -1059,26 +1436,43 @@ def phieu_nhap_them(request):
 
         thong_diep = [f'Đã tạo phiếu nhập {phieu.so_phieu} ở bước 1 - Lập phiếu']
 
-        if trang_thai_mong_muon == '2':
-            ok = phieu.xac_nhan_nhap_kho()
-            if ok:
-                so_dong_phan_bo = _ghi_nhan_phan_bo_vi_tri(phieu)
-                thong_diep.append(f'Đã tự động chuyển bước 2 - Sổ kho ({so_dong_phan_bo} dòng vị trí)')
-            else:
-                messages.error(request, 'Không thể tự động chuyển sang bước 2 - Sổ kho')
-                return redirect('phieu_nhap_detail', pk=phieu.pk)
-
-        if trang_thai_mong_muon == '3':
-            ok = phieu.xac_nhan_nhap_kho()
-            if not ok:
-                messages.error(request, 'Không thể tự động chuyển sang bước 2 - Sổ kho để chuyển sổ cái')
-                return redirect('phieu_nhap_detail', pk=phieu.pk)
-
-            so_dong_phan_bo = _ghi_nhan_phan_bo_vi_tri(phieu)
-            phieu.trang_thai = '3'
+        if phieu_doi_tra:
+            phieu.trang_thai = trang_thai_mong_muon
             phieu.save(update_fields=['trang_thai'])
-            thong_diep.append(f'Đã tự động chuyển bước 2 - Sổ kho ({so_dong_phan_bo} dòng vị trí)')
-            thong_diep.append('Đã tự động chuyển bước 3 - Sổ cái')
+            if trang_thai_mong_muon == '2':
+                thong_diep.append('Đã giữ trạng thái bước 2 - Sổ kho theo lựa chọn')
+            elif trang_thai_mong_muon == '3':
+                thong_diep.append('Đã giữ trạng thái bước 3 - Sổ cái theo lựa chọn')
+        else:
+            if trang_thai_mong_muon == '2':
+                ok = phieu.xac_nhan_nhap_kho()
+                if ok:
+                    so_dong_phan_bo = _ghi_nhan_phan_bo_vi_tri(phieu)
+                    thong_diep.append(f'Đã tự động chuyển bước 2 - Sổ kho ({so_dong_phan_bo} dòng vị trí)')
+                else:
+                    messages.error(request, 'Không thể tự động chuyển sang bước 2 - Sổ kho')
+                    return redirect('phieu_nhap_detail', pk=phieu.pk)
+
+            if trang_thai_mong_muon == '3':
+                ok = phieu.xac_nhan_nhap_kho()
+                if not ok:
+                    messages.error(request, 'Không thể tự động chuyển sang bước 2 - Sổ kho để chuyển sổ cái')
+                    return redirect('phieu_nhap_detail', pk=phieu.pk)
+
+                so_dong_phan_bo = _ghi_nhan_phan_bo_vi_tri(phieu)
+                phieu.trang_thai = '3'
+                phieu.save(update_fields=['trang_thai'])
+                thong_diep.append(f'Đã tự động chuyển bước 2 - Sổ kho ({so_dong_phan_bo} dòng vị trí)')
+                thong_diep.append('Đã tự động chuyển bước 3 - Sổ cái')
+
+        if phieu_doi_tra and phieu_doi_tra.trang_thai == '1':
+            from apps.ban_hang.views import \
+                _apply_inventory_and_cong_no_for_doi_tra
+            phieu_doi_tra.trang_thai = '2'
+            phieu_doi_tra.save(update_fields=['trang_thai'])
+            if not phieu_doi_tra.da_cap_nhat_kho_cong_no:
+                _apply_inventory_and_cong_no_for_doi_tra(phieu_doi_tra)
+            thong_diep.append(f'Đã chuyển phiếu đổi trả {phieu_doi_tra.so_phieu} sang Hoàn tất')
 
         messages.success(request, '. '.join(thong_diep))
         return redirect('phieu_nhap_detail', pk=phieu.pk)
@@ -1117,11 +1511,12 @@ def phieu_nhap_them(request):
     context = {
         'kho_list': Kho.objects.filter(trang_thai=True),
         'ncc_list': NhaCungCap.objects.filter(trang_thai=True, ma_ncc__in=ma_ncc_hop_le).order_by('ma_ncc'),
-        'hang_list': HangHoa.objects.filter(trang_thai='dang_ban'),
+        'hang_list': HangHoa.objects.all().order_by('ma_hang'),
         'tai_khoan_list': TaiKhoanKeToan.objects.filter(trang_thai=True).order_by('ma_tk'),
         'so_phieu_default': _gen_so_phieu('NK'),
         'today': date.today(),
         'copy_data': copy_data,
+        'doi_tra_pending_payload': _build_doi_tra_pending_payload(),
         'page_title': 'Tạo phiếu nhập kho',
         'active_menu': 'phieu_nhap',
     }
@@ -1154,10 +1549,16 @@ def phieu_nhap_sua(request, pk):
 
         data = request.POST
         kho_id = data.get('kho')
-        loai_nhap = _normalize_loai_nhap(data.get('loai_nhap', '1'))
+        loai_nhap = _normalize_loai_nhap(data.get('loai_nhap', phieu.loai_nhap or '1'))
+        if loai_nhap not in ('1', '2'):
+            loai_nhap = '2' if str(phieu.loai_nhap or '').strip() == '3' else (phieu.loai_nhap or '1')
         trang_thai_mong_muon = str(data.get('trang_thai', '1') or '1').strip()
         if trang_thai_mong_muon not in ('1', '2', '3'):
             trang_thai_mong_muon = '1'
+        linked_doi_tra_id = _extract_doi_tra_id_from_ghi_chu(phieu.ghi_chu)
+        posted_doi_tra_id = (data.get('phieu_doi_tra_id') or '').strip()
+        if posted_doi_tra_id.isdigit():
+            linked_doi_tra_id = int(posted_doi_tra_id)
         ncc_id = data.get('ncc') or None
 
         if not kho_id:
@@ -1176,7 +1577,11 @@ def phieu_nhap_sua(request, pk):
         phieu.so_hd_ncc = data.get('so_hd_ncc', '')
         phieu.ngay_hd_ncc = data.get('ngay_hd_ncc') or None
         phieu.kho_id = kho_id
-        phieu.ghi_chu = data.get('ghi_chu', '')
+        phieu.ghi_chu = (data.get('ghi_chu', '') or '').strip()
+        if linked_doi_tra_id:
+            link_tag = f'[DOI_TRA_PHIEU:{linked_doi_tra_id}]'
+            if link_tag not in phieu.ghi_chu:
+                phieu.ghi_chu = f"{phieu.ghi_chu} {link_tag}".strip()
         phieu.trang_thai = '1'
         phieu.save(update_fields=['ngay_lap', 'ngay_hach_toan', 'ngay_chung_tu', 'ngay_nhap', 'loai_nhap', 'nha_cung_cap', 'so_hd_ncc', 'ngay_hd_ncc', 'kho', 'ghi_chu', 'trang_thai'])
 
@@ -1192,7 +1597,7 @@ def phieu_nhap_sua(request, pk):
             if hang_ids[i] and sl_nhans[i] and don_gias[i]:
                 try:
                     sl_nhan = int(sl_nhans[i])
-                    don_gia = float(don_gias[i])
+                    don_gia = _parse_money_input(don_gias[i])
                 except (ValueError, TypeError):
                     continue
                 if sl_nhan <= 0 or don_gia < 0:
@@ -1215,15 +1620,19 @@ def phieu_nhap_sua(request, pk):
             return redirect('phieu_nhap_sua', pk=pk)
 
         phieu.tinh_tong()
-        if trang_thai_mong_muon == '2':
-            phieu.xac_nhan_nhap_kho()
-            _ghi_nhan_phan_bo_vi_tri(phieu)
-        if trang_thai_mong_muon == '3':
-            ok = phieu.xac_nhan_nhap_kho()
-            if ok:
+        if linked_doi_tra_id:
+            phieu.trang_thai = trang_thai_mong_muon
+            phieu.save(update_fields=['trang_thai'])
+        else:
+            if trang_thai_mong_muon == '2':
+                phieu.xac_nhan_nhap_kho()
                 _ghi_nhan_phan_bo_vi_tri(phieu)
-                phieu.trang_thai = '3'
-                phieu.save(update_fields=['trang_thai'])
+            if trang_thai_mong_muon == '3':
+                ok = phieu.xac_nhan_nhap_kho()
+                if ok:
+                    _ghi_nhan_phan_bo_vi_tri(phieu)
+                    phieu.trang_thai = '3'
+                    phieu.save(update_fields=['trang_thai'])
 
         messages.success(request, f'Đã cập nhật phiếu nhập {phieu.so_phieu}')
         return redirect('phieu_nhap_detail', pk=pk)
@@ -1231,13 +1640,15 @@ def phieu_nhap_sua(request, pk):
     copy_data = {
         'ngay_lap': phieu.ngay_lap.isoformat(),
         'ngay_hach_toan': phieu.ngay_hach_toan.isoformat(),
-        'loai_nhap': phieu.loai_nhap,
+        'loai_nhap': '2' if str(phieu.loai_nhap or '').strip() == '3' else phieu.loai_nhap,
+        'trang_thai': phieu.trang_thai,
         'kho_id': str(phieu.kho_id or ''),
         'ncc_id': str(phieu.nha_cung_cap_id or ''),
         'ncc_label': f'{phieu.nha_cung_cap.ma_ncc} - {phieu.nha_cung_cap.ten_ncc}' if phieu.nha_cung_cap else '',
         'so_hd_ncc': phieu.so_hd_ncc or '',
         'ngay_hd_ncc': phieu.ngay_hd_ncc.isoformat() if phieu.ngay_hd_ncc else '',
         'ghi_chu': phieu.ghi_chu or '',
+        'phieu_doi_tra_id': str(_extract_doi_tra_id_from_ghi_chu(phieu.ghi_chu) or ''),
         'rows': [
             {
                 'hang_id': str(ct.hang_hoa_id),
@@ -1251,14 +1662,22 @@ def phieu_nhap_sua(request, pk):
         ],
     }
     ma_ncc_hop_le = KhachHang.objects.filter(trang_thai=True, la_nha_cung_cap=True).values_list('ma_kh', flat=True)
+    source_doi_tra_id = _extract_doi_tra_id_from_ghi_chu(phieu.ghi_chu)
+    source_doi_tra_label = ''
+    if source_doi_tra_id:
+        dt_obj = PhieuTraHang.objects.filter(pk=source_doi_tra_id).only('so_phieu').first()
+        source_doi_tra_label = dt_obj.so_phieu if dt_obj else f'DT{source_doi_tra_id}'
     return render(request, 'kho/phieu_nhap_form.html', {
         'kho_list': Kho.objects.filter(trang_thai=True),
         'ncc_list': NhaCungCap.objects.filter(trang_thai=True, ma_ncc__in=ma_ncc_hop_le).order_by('ma_ncc'),
-        'hang_list': HangHoa.objects.filter(trang_thai='dang_ban'),
+        'hang_list': HangHoa.objects.all().order_by('ma_hang'),
         'tai_khoan_list': TaiKhoanKeToan.objects.filter(trang_thai=True).order_by('ma_tk'),
         'so_phieu_default': phieu.so_phieu,
         'today': phieu.ngay_lap,
         'copy_data': copy_data,
+        'doi_tra_pending_payload': _build_doi_tra_pending_payload(source_doi_tra_id),
+        'selected_doi_tra_id': str(source_doi_tra_id or ''),
+        'selected_doi_tra_label': source_doi_tra_label,
         'editing_phieu': phieu,
         'page_title': f'Sửa phiếu nhập {phieu.so_phieu}',
         'active_menu': 'phieu_nhap',
@@ -1302,6 +1721,9 @@ def phieu_nhap_in(request, pk):
 def phieu_nhap_xac_nhan(request, pk):
     phieu = get_object_or_404(PhieuNhap, pk=pk)
     if request.method == 'POST':
+        if _extract_doi_tra_id_from_ghi_chu(phieu.ghi_chu):
+            messages.error(request, 'Phiếu nhập kế thừa từ phiếu đổi trả không hỗ trợ ghi Sổ kho trực tiếp.')
+            return redirect('phieu_nhap_detail', pk=pk)
         ok = phieu.xac_nhan_nhap_kho()
         if ok:
             so_dong_phan_bo = _ghi_nhan_phan_bo_vi_tri(phieu)
@@ -1315,6 +1737,9 @@ def phieu_nhap_xac_nhan(request, pk):
 def phieu_nhap_chuyen_so_cai(request, pk):
     phieu = get_object_or_404(PhieuNhap, pk=pk)
     if request.method == 'POST':
+        if _extract_doi_tra_id_from_ghi_chu(phieu.ghi_chu):
+            messages.error(request, 'Phiếu nhập kế thừa từ phiếu đổi trả không hỗ trợ chuyển Sổ cái trực tiếp.')
+            return redirect('phieu_nhap_detail', pk=pk)
         if phieu.trang_thai == '2':
             phieu.trang_thai = '3'
             phieu.save(update_fields=['trang_thai'])
@@ -1360,9 +1785,9 @@ def phieu_xuat_them(request):
         ngay_lap = data.get('ngay_lap') or data.get('ngay_xuat') or data.get('ngay_chung_tu') or date.today()
         ngay_hach_toan = data.get('ngay_hach_toan') or data.get('ngay_chung_tu') or ngay_lap
         so_phieu_input = (data.get('so_phieu') or '').strip()
-        so_phieu_candidate = so_phieu_input if so_phieu_input else _gen_so_phieu('XK')
+        so_phieu_candidate = so_phieu_input if so_phieu_input else _gen_so_phieu('PX')
         if PhieuXuat.objects.filter(so_phieu=so_phieu_candidate).exists():
-            so_phieu_candidate = _gen_so_phieu('XK')
+            so_phieu_candidate = _gen_so_phieu('PX')
 
         phieu = None
         for _ in range(5):
@@ -1381,7 +1806,7 @@ def phieu_xuat_them(request):
                 )
                 break
             except IntegrityError:
-                so_phieu_candidate = _gen_so_phieu('XK')
+                so_phieu_candidate = _gen_so_phieu('PX')
 
         if phieu is None:
             messages.error(request, 'Không thể tạo số phiếu mới, vui lòng thử lại.')
@@ -1454,8 +1879,10 @@ def phieu_xuat_them(request):
 
     context = {
         'kho_list': Kho.objects.filter(trang_thai=True),
-        'hang_list': HangHoa.objects.filter(trang_thai='dang_ban'),
-        'so_phieu_default': _gen_so_phieu('XK'),
+        'hang_list': HangHoa.objects.filter(
+            pk__in=TonKho.objects.filter(so_luong__gte=1).values_list('hang_hoa_id', flat=True).distinct()
+        ).order_by('ma_hang'),
+        'so_phieu_default': _gen_so_phieu('PX'),
         'today': date.today(),
         'copy_data': copy_data,
         'page_title': 'Tạo phiếu xuất kho',
@@ -1583,7 +2010,9 @@ def phieu_xuat_sua(request, pk):
     }
     return render(request, 'kho/phieu_xuat_form.html', {
         'kho_list': Kho.objects.filter(trang_thai=True),
-        'hang_list': HangHoa.objects.filter(trang_thai='dang_ban'),
+        'hang_list': HangHoa.objects.filter(
+            pk__in=TonKho.objects.filter(so_luong__gte=1).values_list('hang_hoa_id', flat=True).distinct()
+        ).order_by('ma_hang'),
         'so_phieu_default': phieu.so_phieu,
         'today': phieu.ngay_lap,
         'copy_data': copy_data,
@@ -1776,102 +2205,926 @@ def phieu_nhap_import_excel(request):
 
 
 # ─── KIỂM KÊ ────────────────────────────────────────────────
+def _can_manage_kiem_ke(user):
+    return (
+        user.is_superuser
+        or user.is_staff
+        or user.has_perm('kho.add_kiemke')
+        or user.has_perm('kho.change_kiemke')
+        or user.has_perm('kho.view_kiemke')
+    )
+
+
+def _gen_so_phieu_kiem_ke():
+    prefix = 'KK'
+    max_index = 0
+    for code in KiemKe.objects.filter(ma_phieu__istartswith=prefix).values_list('ma_phieu', flat=True):
+        text = str(code or '').strip().upper()
+        if not text.startswith(prefix):
+            continue
+        suffix = text[len(prefix):]
+        if suffix.isdigit():
+            max_index = max(max_index, int(suffix))
+    return f'{prefix}{max_index + 1:05d}'
+
+
+def _gen_so_phieu_dieu_chinh_kiem_ke():
+    prefix = 'DC'
+    max_index = 0
+    for code in PhieuDieuChinhKiemKe.objects.filter(so_phieu__istartswith=prefix).values_list('so_phieu', flat=True):
+        text = str(code or '').strip().upper()
+        if not text.startswith(prefix):
+            continue
+        suffix = text[len(prefix):]
+        if suffix.isdigit():
+            max_index = max(max_index, int(suffix))
+    return f'{prefix}{max_index + 1:05d}'
+
+
+def _kiem_ke_form_context(form_data=None):
+    return {
+        'kho_list': Kho.objects.filter(trang_thai=True),
+        'vi_tri_list': ViTriKho.objects.filter(trang_thai='hoat_dong').select_related('kho').order_by('kho__ma_kho', 'ma_vi_tri'),
+        'nhom_hang_list': NhomHang.objects.order_by('ten_nhom'),
+        'nhan_vien_list': KhachHang.objects.filter(trang_thai=True, la_nhan_vien=True).order_by('ma_kh'),
+        'today': date.today(),
+        'ma_phieu_goi_y': _gen_so_phieu_kiem_ke(),
+        'page_title': 'Tạo phiếu kiểm kê',
+        'active_menu': 'kiem_ke',
+        'form_data': form_data or {},
+    }
+
+
+def _split_lookup_text(text):
+    raw = (text or '').strip()
+    if not raw:
+        return '', ''
+    if ' - ' in raw:
+        left, right = raw.split(' - ', 1)
+        return left.strip(), right.strip()
+    return raw, raw
+
+
+def _find_kiem_ke_vi_tri(kk):
+    ma_vi_tri = (kk.khu_vuc or '').strip()
+    if not ma_vi_tri:
+        return None
+    return ViTriKho.objects.filter(
+        kho_id=kk.kho_id,
+        ma_vi_tri=ma_vi_tri,
+        trang_thai='hoat_dong',
+    ).first()
+
+
+def _move_kiem_ke_hang_loi(kho_id, source_vi_tri_id, dest_vi_tri_id, hang_hoa_id, so_luong_loi):
+    so_luong_loi = int(so_luong_loi or 0)
+    if so_luong_loi <= 0:
+        return
+    if not dest_vi_tri_id:
+        raise ValueError('Vui lòng chọn vị trí hàng lỗi trước khi duyệt phiếu kiểm kê có hàng lỗi.')
+    if int(source_vi_tri_id) == int(dest_vi_tri_id):
+        raise ValueError('Vị trí hàng lỗi phải khác vị trí kiểm kê.')
+
+    source_row, _ = TonKhoViTri.objects.select_for_update().get_or_create(
+        kho_id=kho_id,
+        vi_tri_id=source_vi_tri_id,
+        hang_hoa_id=hang_hoa_id,
+        defaults={'so_luong': 0},
+    )
+    dest_row, _ = TonKhoViTri.objects.select_for_update().get_or_create(
+        kho_id=kho_id,
+        vi_tri_id=dest_vi_tri_id,
+        hang_hoa_id=hang_hoa_id,
+        defaults={'so_luong': 0},
+    )
+
+    current_source = int(source_row.so_luong or 0)
+    if current_source < so_luong_loi:
+        raise ValueError(f'Không đủ số lượng tại vị trí kiểm kê để chuyển hàng lỗi cho mã {source_row.hang_hoa.ma_hang}.')
+
+    source_row.so_luong = current_source - so_luong_loi
+    dest_row.so_luong = int(dest_row.so_luong or 0) + so_luong_loi
+    source_row.save(update_fields=['so_luong', 'ngay_cap_nhat'])
+    dest_row.save(update_fields=['so_luong', 'ngay_cap_nhat'])
+
+    _sync_tonkho_from_vitri(kho_id, hang_hoa_id)
+
+
+def _sync_tonkho_from_vitri(kho_id, hang_hoa_id):
+    tong_vi_tri = (
+        TonKhoViTri.objects
+        .filter(kho_id=kho_id, hang_hoa_id=hang_hoa_id)
+        .aggregate(total=Sum('so_luong'))
+        .get('total')
+        or 0
+    )
+    ton, _ = TonKho.objects.get_or_create(
+        kho_id=kho_id,
+        hang_hoa_id=hang_hoa_id,
+        defaults={'so_luong': 0, 'so_luong_loi': 0, 'gia_von_tb': 0},
+    )
+    ton.so_luong = int(tong_vi_tri)
+    if ton.so_luong < 0:
+        ton.so_luong = 0
+    ton.save(update_fields=['so_luong', 'ngay_cap_nhat'])
+
+
 @login_required
 def kiem_ke_list(request):
+    if not _can_manage_kiem_ke(request.user):
+        messages.error(request, 'Bạn không có quyền truy cập chức năng kiểm kê.')
+        return redirect('dashboard')
+
     q = request.GET.get('q', '').strip()
+    ma_phieu = request.GET.get('ma_phieu', '').strip()
     kho_filter = request.GET.get('kho', '').strip()
-    items = KiemKe.objects.select_related('kho').order_by('-ngay_kiem_ke')
+    ngay_filter = request.GET.get('ngay', '').strip()
+    trang_thai_filter = request.GET.get('trang_thai', '').strip()
+
+    items = KiemKe.objects.select_related('kho', 'nhom_hang').order_by('-ngay_tao', '-id')
+
+    if ma_phieu:
+        items = items.filter(ma_phieu__icontains=ma_phieu)
     if q:
-        items = items.filter(Q(ghi_chu__icontains=q) | Q(nguoi_kiem__icontains=q) | Q(kho__ten_kho__icontains=q) | Q(kho__ma_kho__icontains=q))
+        items = items.filter(
+            Q(ghi_chu__icontains=q)
+            | Q(nguoi_kiem__icontains=q)
+            | Q(kho__ten_kho__icontains=q)
+            | Q(kho__ma_kho__icontains=q)
+            | Q(khu_vuc__icontains=q)
+        )
     if kho_filter:
         items = items.filter(kho_id=kho_filter)
+    if ngay_filter:
+        items = items.filter(ngay_kiem_ke=ngay_filter)
+    if trang_thai_filter:
+        items = items.filter(trang_thai=trang_thai_filter)
+
     items = items[:20]
     return render(request, 'kho/kiem_ke_list.html', {
         'items': items,
         'q': q,
+        'ma_phieu': ma_phieu,
         'kho_list': Kho.objects.filter(trang_thai=True),
         'kho_filter': kho_filter,
+        'ngay_filter': ngay_filter,
+        'trang_thai_filter': trang_thai_filter,
         'page_title': 'Phiếu kiểm kê',
-        'active_menu': 'kiem_ke'
-    })
-
-
-@login_required
-def kiem_ke_them(request):
-    if request.method == 'POST':
-        kho_id = request.POST.get('kho')
-        kk = KiemKe.objects.create(
-            ngay_kiem_ke=request.POST.get('ngay') or date.today(),
-            kho_id=kho_id,
-            nguoi_kiem=request.POST.get('nguoi_kiem', ''),
-            ghi_chu=request.POST.get('ghi_chu', ''),
-        )
-        # Tự động tạo danh sách từ tồn kho hiện tại
-        for tk in TonKho.objects.filter(kho_id=kho_id):
-            KiemKe_CT.objects.create(
-                kiem_ke=kk,
-                hang_hoa=tk.hang_hoa,
-                so_luong_so_sach=tk.so_luong,
-                so_luong_thuc_te=tk.so_luong,
-            )
-        messages.success(request, 'Đã tạo phiếu kiểm kê')
-        return redirect('kiem_ke_detail', pk=kk.pk)
-    return render(request, 'kho/kiem_ke_form.html', {
-        'kho_list': Kho.objects.filter(trang_thai=True),
-        'today': date.today(),
-        'page_title': 'Tạo phiếu kiểm kê',
         'active_menu': 'kiem_ke',
     })
 
 
 @login_required
-def kiem_ke_detail(request, pk):
-    kk = get_object_or_404(KiemKe, pk=pk)
-    chi_tiet = kk.chi_tiet.select_related('hang_hoa')
-    if request.method == 'POST':
-        action = request.POST.get('action', 'save')
+def kiem_ke_export_data(request):
+    if not _can_manage_kiem_ke(request.user):
+        messages.error(request, 'Bạn không có quyền kết xuất phiếu kiểm kê.')
+        return redirect('kiem_ke_list')
 
-        if action == 'save' and kk.trang_thai == '1':
+    q = request.GET.get('q', '').strip()
+    ma_phieu = request.GET.get('ma_phieu', '').strip()
+    kho_filter = request.GET.get('kho', '').strip()
+    ngay_filter = request.GET.get('ngay', '').strip()
+    trang_thai_filter = request.GET.get('trang_thai', '').strip()
+
+    items = KiemKe.objects.select_related('kho', 'nhom_hang').order_by('-ngay_tao', '-id')
+
+    if ma_phieu:
+        items = items.filter(ma_phieu__icontains=ma_phieu)
+    if q:
+        items = items.filter(
+            Q(ghi_chu__icontains=q)
+            | Q(nguoi_kiem__icontains=q)
+            | Q(kho__ma_kho__icontains=q)
+            | Q(khu_vuc__icontains=q)
+        )
+    if kho_filter:
+        items = items.filter(kho_id=kho_filter)
+    if ngay_filter:
+        items = items.filter(ngay_kiem_ke=ngay_filter)
+    if trang_thai_filter:
+        items = items.filter(trang_thai=trang_thai_filter)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'KiemKe'
+    ws.append(['Mã phiếu', 'Ngày kiểm kê', 'Mã kho', 'Khu vực', 'Loại hàng', 'Người kiểm kê', 'Trạng thái', 'Ghi chú'])
+    for item in items:
+        ws.append([
+            item.ma_phieu,
+            item.ngay_kiem_ke.isoformat() if item.ngay_kiem_ke else '',
+            item.kho.ma_kho if item.kho_id else '',
+            item.khu_vuc or '',
+            item.nhom_hang.ten_nhom if item.nhom_hang_id else 'Tất cả',
+            item.nguoi_kiem or '',
+            item.get_trang_thai_display(),
+            item.ghi_chu or '',
+        ])
+
+    stream = BytesIO()
+    wb.save(stream)
+    stream.seek(0)
+    response = HttpResponse(
+        stream.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = 'attachment; filename="phieu_kiem_ke.xlsx"'
+    return response
+
+
+@login_required
+def kiem_ke_them(request):
+    if not _can_manage_kiem_ke(request.user):
+        messages.error(request, 'Bạn không có quyền lập phiếu kiểm kê.')
+        return redirect('kiem_ke_list')
+
+    if request.method == 'POST':
+        kho_id = (request.POST.get('kho') or '').strip()
+        kho_display = (request.POST.get('kho_display') or '').strip()
+        ngay = request.POST.get('ngay_kiem_ke') or date.today()
+        khu_vuc_id = (request.POST.get('khu_vuc') or '').strip()
+        khu_vuc_display = (request.POST.get('khu_vuc_display') or '').strip()
+        vi_tri_hang_loi_id = (request.POST.get('vi_tri_hang_loi') or '').strip()
+        vi_tri_hang_loi_display = (request.POST.get('vi_tri_hang_loi_display') or '').strip()
+        nguoi_kiem_id = (request.POST.get('nguoi_kiem') or '').strip()
+        nguoi_kiem_display = (request.POST.get('nguoi_kiem_display') or '').strip()
+        ghi_chu = (request.POST.get('ghi_chu') or '').strip()
+        nhom_hang_id = (request.POST.get('nhom_hang') or '').strip()
+        nhom_hang_display = (request.POST.get('nhom_hang_display') or '').strip()
+
+        form_data = {
+            'ngay_kiem_ke': str(ngay),
+            'kho': kho_id,
+            'kho_display': kho_display,
+            'khu_vuc': khu_vuc_id,
+            'khu_vuc_display': khu_vuc_display,
+            'vi_tri_hang_loi': vi_tri_hang_loi_id,
+            'vi_tri_hang_loi_display': vi_tri_hang_loi_display,
+            'nguoi_kiem': nguoi_kiem_id,
+            'nguoi_kiem_display': nguoi_kiem_display,
+            'nhom_hang': nhom_hang_id,
+            'nhom_hang_display': nhom_hang_display,
+            'ghi_chu': ghi_chu,
+        }
+
+        # Fallback when hidden IDs are empty: resolve by typed/display text.
+        if not kho_id and kho_display:
+            code, name = _split_lookup_text(kho_display)
+            kho_obj = Kho.objects.filter(trang_thai=True).filter(Q(ma_kho__iexact=code) | Q(ten_kho__iexact=name)).first()
+            if not kho_obj:
+                kho_obj = Kho.objects.filter(trang_thai=True).filter(Q(ma_kho__icontains=code) | Q(ten_kho__icontains=name)).first()
+            if kho_obj:
+                kho_id = str(kho_obj.pk)
+                form_data['kho'] = kho_id
+
+        if not nguoi_kiem_id and nguoi_kiem_display:
+            code, name = _split_lookup_text(nguoi_kiem_display)
+            nv_obj = KhachHang.objects.filter(trang_thai=True, la_nhan_vien=True).filter(Q(ma_kh__iexact=code) | Q(ten_kh__iexact=name)).first()
+            if not nv_obj:
+                nv_obj = KhachHang.objects.filter(trang_thai=True, la_nhan_vien=True).filter(Q(ma_kh__icontains=code) | Q(ten_kh__icontains=name)).first()
+            if nv_obj:
+                nguoi_kiem_id = str(nv_obj.pk)
+                form_data['nguoi_kiem'] = nguoi_kiem_id
+
+        if nhom_hang_display and not nhom_hang_id:
+            code, name = _split_lookup_text(nhom_hang_display)
+            nhom_obj = NhomHang.objects.filter(Q(ma_nhom__iexact=code) | Q(ten_nhom__iexact=name)).first()
+            if not nhom_obj:
+                nhom_obj = NhomHang.objects.filter(Q(ma_nhom__icontains=code) | Q(ten_nhom__icontains=name)).first()
+            if nhom_obj:
+                nhom_hang_id = str(nhom_obj.pk)
+                form_data['nhom_hang'] = nhom_hang_id
+
+        if not kho_id or not nguoi_kiem_id:
+            messages.error(request, 'Vui lòng chọn đủ thông tin bắt buộc: Kho, Khu vực kiểm kê, Người kiểm kê.')
+            return render(request, 'kho/kiem_ke_form.html', _kiem_ke_form_context(form_data))
+
+        kho = Kho.objects.filter(pk=kho_id, trang_thai=True).first()
+        if not kho:
+            messages.error(request, 'Kho không hợp lệ hoặc đã ngừng hoạt động.')
+            return render(request, 'kho/kiem_ke_form.html', _kiem_ke_form_context(form_data))
+
+        if not khu_vuc_id and khu_vuc_display:
+            code, _name = _split_lookup_text(khu_vuc_display)
+            vi_tri_obj = ViTriKho.objects.filter(kho_id=kho_id, trang_thai='hoat_dong').filter(Q(ma_vi_tri__iexact=code) | Q(ma_vi_tri__icontains=code)).first()
+            if vi_tri_obj:
+                khu_vuc_id = str(vi_tri_obj.pk)
+                form_data['khu_vuc'] = khu_vuc_id
+
+        if not vi_tri_hang_loi_id and vi_tri_hang_loi_display:
+            code, _name = _split_lookup_text(vi_tri_hang_loi_display)
+            vi_tri_loi_obj = ViTriKho.objects.filter(kho_id=kho_id, trang_thai='hoat_dong').filter(Q(ma_vi_tri__iexact=code) | Q(ma_vi_tri__icontains=code)).first()
+            if vi_tri_loi_obj:
+                vi_tri_hang_loi_id = str(vi_tri_loi_obj.pk)
+                form_data['vi_tri_hang_loi'] = vi_tri_hang_loi_id
+
+        vi_tri = ViTriKho.objects.filter(pk=khu_vuc_id, kho_id=kho_id, trang_thai='hoat_dong').first()
+        if not vi_tri:
+            messages.error(request, 'Khu vực kiểm kê không hợp lệ cho kho đã chọn.')
+            return render(request, 'kho/kiem_ke_form.html', _kiem_ke_form_context(form_data))
+
+        vi_tri_hang_loi = None
+        if vi_tri_hang_loi_id:
+            vi_tri_hang_loi = ViTriKho.objects.filter(pk=vi_tri_hang_loi_id, kho_id=kho_id, trang_thai='hoat_dong').first()
+            if not vi_tri_hang_loi:
+                messages.error(request, 'Vị trí hàng lỗi không hợp lệ cho kho đã chọn.')
+                return render(request, 'kho/kiem_ke_form.html', _kiem_ke_form_context(form_data))
+
+        nhan_vien = KhachHang.objects.filter(pk=nguoi_kiem_id, trang_thai=True, la_nhan_vien=True).first()
+        if not nhan_vien:
+            messages.error(request, 'Người kiểm kê phải được chọn từ danh mục Khách hàng có đánh dấu Nhân viên.')
+            return render(request, 'kho/kiem_ke_form.html', _kiem_ke_form_context(form_data))
+
+        nguoi_kiem = f'{nhan_vien.ma_kh} - {nhan_vien.ten_kh}'
+        khu_vuc = vi_tri.ma_vi_tri
+
+        ton_qs = TonKhoViTri.objects.select_related('hang_hoa').filter(kho_id=kho_id, vi_tri_id=vi_tri.pk)
+        if nhom_hang_id and nhom_hang_id.isdigit():
+            ton_qs = ton_qs.filter(hang_hoa__nhom_hang_id=nhom_hang_id)
+
+        if not ton_qs.exists():
+            messages.error(request, 'Không có hàng hóa thuộc phạm vi kiểm kê đã chọn.')
+            return render(request, 'kho/kiem_ke_form.html', _kiem_ke_form_context(form_data))
+
+        with transaction.atomic():
+            kk = KiemKe.objects.create(
+                ma_phieu=_gen_so_phieu_kiem_ke(),
+                ngay_kiem_ke=ngay,
+                kho_id=kho_id,
+                nhom_hang_id=nhom_hang_id if nhom_hang_id.isdigit() else None,
+                khu_vuc=khu_vuc,
+                vi_tri_hang_loi=vi_tri_hang_loi,
+                nguoi_kiem=nguoi_kiem,
+                ghi_chu=ghi_chu,
+                trang_thai='1',
+            )
+
+            for tk in ton_qs:
+                KiemKe_CT.objects.create(
+                    kiem_ke=kk,
+                    hang_hoa=tk.hang_hoa,
+                    so_luong_so_sach=int(tk.so_luong or 0),
+                    so_luong_thuc_te=int(tk.so_luong or 0),
+                    tinh_trang='tot_100',
+                )
+
+        messages.success(request, 'Lập phiếu kiểm kê thành công. Phiếu đang ở trạng thái Chờ kiểm kê.')
+        return redirect('kiem_ke_detail', pk=kk.pk)
+
+    return render(request, 'kho/kiem_ke_form.html', _kiem_ke_form_context())
+
+
+@login_required
+def kiem_ke_detail(request, pk):
+    if not _can_manage_kiem_ke(request.user):
+        messages.error(request, 'Bạn không có quyền thao tác phiếu kiểm kê.')
+        return redirect('kiem_ke_list')
+
+    kk = get_object_or_404(KiemKe, pk=pk)
+    chi_tiet = kk.chi_tiet.select_related('hang_hoa', 'hang_hoa__don_vi_tinh').order_by('hang_hoa__ma_hang')
+    for ct in chi_tiet:
+        ct.so_luong_tot = max(0, int(ct.so_luong_thuc_te or 0) - int(ct.so_luong_loi or 0))
+
+    if request.method == 'POST':
+        action = (request.POST.get('action') or '').strip()
+
+        if action == 'save_numbers':
+            if kk.trang_thai == '3':
+                messages.error(request, 'Không sửa phiếu đã hoàn tất.')
+                return redirect('kiem_ke_detail', pk=pk)
+
             ct_ids = request.POST.getlist('ct_id[]')
             sl_thuc_tes = request.POST.getlist('sl_thuc_te[]')
-            for i, ct_id in enumerate(ct_ids):
-                ct = KiemKe_CT.objects.get(pk=ct_id)
-                ct.so_luong_thuc_te = int(sl_thuc_tes[i])
-                ct.save()
-            messages.success(request, 'Đã lưu số liệu kiểm kê (bước 1)')
+            sl_lois = request.POST.getlist('sl_loi[]')
+            tinh_trangs = request.POST.getlist('tinh_trang[]')
+            ly_dos = request.POST.getlist('ly_do[]')
+
+            try:
+                with transaction.atomic():
+                    for i, ct_id in enumerate(ct_ids):
+                        if not str(ct_id).isdigit():
+                            continue
+                        ct = KiemKe_CT.objects.select_for_update().get(pk=int(ct_id), kiem_ke=kk)
+                        sl_text = (sl_thuc_tes[i] if i < len(sl_thuc_tes) else '').strip()
+                        sl_loi_text = (sl_lois[i] if i < len(sl_lois) else '').strip()
+                        sl_value = int(sl_text) if sl_text else 0
+                        sl_loi_value = int(sl_loi_text) if sl_loi_text else 0
+                        if sl_value < 0:
+                            messages.error(request, f'SL thực tế phải >= 0 (mã hàng {ct.hang_hoa.ma_hang}).')
+                            return redirect('kiem_ke_detail', pk=pk)
+                        if sl_loi_value < 0:
+                            messages.error(request, f'SL hàng lỗi phải >= 0 (mã hàng {ct.hang_hoa.ma_hang}).')
+                            return redirect('kiem_ke_detail', pk=pk)
+                        if sl_loi_value > sl_value:
+                            messages.error(request, f'SL hàng lỗi không được lớn hơn SL thực tế (mã hàng {ct.hang_hoa.ma_hang}).')
+                            return redirect('kiem_ke_detail', pk=pk)
+
+                        tinh_trang = tinh_trangs[i] if i < len(tinh_trangs) else 'tot_100'
+                        if tinh_trang not in dict(KiemKe_CT.TINH_TRANG):
+                            tinh_trang = 'tot_100'
+
+                        ct.so_luong_thuc_te = sl_value
+                        ct.so_luong_loi = sl_loi_value
+                        ct.tinh_trang = tinh_trang
+                        ct.ly_do = (ly_dos[i] if i < len(ly_dos) else '').strip()
+                        ct.save()
+            except (TypeError, ValueError):
+                messages.error(request, 'Dữ liệu số lượng kiểm kê không hợp lệ.')
+                return redirect('kiem_ke_detail', pk=pk)
+
+            messages.success(request, 'Đã cập nhật số liệu kiểm kê thực tế.')
             return redirect('kiem_ke_detail', pk=pk)
 
-        if action == 'xac_nhan' and kk.trang_thai == '1':
-            for ct in kk.chi_tiet.select_related('hang_hoa'):
-                ton, _ = TonKho.objects.get_or_create(
-                    hang_hoa=ct.hang_hoa,
+        if action == 'confirm_numbers':
+            if kk.trang_thai not in ('1', '2'):
+                messages.error(request, 'Phiếu đã hoàn tất, không thể xác nhận lại.')
+                return redirect('kiem_ke_detail', pk=pk)
+
+            has_diff = kk.chi_tiet.filter(chenh_lech__ne=0).exists() if False else any(
+                (ct.chenh_lech or 0) != 0 for ct in kk.chi_tiet.all()
+            )
+            has_hang_loi = any((ct.so_luong_loi or 0) > 0 for ct in kk.chi_tiet.all())
+            if has_hang_loi and not kk.vi_tri_hang_loi_id:
+                messages.error(request, 'Phiếu có hàng lỗi nhưng chưa chọn vị trí hàng lỗi.')
+                return redirect('kiem_ke_detail', pk=pk)
+            if has_diff:
+                kk.trang_thai = '2'
+                kk.save(update_fields=['trang_thai'])
+                messages.warning(request, 'Phiếu có chênh lệch. Vui lòng lập phiếu điều chỉnh để xử lý.')
+            else:
+                kk.trang_thai = '3'
+                kk.save(update_fields=['trang_thai'])
+                messages.success(request, 'Không có chênh lệch. Phiếu kiểm kê đã hoàn thành.')
+            return redirect('kiem_ke_detail', pk=pk)
+
+        if action == 'create_adjustment':
+            if kk.trang_thai != '2':
+                messages.error(request, 'Chỉ phiếu chờ điều chỉnh mới lập được phiếu điều chỉnh.')
+                return redirect('kiem_ke_detail', pk=pk)
+
+            if hasattr(kk, 'phieu_dieu_chinh'):
+                messages.error(request, 'Phiếu kiểm kê này đã có phiếu điều chỉnh.')
+                return redirect('kiem_ke_detail', pk=pk)
+
+            ly_do_dc = (request.POST.get('ly_do_dieu_chinh') or '').strip()
+            if not ly_do_dc:
+                messages.error(request, 'Vui lòng nhập lý do điều chỉnh.')
+                return redirect('kiem_ke_detail', pk=pk)
+
+            diff_rows = list(kk.chi_tiet.filter(chenh_lech__isnull=False).exclude(chenh_lech=0).select_related('hang_hoa'))
+            if not diff_rows:
+                messages.error(request, 'Phiếu không có chênh lệch để điều chỉnh.')
+                return redirect('kiem_ke_detail', pk=pk)
+
+            with transaction.atomic():
+                phieu = PhieuDieuChinhKiemKe.objects.create(
+                    so_phieu=_gen_so_phieu_dieu_chinh_kiem_ke(),
+                    kiem_ke=kk,
+                    ngay_dieu_chinh=date.today(),
                     kho=kk.kho,
-                    defaults={'so_luong': 0, 'gia_von_tb': 0},
+                    nguoi_lap=request.user,
+                    ly_do=ly_do_dc,
+                    trang_thai='1',
                 )
-                ton.so_luong = ct.so_luong_thuc_te
-                ton.save(update_fields=['so_luong', 'ngay_cap_nhat'])
+                for ct in diff_rows:
+                    PhieuDieuChinhKiemKe_CT.objects.create(
+                        phieu=phieu,
+                        hang_hoa=ct.hang_hoa,
+                        so_luong_he_thong=int(ct.so_luong_so_sach or 0),
+                        so_luong_thuc_te=int(ct.so_luong_thuc_te or 0),
+                        chenh_lech=int(ct.chenh_lech or 0),
+                        ly_do=(ct.ly_do or '').strip(),
+                    )
 
-            kk.trang_thai = '2'
-            kk.save(update_fields=['trang_thai'])
-            messages.success(request, 'Đã xác nhận kiểm kê và cập nhật tồn kho (bước 2)')
-            return redirect('kiem_ke_detail', pk=pk)
+            messages.success(request, 'Lập phiếu điều chỉnh thành công. Phiếu đang ở trạng thái Chờ duyệt.')
+            return redirect('kiem_ke_dieu_chinh_detail', pk=phieu.pk)
 
-        if action == 'so_cai' and kk.trang_thai == '2':
-            kk.trang_thai = '3'
-            kk.save(update_fields=['trang_thai'])
-            messages.success(request, 'Đã chuyển phiếu kiểm kê sang Sổ cái (bước 3)')
-            return redirect('kiem_ke_detail', pk=pk)
-
-        messages.error(request, 'Thao tác không hợp lệ theo trạng thái hiện tại')
+        messages.error(request, 'Thao tác không hợp lệ.')
         return redirect('kiem_ke_detail', pk=pk)
+
     return render(request, 'kho/kiem_ke_detail.html', {
-        'kk': kk, 'chi_tiet': chi_tiet,
+        'kk': kk,
+        'chi_tiet': chi_tiet,
+        'phieu_dieu_chinh': getattr(kk, 'phieu_dieu_chinh', None),
         'page_title': f'Kiểm kê {kk.kho.ten_kho}',
         'active_menu': 'kiem_ke',
     })
 
 
+@login_required
+@transaction.atomic
+def kiem_ke_xoa(request, pk):
+    if not _can_manage_kiem_ke(request.user):
+        messages.error(request, 'Bạn không có quyền xóa phiếu kiểm kê.')
+        return redirect('kiem_ke_list')
+
+    kk = get_object_or_404(KiemKe.objects.select_related('kho'), pk=pk)
+    if request.method != 'POST':
+        return redirect('kiem_ke_detail', pk=pk)
+
+    phieu_dc = getattr(kk, 'phieu_dieu_chinh', None)
+    if phieu_dc:
+        messages.error(request, f'Phiếu {kk.ma_phieu} đã có phiếu điều chỉnh {phieu_dc.so_phieu}, không thể xóa.')
+        return redirect('kiem_ke_detail', pk=pk)
+
+    ma_phieu = kk.ma_phieu
+    kk.delete()
+    messages.success(request, f'Đã xóa phiếu kiểm kê {ma_phieu}.')
+    return redirect('kiem_ke_list')
+
+
+@login_required
+@transaction.atomic
+def kiem_ke_xoa_nhieu(request):
+    if not _can_manage_kiem_ke(request.user):
+        messages.error(request, 'Bạn không có quyền xóa phiếu kiểm kê.')
+        return redirect('kiem_ke_list')
+
+    if request.method != 'POST':
+        return redirect('kiem_ke_list')
+
+    ids = [int(x) for x in request.POST.getlist('ids[]') if str(x).isdigit()]
+    if not ids:
+        messages.error(request, 'Vui lòng chọn ít nhất 1 phiếu để xóa.')
+        return redirect('kiem_ke_list')
+
+    items = list(KiemKe.objects.select_related('kho').filter(pk__in=ids))
+    deleted = 0
+    blocked = []
+
+    for item in items:
+        phieu_dc = getattr(item, 'phieu_dieu_chinh', None)
+        if phieu_dc:
+            blocked.append(item.ma_phieu)
+            continue
+        item.delete()
+        deleted += 1
+
+    if deleted:
+        messages.success(request, f'Đã xóa {deleted} phiếu kiểm kê.')
+
+    if blocked:
+        preview = ', '.join(blocked[:5])
+        suffix = '...' if len(blocked) > 5 else ''
+        messages.error(request, f'Không thể xóa {len(blocked)} phiếu đã có phiếu điều chỉnh: {preview}{suffix}')
+
+    if not deleted and not blocked:
+        messages.error(request, 'Không có phiếu hợp lệ để xóa.')
+
+    return redirect('kiem_ke_list')
+
+
+@login_required
+def kiem_ke_dieu_chinh_list(request):
+    if not _can_manage_kiem_ke(request.user):
+        messages.error(request, 'Bạn không có quyền truy cập phiếu điều chỉnh kiểm kê.')
+        return redirect('dashboard')
+
+    q = request.GET.get('q', '').strip()
+    trang_thai = request.GET.get('trang_thai', '').strip()
+
+    items = PhieuDieuChinhKiemKe.objects.select_related('kiem_ke', 'kho', 'nguoi_lap').order_by('-ngay_tao')
+    if q:
+        items = items.filter(
+            Q(so_phieu__icontains=q)
+            | Q(ly_do__icontains=q)
+            | Q(kiem_ke__ma_phieu__icontains=q)
+            | Q(kho__ten_kho__icontains=q)
+        )
+    if trang_thai:
+        items = items.filter(trang_thai=trang_thai)
+
+    return render(request, 'kho/kiem_ke_dieu_chinh_list.html', {
+        'items': items[:30],
+        'q': q,
+        'trang_thai': trang_thai,
+        'page_title': 'Phiếu điều chỉnh kiểm kê',
+        'active_menu': 'kiem_ke',
+    })
+
+
+@login_required
+def kiem_ke_dieu_chinh_detail(request, pk):
+    if not _can_manage_kiem_ke(request.user):
+        messages.error(request, 'Bạn không có quyền xử lý phiếu điều chỉnh.')
+        return redirect('dashboard')
+
+    phieu = get_object_or_404(PhieuDieuChinhKiemKe.objects.select_related('kiem_ke', 'kho', 'nguoi_lap'), pk=pk)
+    chi_tiet = phieu.chi_tiet.select_related('hang_hoa').order_by('hang_hoa__ma_hang')
+
+    if request.method == 'POST':
+        action = (request.POST.get('action') or '').strip()
+        if action == 'approve':
+            if phieu.trang_thai != '1':
+                messages.error(request, 'Phiếu điều chỉnh đã được duyệt trước đó.')
+                return redirect('kiem_ke_dieu_chinh_detail', pk=pk)
+
+            with transaction.atomic():
+                vi_tri = _find_kiem_ke_vi_tri(phieu.kiem_ke)
+                if not vi_tri:
+                    messages.error(request, 'Không tìm thấy vị trí kiểm kê để duyệt điều chỉnh.')
+                    return redirect('kiem_ke_dieu_chinh_detail', pk=pk)
+                vi_tri_hang_loi = phieu.kiem_ke.vi_tri_hang_loi
+
+                gia_von_map = {}
+                for row in chi_tiet:
+                    ton, _ = TonKho.objects.get_or_create(
+                        kho=phieu.kho,
+                        hang_hoa=row.hang_hoa,
+                        defaults={'so_luong': 0, 'so_luong_loi': 0, 'gia_von_tb': 0},
+                    )
+                    gia_von_map[row.hang_hoa_id] = Decimal(ton.gia_von_tb or 0)
+
+                    ton_vt, _ = TonKhoViTri.objects.select_for_update().get_or_create(
+                        kho=phieu.kho,
+                        vi_tri=vi_tri,
+                        hang_hoa=row.hang_hoa,
+                        defaults={'so_luong': 0},
+                    )
+                    ton_vt.so_luong = int(ton_vt.so_luong or 0) + int(row.chenh_lech or 0)
+                    if ton_vt.so_luong < 0:
+                        ton_vt.so_luong = 0
+                    ton_vt.save(update_fields=['so_luong', 'ngay_cap_nhat'])
+
+                    if int(getattr(row, 'so_luong_loi', 0) or 0) > 0:
+                        _move_kiem_ke_hang_loi(
+                            phieu.kho_id,
+                            vi_tri.pk,
+                            vi_tri_hang_loi.pk if vi_tri_hang_loi else None,
+                            row.hang_hoa_id,
+                            int(row.so_luong_loi or 0),
+                        )
+
+                    _sync_tonkho_from_vitri(phieu.kho_id, row.hang_hoa_id)
+
+                tang_rows = [r for r in chi_tiet if int(r.chenh_lech or 0) > 0]
+                giam_rows = [r for r in chi_tiet if int(r.chenh_lech or 0) < 0]
+                note_tag = f'[KK_DC:{phieu.pk}]'
+
+                if tang_rows:
+                    pn = PhieuNhap.objects.create(
+                        so_phieu=_gen_so_phieu('NK'),
+                        ngay_lap=date.today(),
+                        ngay_hach_toan=date.today(),
+                        ngay_chung_tu=date.today(),
+                        ngay_nhap=date.today(),
+                        loai_nhap='2',
+                        kho=phieu.kho,
+                        tong_tien=0,
+                        trang_thai='3',
+                        nguoi_tao=request.user,
+                        ghi_chu=f'Điều chỉnh tăng tồn từ phiếu {phieu.so_phieu} {note_tag}',
+                    )
+                    for r in tang_rows:
+                        gia_von = gia_von_map.get(r.hang_hoa_id, Decimal('0'))
+                        PhieuNhap_CT.objects.create(
+                            phieu_nhap=pn,
+                            hang_hoa=r.hang_hoa,
+                            so_luong_dat=0,
+                            so_luong_nhan=int(r.chenh_lech or 0),
+                            don_gia=gia_von,
+                            chiet_khau=0,
+                            thue_vat=0,
+                            tk_no='156',
+                            tk_co='711',
+                        )
+                    pn.tinh_tong()
+
+                if giam_rows:
+                    px = PhieuXuat.objects.create(
+                        so_phieu=_gen_so_phieu('PX'),
+                        ngay_lap=date.today(),
+                        ngay_hach_toan=date.today(),
+                        ngay_chung_tu=date.today(),
+                        ngay_xuat=date.today(),
+                        loai_xuat='hu_hong',
+                        kho=phieu.kho,
+                        tong_gia_von=0,
+                        trang_thai='3',
+                        nguoi_tao=request.user,
+                        ghi_chu=f'Điều chỉnh giảm tồn từ phiếu {phieu.so_phieu} {note_tag}',
+                    )
+                    tong_gia_von = Decimal('0')
+                    for r in giam_rows:
+                        sl_giam = abs(int(r.chenh_lech or 0))
+                        gia_von = gia_von_map.get(r.hang_hoa_id, Decimal('0'))
+                        tg_von = Decimal(sl_giam) * gia_von
+                        PhieuXuat_CT.objects.create(
+                            phieu_xuat=px,
+                            hang_hoa=r.hang_hoa,
+                            so_luong=sl_giam,
+                            gia_von=gia_von,
+                            tong_gia_von=tg_von,
+                            tk_no='632',
+                            tk_co='156',
+                        )
+                        tong_gia_von += tg_von
+                    px.tong_gia_von = tong_gia_von
+                    px.save(update_fields=['tong_gia_von'])
+
+                phieu.trang_thai = '2'
+                phieu.save(update_fields=['trang_thai'])
+
+                phieu.kiem_ke.trang_thai = '3'
+                phieu.kiem_ke.save(update_fields=['trang_thai'])
+
+            messages.success(request, 'Đã duyệt phiếu điều chỉnh và cập nhật tồn kho thành công.')
+            return redirect('kiem_ke_dieu_chinh_detail', pk=pk)
+
+        messages.error(request, 'Thao tác không hợp lệ.')
+        return redirect('kiem_ke_dieu_chinh_detail', pk=pk)
+
+    return render(request, 'kho/kiem_ke_dieu_chinh_detail.html', {
+        'phieu': phieu,
+        'chi_tiet': chi_tiet,
+        'page_title': f'Điều chỉnh {phieu.so_phieu}',
+        'active_menu': 'kiem_ke',
+    })
+
+
+@login_required
+@xframe_options_exempt
+def kiem_ke_in(request, pk):
+    if not _can_manage_kiem_ke(request.user):
+        messages.error(request, 'Bạn không có quyền in phiếu kiểm kê.')
+        return redirect('kiem_ke_list')
+
+    kk = get_object_or_404(KiemKe.objects.select_related('kho', 'nhom_hang'), pk=pk)
+    chi_tiet = kk.chi_tiet.select_related('hang_hoa', 'hang_hoa__don_vi_tinh').order_by('hang_hoa__ma_hang')
+    for ct in chi_tiet:
+        ct.so_luong_tot = max(0, int(ct.so_luong_thuc_te or 0) - int(ct.so_luong_loi or 0))
+    return render(request, 'kho/kiem_ke_print.html', {
+        'kk': kk,
+        'chi_tiet': chi_tiet,
+        'page_title': f'In phiếu kiểm kê {kk.ma_phieu}',
+        'active_menu': 'kiem_ke',
+    })
+
+
 # ─── BÁO CÁO KHO ────────────────────────────────────────────
+@login_required
+def bao_cao_xuat_nhap_ton(request):
+    thang_hien_tai = (request.GET.get('thang') or '').strip()
+    kho_id = (request.GET.get('kho') or '').strip()
+    q = (request.GET.get('q') or '').strip()
+
+    today = date.today()
+    if not thang_hien_tai:
+        thang_hien_tai = f'{today.year:04d}-{today.month:02d}'
+
+    try:
+        year = int(thang_hien_tai[:4])
+        month = int(thang_hien_tai[5:7])
+        tu_ngay = date(year, month, 1)
+    except Exception:
+        year = today.year
+        month = today.month
+        thang_hien_tai = f'{year:04d}-{month:02d}'
+        tu_ngay = date(year, month, 1)
+
+    if month == 12:
+        den_ngay = date(year + 1, 1, 1) - timedelta(days=1)
+    else:
+        den_ngay = date(year, month + 1, 1) - timedelta(days=1)
+
+    nhap_base = PhieuNhap_CT.objects.select_related('phieu_nhap', 'hang_hoa', 'hang_hoa__don_vi_tinh').filter(
+        phieu_nhap__trang_thai__in=('2', '3')
+    )
+    xuat_base = PhieuXuat_CT.objects.select_related('phieu_xuat', 'hang_hoa', 'hang_hoa__don_vi_tinh').filter(
+        phieu_xuat__trang_thai__in=('2', '3')
+    )
+
+    if kho_id:
+        nhap_base = nhap_base.filter(phieu_nhap__kho_id=kho_id)
+        xuat_base = xuat_base.filter(phieu_xuat__kho_id=kho_id)
+    if q:
+        nhap_base = nhap_base.filter(Q(hang_hoa__ma_hang__icontains=q) | Q(hang_hoa__ten_hang__icontains=q))
+        xuat_base = xuat_base.filter(Q(hang_hoa__ma_hang__icontains=q) | Q(hang_hoa__ten_hang__icontains=q))
+
+    dau_ky_nhap = nhap_base.filter(phieu_nhap__ngay_chung_tu__lt=tu_ngay)
+    dau_ky_xuat = xuat_base.filter(phieu_xuat__ngay_chung_tu__lt=tu_ngay)
+
+    trong_ky_nhap = nhap_base.filter(phieu_nhap__ngay_chung_tu__range=[tu_ngay, den_ngay])
+    trong_ky_xuat = xuat_base.filter(phieu_xuat__ngay_chung_tu__range=[tu_ngay, den_ngay])
+
+    data_map = {}
+
+    def ensure_row(hang_hoa):
+        row = data_map.get(hang_hoa.id)
+        if row:
+            return row
+        dvt_name = ''
+        if getattr(hang_hoa, 'don_vi_tinh', None):
+            dvt_name = getattr(hang_hoa.don_vi_tinh, 'ten', '') or getattr(hang_hoa.don_vi_tinh, 'ten_dvt', '')
+        row = {
+            'ma_hang': hang_hoa.ma_hang,
+            'ten_hang': hang_hoa.ten_hang,
+            'dvt': dvt_name or '-',
+            'sl_dau_ky': 0,
+            'gt_dau_ky': 0,
+            'sl_nhap': 0,
+            'gt_nhap': 0,
+            'sl_xuat': 0,
+            'gt_xuat': 0,
+            'sl_cuoi_ky': 0,
+            'gt_cuoi_ky': 0,
+        }
+        data_map[hang_hoa.id] = row
+        return row
+
+    for ct in dau_ky_nhap:
+        row = ensure_row(ct.hang_hoa)
+        row['sl_dau_ky'] += int(ct.so_luong_nhan or 0)
+        row['gt_dau_ky'] += int(ct.thanh_tien or 0)
+
+    for ct in dau_ky_xuat:
+        row = ensure_row(ct.hang_hoa)
+        row['sl_dau_ky'] -= int(ct.so_luong or 0)
+        row['gt_dau_ky'] -= int(ct.tong_gia_von or 0)
+
+    for ct in trong_ky_nhap:
+        row = ensure_row(ct.hang_hoa)
+        row['sl_nhap'] += int(ct.so_luong_nhan or 0)
+        row['gt_nhap'] += int(ct.thanh_tien or 0)
+
+    for ct in trong_ky_xuat:
+        row = ensure_row(ct.hang_hoa)
+        row['sl_xuat'] += int(ct.so_luong or 0)
+        row['gt_xuat'] += int(ct.tong_gia_von or 0)
+
+    data = []
+    for row in data_map.values():
+        row['sl_cuoi_ky'] = row['sl_dau_ky'] + row['sl_nhap'] - row['sl_xuat']
+        row['gt_cuoi_ky'] = row['gt_dau_ky'] + row['gt_nhap'] - row['gt_xuat']
+        data.append(row)
+
+    data.sort(key=lambda x: x['ma_hang'])
+
+    return render(request, 'kho/bao_cao_ton_kho.html', {
+        'data': data,
+        'thang_hien_tai': thang_hien_tai,
+        'kho_list': Kho.objects.filter(trang_thai=True).order_by('ma_kho'),
+        'kho_filter': kho_id,
+        'kho_da_chon': Kho.objects.filter(pk=kho_id).values_list('ma_kho', flat=True).first() if kho_id else '',
+        'q': q,
+        'page_title': 'Báo cáo xuất nhập tồn',
+        'active_menu': 'bao_cao_xnt',
+    })
+
+
+@login_required
+def bao_cao_ton_hien_tai(request):
+    kho_id = (request.GET.get('kho') or '').strip()
+    q = (request.GET.get('q') or '').strip()
+
+    items = TonKho.objects.select_related('hang_hoa', 'hang_hoa__don_vi_tinh', 'kho').filter(so_luong__gt=0)
+    if kho_id:
+        items = items.filter(kho_id=kho_id)
+    if q:
+        items = items.filter(Q(hang_hoa__ma_hang__icontains=q) | Q(hang_hoa__ten_hang__icontains=q))
+
+    rows = []
+    tong_so_luong = 0
+    tong_gia_tri = Decimal('0')
+    tong_gia_tri_ban = Decimal('0')
+    gia_ban_cache = {}
+    for tk in items.order_by('hang_hoa__ma_hang'):
+        dvt_name = ''
+        if getattr(tk.hang_hoa, 'don_vi_tinh', None):
+            dvt_name = getattr(tk.hang_hoa.don_vi_tinh, 'ten', '') or getattr(tk.hang_hoa.don_vi_tinh, 'ten_dvt', '')
+        gia_tri = Decimal(int(tk.so_luong or 0)) * Decimal(tk.gia_von_tb or 0)
+        if tk.hang_hoa_id not in gia_ban_cache:
+            gia_ban_cache[tk.hang_hoa_id] = Decimal(_resolve_gia_ban_hang_hoa(tk.hang_hoa) or 0)
+        gia_ban_hien_tai = gia_ban_cache[tk.hang_hoa_id]
+        gia_tri_ban = Decimal(int(tk.so_luong or 0)) * gia_ban_hien_tai
+        tong_so_luong += int(tk.so_luong or 0)
+        tong_gia_tri += gia_tri
+        tong_gia_tri_ban += gia_tri_ban
+        rows.append({
+            'ma_hang': tk.hang_hoa.ma_hang,
+            'ten_hang': tk.hang_hoa.ten_hang,
+            'dvt': dvt_name or '-',
+            'ma_kho': tk.kho.ma_kho,
+            'so_luong': int(tk.so_luong or 0),
+            'gia_von_tb': Decimal(tk.gia_von_tb or 0),
+            'gia_ban_hien_tai': gia_ban_hien_tai,
+            'gia_tri_ton': gia_tri,
+            'gia_tri_ban': gia_tri_ban,
+        })
+
+    return render(request, 'kho/bao_cao_ton_hien_tai.html', {
+        'rows': rows,
+        'kho_list': Kho.objects.filter(trang_thai=True).order_by('ma_kho'),
+        'kho_filter': kho_id,
+        'kho_da_chon': Kho.objects.filter(pk=kho_id).values_list('ma_kho', flat=True).first() if kho_id else '',
+        'q': q,
+        'tong_so_luong': tong_so_luong,
+        'tong_gia_tri': tong_gia_tri,
+        'tong_gia_tri_ban': tong_gia_tri_ban,
+        'page_title': 'Báo cáo tồn kho hiện tại',
+        'active_menu': 'bao_cao_ton_hien_tai',
+    })
+
+
 @login_required
 def bao_cao_ton_kho(request):
     kho_id = request.GET.get('kho', '').strip()
@@ -2004,6 +3257,6 @@ def bao_cao_ton_kho(request):
         'gt_xuat_ky': int(gt_xuat_ky),
         'sl_cuoi_ky': int(sl_cuoi_ky),
         'gt_cuoi_ky': int(gt_cuoi_ky),
-        'page_title': 'Sổ kho/Chi tiết vật tư',
-        'active_menu': 'bao_cao_kho',
+        'page_title': 'Sổ chi tiết hàng hóa',
+        'active_menu': 'so_chi_tiet_hang_hoa',
     })

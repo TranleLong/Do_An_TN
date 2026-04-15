@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views
+from . import revenue_report_views, views
 
 urlpatterns = [
     path('', views.don_ban_list, name='don_ban_list'),
@@ -64,4 +64,9 @@ urlpatterns = [
     path('cong-no/', views.cong_no_kh, name='cong_no_kh'),
     path('bao-cao-cong-no-khach-hang-chi-tiet/', views.bao_cao_cong_no_kh_chi_tiet, name='bao_cao_cong_no_kh_ct'),
     path('bao-cao/doanh-thu/', views.bao_cao_doanh_thu, name='bao_cao_doanh_thu'),
+    path('bao-cao/doanh-thu/api/summary/', revenue_report_views.revenue_summary_api, name='revenue_summary_api'),
+    path('bao-cao/doanh-thu/api/by-customer/', revenue_report_views.revenue_by_customer_api, name='revenue_by_customer_api'),
+    path('bao-cao/doanh-thu/api/by-product/', revenue_report_views.revenue_by_product_api, name='revenue_by_product_api'),
+    path('bao-cao/doanh-thu/api/by-salesperson/', revenue_report_views.revenue_by_salesperson_api, name='revenue_by_salesperson_api'),
+    path('bao-cao/doanh-thu/export-excel/', revenue_report_views.revenue_export_excel, name='revenue_export_excel'),
 ]

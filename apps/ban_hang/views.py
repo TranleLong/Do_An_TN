@@ -2,12 +2,12 @@
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
-from uuid import uuid4
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import IntegrityError, transaction
 from django.db.models import Q, Sum
+from django.db.models.deletion import ProtectedError
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -67,16 +67,32 @@ def _parse_decimal(value, default=Decimal('0')):
         if not raw:
             return default
 
-        # Accept browser number inputs and common VN-formatted numbers.
-        # Keep a decimal point when it is the only separator.
+        # Normalize VN/EN numeric formats:
+        # - 1.008.000 -> 1008000
+        # - 1,008,000 -> 1008000
+        # - 1.008,50 -> 1008.50
+        # - 1008.50 -> 1008.50
         if ',' in raw and '.' in raw:
-            raw = raw.replace(',', '')
+            if raw.rfind(',') > raw.rfind('.'):
+                # Decimal comma, thousand dot: 1.234,56
+                raw = raw.replace('.', '').replace(',', '.')
+            else:
+                # Decimal dot, thousand comma: 1,234.56
+                raw = raw.replace(',', '')
         elif ',' in raw:
-            parts = raw.split(',')
-            if len(parts) == 2 and len(parts[1]) <= 2:
+            if raw.count(',') == 1 and len(raw.split(',')[1]) <= 2:
                 raw = raw.replace(',', '.')
             else:
                 raw = raw.replace(',', '')
+        elif '.' in raw:
+            # If there are multiple dots, or a single dot followed by 3 digits,
+            # treat dots as thousands separators.
+            if raw.count('.') > 1:
+                raw = raw.replace('.', '')
+            else:
+                left, right = raw.split('.', 1)
+                if right.isdigit() and len(right) == 3 and left.replace('-', '').isdigit():
+                    raw = left + right
 
         return Decimal(raw)
     except (InvalidOperation, AttributeError):
@@ -111,8 +127,28 @@ def _parse_date(value, default=None):
 
 
 def _gen_so_hoa_don():
-    now = timezone.now()
-    return f'HD-{now.strftime("%Y%m%d-%H%M%S")}'
+    prefix = 'HDD'
+    max_index = 0
+    for code in HoaDonBan.objects.filter(so_hoa_don__istartswith=prefix).values_list('so_hoa_don', flat=True):
+        text = str(code or '').strip().upper()
+        if not text.startswith(prefix):
+            continue
+        suffix = text[len(prefix):]
+        if suffix.isdigit():
+            max_index = max(max_index, int(suffix))
+    return f'{prefix}{max_index + 1:05d}'
+
+
+def _next_code_from_queryset_values(values, prefix, width=5):
+    max_index = 0
+    for code in values:
+        text = str(code or '').strip().upper()
+        if not text.startswith(prefix):
+            continue
+        suffix = text[len(prefix):]
+        if suffix.isdigit():
+            max_index = max(max_index, int(suffix))
+    return f'{prefix}{max_index + 1:0{width}d}'
 
 
 def _style_export_sheet(ws, title, headers):
@@ -206,7 +242,9 @@ def _build_hoa_don_context(request, hoa_don=None):
             Q(trang_thai=True, la_nhan_vien=True) | Q(ma_kh=hoa_don.ma_nv_ban_hang)
         )
 
-    hang_qs = HangHoa.objects.filter(trang_thai='dang_ban').select_related('don_vi_tinh')
+    hang_qs = HangHoa.objects.filter(
+        pk__in=TonKho.objects.filter(so_luong__gte=1).values_list('hang_hoa_id', flat=True).distinct()
+    ).select_related('don_vi_tinh')
     kho_qs = Kho.objects.filter(trang_thai=True)
     chi_tiet = []
     if hoa_don and hoa_don.pk:
@@ -388,20 +426,40 @@ def _export_hoa_don_workbook(title, rows):
 
 
 def _gen_so_don(prefix):
+    if prefix == 'BH':
+        return _next_code_from_queryset_values(
+            DonBan.objects.filter(so_don__istartswith='ĐH').values_list('so_don', flat=True),
+            'ĐH',
+        )
+
+    if prefix == 'PT':
+        return _next_code_from_queryset_values(
+            PhieuThu.objects.filter(so_phieu__istartswith='PT').values_list('so_phieu', flat=True),
+            'PT',
+        )
+
+    if prefix == 'PC':
+        return _next_code_from_queryset_values(
+            PhieuThu.objects.filter(so_phieu__istartswith='PC').values_list('so_phieu', flat=True),
+            'PC',
+        )
+
     now = timezone.now()
     return f"{prefix}-{now.strftime('%Y%m%d-%H%M%S')}"
 
 
 def _gen_so_phieu_thu():
-    now = timezone.now()
-    token = uuid4().hex[:6].upper()
-    return f"PT-{now.strftime('%Y%m%d-%H%M%S-%f')}-{token}"
+    return _next_code_from_queryset_values(
+        PhieuThu.objects.filter(so_phieu__istartswith='PT').values_list('so_phieu', flat=True),
+        'PT',
+    )
 
 
 def _gen_so_phieu_chi():
-    now = timezone.now()
-    token = uuid4().hex[:6].upper()
-    return f"PC-{now.strftime('%Y%m%d-%H%M%S-%f')}-{token}"
+    return _next_code_from_queryset_values(
+        PhieuThu.objects.filter(so_phieu__istartswith='PC').values_list('so_phieu', flat=True),
+        'PC',
+    )
 
 
 def _ensure_unique_so_phieu_thu(candidate=None):
@@ -701,7 +759,7 @@ def don_ban_them(request):
         'kh_list': KhachHang.objects.filter(trang_thai=True),
         'nv_list': KhachHang.objects.filter(trang_thai=True, la_nhan_vien=True).order_by('ma_kh'),
         'kho_list': Kho.objects.filter(trang_thai=True),
-        'hang_list': HangHoa.objects.filter(trang_thai='dang_ban'),
+        'hang_list': HangHoa.objects.all().order_by('ma_hang'),
         'so_don_default': _gen_so_don('BH'),
         'today': date.today(),
         'page_title': 'Tạo đơn bán hàng',
@@ -829,7 +887,9 @@ def don_ban_sua(request, pk):
         nv_list = (nv_list | KhachHang.objects.filter(ma_kh=don.ma_nv_ban_hang)).distinct()
 
     hang_ids = list(don.chi_tiet.values_list('hang_hoa_id', flat=True))
-    hang_qs = HangHoa.objects.filter(trang_thai='dang_ban')
+    hang_qs = HangHoa.objects.filter(
+        pk__in=TonKho.objects.filter(so_luong__gte=1).values_list('hang_hoa_id', flat=True).distinct()
+    )
     if hang_ids:
         hang_qs = (hang_qs | HangHoa.objects.filter(pk__in=hang_ids)).distinct()
 
@@ -1495,8 +1555,10 @@ def phieu_thu_xoa_nhieu(request, mode='thu'):
 
 
 def _gen_so_phieu_doi_tra():
-    now = timezone.now()
-    return f'DT-{now.strftime("%Y%m%d-%H%M%S")}'
+    return _next_code_from_queryset_values(
+        PhieuTraHang.objects.filter(so_phieu__istartswith='DT').values_list('so_phieu', flat=True),
+        'DT',
+    )
 
 
 def _returned_qty_map(hoa_don, exclude_phieu_id=None):
@@ -1575,6 +1637,40 @@ def _apply_inventory_and_cong_no_for_doi_tra(phieu):
     phieu.save(update_fields=['da_cap_nhat_kho_cong_no'])
 
 
+def _rollback_inventory_and_cong_no_for_doi_tra(phieu):
+    rows = list(phieu.chi_tiet.select_related('hang_hoa', 'hang_hoa_doi', 'kho'))
+
+    for ct in rows:
+        ton_tra = TonKho.objects.filter(hang_hoa_id=ct.hang_hoa_id, kho_id=ct.kho_id).first()
+        if ton_tra:
+            ton_tra.so_luong = int(ton_tra.so_luong or 0) - int(ct.so_luong or 0)
+            if ton_tra.so_luong < 0:
+                ton_tra.so_luong = 0
+            ton_tra.save(update_fields=['so_luong', 'ngay_cap_nhat'])
+
+        if int(ct.so_luong_doi or 0) > 0 and ct.hang_hoa_doi_id:
+            ton_doi, _ = TonKho.objects.get_or_create(
+                hang_hoa_id=ct.hang_hoa_doi_id,
+                kho_id=ct.kho_id,
+                defaults={'so_luong': 0, 'gia_von_tb': 0},
+            )
+            ton_doi.so_luong = int(ton_doi.so_luong or 0) + int(ct.so_luong_doi or 0)
+            ton_doi.save(update_fields=['so_luong', 'ngay_cap_nhat'])
+
+    if phieu.don_ban_goc_id:
+        don = phieu.don_ban_goc
+        don.con_no = Decimal(don.con_no or 0) - Decimal(phieu.chenh_lech_tien or 0)
+        if don.con_no < 0:
+            don.con_no = Decimal('0')
+        don.save(update_fields=['con_no'])
+
+    doi_tra_tag = f'[DOI_TRA_PHIEU:{phieu.pk}]'
+    PhieuThu.objects.filter(ghi_chu__contains=doi_tra_tag).delete()
+
+    phieu.da_cap_nhat_kho_cong_no = False
+    phieu.save(update_fields=['da_cap_nhat_kho_cong_no'])
+
+
 def _build_doi_tra_context(form_values=None, phieu=None):
     form_values = form_values or {}
     form_values.setdefault('tk_no', '131')
@@ -1587,13 +1683,13 @@ def _build_doi_tra_context(form_values=None, phieu=None):
         'phieu': phieu,
         'form_values': form_values,
         'hoa_don_list': hoa_don_qs[:300],
-        'hang_list': HangHoa.objects.filter(trang_thai='dang_ban').order_by('ma_hang'),
+        'hang_list': HangHoa.objects.all().order_by('ma_hang'),
         'kho_list': Kho.objects.filter(trang_thai=True).order_by('ma_kho'),
         'tai_khoan_list': TaiKhoanKeToan.objects.filter(trang_thai=True).order_by('ma_tk'),
         'page_title': 'Sửa phiếu đổi trả' if phieu else 'Lập phiếu đổi trả',
         'active_menu': 'doi_tra',
         'today': date.today(),
-        'is_locked': bool(phieu and str(phieu.trang_thai or '').strip() == '2'),
+        'is_locked': False,
     }
 
 
@@ -1607,8 +1703,9 @@ def _phieu_doi_tra_is_linked(phieu):
 def _save_phieu_doi_tra_from_request(request, phieu=None):
     data = request.POST
     is_edit = bool(phieu and phieu.pk)
-    if is_edit and str(phieu.trang_thai or '').strip() == '2':
-        raise ValueError('Phiếu đổi trả đã hoàn tất, không được phép chỉnh sửa')
+
+    if is_edit and phieu.da_cap_nhat_kho_cong_no:
+        _rollback_inventory_and_cong_no_for_doi_tra(phieu)
 
     hoa_don_id = (data.get('hoa_don_goc') or '').strip()
     if not hoa_don_id:
@@ -1814,9 +1911,6 @@ def phieu_doi_tra_them(request):
 @login_required
 def phieu_doi_tra_sua(request, pk):
     phieu = get_object_or_404(PhieuTraHang.objects.select_related('hoa_don_goc', 'khach_hang'), pk=pk)
-    if str(phieu.trang_thai or '').strip() == '2':
-        messages.error(request, 'Phiếu đổi trả đã hoàn tất, không được phép chỉnh sửa')
-        return redirect('phieu_doi_tra_list')
 
     if request.method == 'POST':
         try:
@@ -1873,15 +1967,27 @@ def phieu_doi_tra_xoa_nhieu(request):
 
     items = list(PhieuTraHang.objects.filter(pk__in=ids))
     deleted = 0
+    blocked_codes = []
+
     for item in items:
         if str(item.trang_thai or '').strip() == '2' or item.da_cap_nhat_kho_cong_no or _phieu_doi_tra_is_linked(item):
+            blocked_codes.append(item.so_phieu)
             continue
         item.delete()
         deleted += 1
 
     if deleted:
         messages.success(request, f'Đã xóa {deleted} phiếu đổi trả.')
-    else:
+
+    if blocked_codes:
+        preview = ', '.join(blocked_codes[:5])
+        suffix = '...' if len(blocked_codes) > 5 else ''
+        messages.error(
+            request,
+            f'Không thể xóa {len(blocked_codes)} phiếu đã xử lý/hoàn tất: {preview}{suffix}',
+        )
+
+    if not deleted and not blocked_codes:
         messages.error(request, 'Không có phiếu hợp lệ để xóa.')
     return redirect('phieu_doi_tra_list')
 
@@ -1894,7 +2000,7 @@ def doi_tra_hoa_don_detail_api(request, pk):
 
     returned_map = _returned_qty_map(hoa_don)
     rows = []
-    for ct in hoa_don.chi_tiet.select_related('hang_hoa', 'kho').all():
+    for ct in hoa_don.chi_tiet.select_related('hang_hoa__don_vi_tinh', 'kho').all():
         sl_mua = int(Decimal(ct.so_luong or 0))
         sl_da_tra = int(returned_map.get(ct.id, 0))
         sl_con_lai = max(0, sl_mua - sl_da_tra)
@@ -1903,6 +2009,7 @@ def doi_tra_hoa_don_detail_api(request, pk):
             'hang_tra_id': ct.hang_hoa_id,
             'ma_hang': ct.hang_hoa.ma_hang,
             'ten_hang': ct.hang_hoa.ten_hang,
+            'don_vi_tinh': ct.hang_hoa.don_vi_tinh.ten if ct.hang_hoa and ct.hang_hoa.don_vi_tinh else '',
             'kho_id': ct.kho_id,
             'ma_kho': ct.kho.ma_kho,
             'so_luong_mua': sl_mua,
@@ -1925,26 +2032,67 @@ def doi_tra_hoa_don_detail_api(request, pk):
 # ─── BÁO CÁO BÁN HÀNG ───────────────────────────────────────
 @login_required
 def bao_cao_doanh_thu(request):
-    from_date = request.GET.get('from_date', date.today().replace(day=1).isoformat())
-    to_date = request.GET.get('to_date', date.today().isoformat())
-    items = DonBan.objects.filter(
-        trang_thai='da_xac_nhan',
-        ngay_ban__gte=from_date,
-        ngay_ban__lte=to_date,
-    ).select_related('khach_hang', 'nhan_vien_ban')
-    tong_dt = items.aggregate(t=Sum('tong_thanh_toan'))['t'] or 0
-    tong_gv = sum(
-        ct.gia_von * ct.so_luong
-        for don in items
-        for ct in don.chi_tiet.all()
-    )
+    from .revenue_report_service import (RevenueReportFilters,
+                                         RevenueReportService)
+
+    payload = {
+        'from_date': request.GET.get('from_date', ''),
+        'to_date': request.GET.get('to_date', ''),
+        'date_type': request.GET.get('date_type', 'chung_tu'),
+        'customer_id': request.GET.get('customer_id', ''),
+        'salesperson_code': request.GET.get('salesperson_code', ''),
+        'product_id': request.GET.get('product_id', ''),
+        'group_id': request.GET.get('group_id', ''),
+        'warehouse_id': request.GET.get('warehouse_id', ''),
+    }
+    group_by = (request.GET.get('group_by') or 'day').strip()
+
+    try:
+        filters = RevenueReportFilters.from_payload(payload)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        filters = RevenueReportFilters.from_payload({})
+        group_by = 'day'
+
+    service = RevenueReportService(filters)
+    try:
+        summary_data = service.get_revenue_summary(group_by=group_by)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        group_by = 'day'
+        summary_data = service.get_revenue_summary(group_by=group_by)
+
+    customer_data = service.get_revenue_by_customer()
+    product_data = service.get_revenue_by_product()
+    salesperson_data = service.get_revenue_by_salesperson()
+
+    export_params = request.GET.copy()
+    export_params.pop('report_type', None)
+
+    salesperson_codes = [
+        code for code in (
+            HoaDonBan.objects
+            .exclude(ma_nv_ban_hang='')
+            .values_list('ma_nv_ban_hang', flat=True)
+            .distinct()
+            .order_by('ma_nv_ban_hang')
+        )
+        if code
+    ]
+
     context = {
-        'items': items,
-        'from_date': from_date,
-        'to_date': to_date,
-        'tong_dt': tong_dt,
-        'tong_gv': tong_gv,
-        'loi_nhuan': tong_dt - tong_gv,
+        'filters': filters,
+        'group_by': group_by,
+        'summary_data': summary_data,
+        'customer_data': customer_data,
+        'product_data': product_data,
+        'salesperson_data': salesperson_data,
+        'khach_hang_list': KhachHang.objects.filter(trang_thai=True).order_by('ma_kh'),
+        'hang_hoa_list': HangHoa.objects.filter(trang_thai='dang_ban').order_by('ma_hang'),
+        'nhom_hang_list': NhomHang.objects.order_by('ten_nhom'),
+        'kho_list': Kho.objects.filter(trang_thai=True).order_by('ma_kho'),
+        'salesperson_codes': salesperson_codes,
+        'export_params': export_params.urlencode(),
         'page_title': 'Báo cáo doanh thu',
         'active_menu': 'bao_cao_bh',
     }
@@ -1970,7 +2118,6 @@ def cong_no_kh(request):
     ma_kh = request.GET.get('ma_kh', '').strip()
     ten_kh = request.GET.get('ten_kh', '').strip()
     so_dien_thoai = request.GET.get('so_dien_thoai', '').strip()
-    loai_kh = request.GET.get('loai_kh', '').strip()
     trang_thai_filter = request.GET.get('trang_thai', '').strip()
     tu_ngay = request.GET.get('tu_ngay', '').strip()
     den_ngay = request.GET.get('den_ngay', '').strip()
@@ -1988,8 +2135,6 @@ def cong_no_kh(request):
         don_qs = don_qs.filter(khach_hang__ten_kh__icontains=ten_kh)
     if so_dien_thoai:
         don_qs = don_qs.filter(khach_hang__so_dien_thoai__icontains=so_dien_thoai)
-    if loai_kh:
-        don_qs = don_qs.filter(khach_hang__loai_kh=loai_kh)
     if tu_ngay:
         don_qs = don_qs.filter(ngay_ban__gte=tu_ngay)
     if den_ngay:
@@ -2228,7 +2373,6 @@ def cong_no_kh(request):
             'ma_kh': ma_kh,
             'ten_kh': ten_kh,
             'so_dien_thoai': so_dien_thoai,
-            'loai_kh': loai_kh,
             'trang_thai': trang_thai_filter,
             'tu_ngay': tu_ngay,
             'den_ngay': den_ngay,
@@ -2736,11 +2880,18 @@ def hoa_don_ban_xoa(request, pk):
     hoa_don = get_object_or_404(HoaDonBan, pk=pk)
     if request.method == 'POST':
         don_lien_ket = hoa_don.don_ban
-        if str(hoa_don.trang_thai or '').strip() in ('2', '3'):
-            _restore_ton_kho_from_hoa_don(hoa_don)
-        hoa_don.delete()
-        _recompute_don_ban_from_linked_hoa_don(don_lien_ket)
-        messages.success(request, f'Đã xóa hóa đơn {hoa_don.so_hoa_don}')
+        try:
+            with transaction.atomic():
+                if str(hoa_don.trang_thai or '').strip() in ('2', '3'):
+                    _restore_ton_kho_from_hoa_don(hoa_don)
+                hoa_don.delete()
+                _recompute_don_ban_from_linked_hoa_don(don_lien_ket)
+            messages.success(request, f'Đã xóa hóa đơn {hoa_don.so_hoa_don}')
+        except ProtectedError:
+            messages.error(
+                request,
+                f'Không thể xóa hóa đơn {hoa_don.so_hoa_don} vì đang được tham chiếu bởi chứng từ khác (ví dụ: phiếu trả hàng).',
+            )
     return redirect('hoa_don_ban_list')
 
 
@@ -2760,16 +2911,32 @@ def hoa_don_ban_xoa_nhieu(request):
         return redirect('hoa_don_ban_list')
 
     deleted = 0
-    with transaction.atomic():
-        for hoa_don in items:
-            don_lien_ket = hoa_don.don_ban
-            if str(hoa_don.trang_thai or '').strip() in ('2', '3'):
-                _restore_ton_kho_from_hoa_don(hoa_don)
-            hoa_don.delete()
-            _recompute_don_ban_from_linked_hoa_don(don_lien_ket)
-            deleted += 1
+    blocked_codes = []
 
-    messages.success(request, f'Đã xóa {deleted} hóa đơn.')
+    for hoa_don in items:
+        don_lien_ket = hoa_don.don_ban
+        try:
+            with transaction.atomic():
+                if str(hoa_don.trang_thai or '').strip() in ('2', '3'):
+                    _restore_ton_kho_from_hoa_don(hoa_don)
+                hoa_don.delete()
+                _recompute_don_ban_from_linked_hoa_don(don_lien_ket)
+            deleted += 1
+        except ProtectedError:
+            blocked_codes.append(hoa_don.so_hoa_don)
+
+    if deleted:
+        messages.success(request, f'Đã xóa {deleted} hóa đơn.')
+    if blocked_codes:
+        preview = ', '.join(blocked_codes[:5])
+        suffix = '...' if len(blocked_codes) > 5 else ''
+        messages.error(
+            request,
+            f'Không thể xóa {len(blocked_codes)} hóa đơn do đang được tham chiếu bởi chứng từ khác: {preview}{suffix}',
+        )
+
+    if not deleted and not blocked_codes:
+        messages.error(request, 'Không có hóa đơn nào được xóa.')
     return redirect('hoa_don_ban_list')
 
 

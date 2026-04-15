@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block content %}
 <div class="card">
@@ -51,7 +52,7 @@
                         <td>{{ item.khach_hang.ma_kh|default:'-' }}</td>
                         <td>{{ item.khach_hang.ten_kh|default:'-' }}</td>
                         <td>{{ item.get_hinh_thuc_xu_ly_display }}</td>
-                        <td class="text-right fw-semibold">{{ item.chenh_lech_tien|intcomma }}</td>
+                        <td class="text-right fw-semibold">{{ item.chenh_lech_tien|vnd }}</td>
                         <td>
                             {% if item.trang_thai == '2' %}
                             <span class="badge badge-info">2 - Hoàn tất</span>
@@ -116,10 +117,6 @@
             alert('Vui lòng chọn đúng 1 phiếu để sửa.');
             return;
         }
-        if (selected.dataset.trangThai === '2') {
-            alert('Phiếu đổi trả đã hoàn tất, không được phép chỉnh sửa.');
-            return;
-        }
         window.location.href = selected.dataset.editUrl;
     });
 
@@ -127,13 +124,6 @@
         const selected = getSelectedDoiTra();
         if (!selected.length) {
             alert('Vui lòng chọn ít nhất 1 phiếu để xóa.');
-            return;
-        }
-        const locked = selected.filter(function(item) {
-            return item.dataset.trangThai === '2';
-        });
-        if (locked.length) {
-            alert('Phiếu đổi trả đã hoàn tất, không được phép xóa.');
             return;
         }
         if (!confirm('Bạn chắc chắn muốn xóa các phiếu đổi trả đã chọn?')) {

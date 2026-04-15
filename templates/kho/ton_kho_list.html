@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block extra_css %}
 <style>
@@ -114,6 +115,60 @@
         padding: 13px;
         margin-bottom: 12px;
     }
+    .lookup-wrap {
+        position: relative;
+    }
+    .lookup-input {
+        padding-right: 40px;
+        background: #fbfdff;
+        cursor: pointer;
+    }
+    .lookup-btn {
+        position: absolute;
+        right: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 28px;
+        height: 28px;
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        color: #1e5ca8;
+    }
+    .lookup-btn:hover {
+        background: #eaf2ff;
+    }
+    .lookup-results {
+        border: 1px solid #d7e1ee;
+        border-radius: 8px;
+        overflow: hidden;
+        max-height: 320px;
+        overflow-y: auto;
+    }
+    .lookup-row {
+        width: 100%;
+        display: grid;
+        gap: 10px;
+        padding: 10px 12px;
+        border: 0;
+        border-bottom: 1px solid #eef3f8;
+        background: #fff;
+        text-align: left;
+    }
+    .lookup-row:hover {
+        background: #f6f9ff;
+    }
+    .lookup-row:last-child {
+        border-bottom: 0;
+    }
+    .lookup-row-main {
+        font-weight: 700;
+        color: #16385b;
+    }
+    .lookup-row-sub {
+        color: #6f839b;
+        font-size: 12px;
+    }
     .inventory-filter-grid {
         display: grid;
         grid-template-columns: 1fr 1fr 1fr 1fr;
@@ -132,10 +187,23 @@
         border-color: #d7e1ee;
         background: #fbfdff;
     }
-    .inventory-status {
+    .inventory-filter-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .inventory-search-actions {
         display: flex;
         gap: 8px;
-        flex-wrap: wrap;
+        min-width: 320px;
+    }
+    .inventory-status {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(92px, 1fr));
+        gap: 8px;
+        flex: 1;
+        min-width: 420px;
     }
     .inventory-status button {
         border: 1px solid #d7e1ee;
@@ -145,11 +213,51 @@
         font-size: 12px;
         font-weight: 700;
         padding: 7px 12px;
+        width: 100%;
     }
     .inventory-status button.active {
         background: linear-gradient(180deg, #1e73c4 0%, #0d5cab 100%);
         border-color: #0d5cab;
         color: #fff;
+    }
+    .inventory-count {
+        margin-left: auto;
+        white-space: nowrap;
+    }
+    .lookup-results {
+        border: 1px solid #d7e1ee;
+        border-radius: 8px;
+        overflow: hidden;
+        max-height: 320px;
+        overflow-y: auto;
+    }
+    .lookup-row {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 150px 1fr 100px;
+        gap: 10px;
+        padding: 10px 12px;
+        border: 0;
+        border-bottom: 1px solid #eef3f8;
+        background: #fff;
+        text-align: left;
+    }
+    .lookup-row:hover {
+        background: #f6f9ff;
+    }
+    .lookup-row:last-child {
+        border-bottom: 0;
+    }
+    .lookup-row-code {
+        font-weight: 700;
+        color: #0d5cab;
+    }
+    .lookup-row-name {
+        color: #16385b;
+    }
+    .lookup-row-dvt {
+        color: #6f839b;
+        text-align: right;
     }
     .inventory-table-wrap {
         background: #fff;
@@ -263,6 +371,17 @@
         .inventory-footer-cards {
             grid-template-columns: 1fr;
         }
+        .inventory-search-actions {
+            min-width: 100%;
+        }
+        .inventory-status {
+            min-width: 100%;
+            grid-template-columns: repeat(4, minmax(84px, 1fr));
+        }
+        .inventory-count {
+            width: 100%;
+            text-align: right;
+        }
     }
     @media (max-width: 640px) {
         .inventory-kpi-grid {
@@ -286,37 +405,6 @@
 {% block content %}
 <div class="inventory-stage">
 <div class="inventory-shell">
-    <div class="inventory-kpi-grid">
-        <div class="inventory-kpi">
-            <div>
-                <div class="inventory-kpi-label">Tổng dòng tồn</div>
-                <div class="inventory-kpi-value">{{ tong_chung_lo }}</div>
-            </div>
-            <span class="inventory-kpi-icon" style="background:#eaf2ff; color:#1b63b6;"><i class="fas fa-boxes"></i></span>
-        </div>
-        <div class="inventory-kpi">
-            <div>
-                <div class="inventory-kpi-label">Kho hoạt động</div>
-                <div class="inventory-kpi-value">{{ tong_kho }}</div>
-            </div>
-            <span class="inventory-kpi-icon" style="background:#e9f8f0; color:#0f7a4a;"><i class="fas fa-warehouse"></i></span>
-        </div>
-        <div class="inventory-kpi">
-            <div>
-                <div class="inventory-kpi-label">SKU cần xử lý</div>
-                <div class="inventory-kpi-value" style="color:#af1c2c;">{{ so_hang_can_nhap }}</div>
-            </div>
-            <span class="inventory-kpi-icon" style="background:#ffecef; color:#af1c2c;"><i class="fas fa-bell"></i></span>
-        </div>
-        <div class="inventory-kpi">
-            <div>
-                <div class="inventory-kpi-label">Vượt mức tối đa</div>
-                <div class="inventory-kpi-value" style="color:#195ca8;">{{ so_hang_vuot_toi_da }}</div>
-            </div>
-            <span class="inventory-kpi-icon" style="background:#e8f1ff; color:#195ca8;"><i class="fas fa-arrow-trend-up"></i></span>
-        </div>
-    </div>
-
     <div class="inventory-head">
         <div>
             <h1 class="inventory-title">Tồn kho tổng hợp</h1>
@@ -337,60 +425,55 @@
         </div>
     </div>
 
-    <form method="get" id="formTonKhoFilter" class="inventory-filters">
+    <form method="get" id="formTonKhoFilter" class="inventory-filters flex">
         <div class="inventory-filter-grid">
             <div>
                 <label>Kho</label>
-                <select name="kho" class="form-control">
-                    <option value="">Tất cả kho</option>
-                    {% for k in kho_list %}
-                    <option value="{{ k.pk }}" {% if kho_filter == k.pk|stringformat:'s' %}selected{% endif %}>{{ k.ten_kho }}</option>
-                    {% endfor %}
-                </select>
+                <div class="lookup-wrap">
+                    <input type="text" class="form-control lookup-input js-lookup-display" data-target="kho" value="" placeholder="Bấm kính lúp để chọn kho" readonly>
+                    <input type="hidden" name="kho" class="js-lookup-value" data-target="kho" value="{{ kho_filter }}">
+                    <button type="button" class="lookup-btn js-open-lookup" data-target="kho" title="Tra cứu kho"><i class="fas fa-magnifying-glass"></i></button>
+                </div>
             </div>
             <div>
                 <label>Nhóm hàng</label>
-                <select name="nhom_hang" class="form-control">
-                    <option value="">Tất cả nhóm hàng</option>
-                    {% for n in nhom_hang_list %}
-                    <option value="{{ n.nhom_hang__id }}" {% if nhom_hang_filter == n.nhom_hang__id|stringformat:'s' %}selected{% endif %}>{{ n.nhom_hang__ten_nhom }}</option>
-                    {% endfor %}
-                </select>
+                <div class="lookup-wrap">
+                    <input type="text" class="form-control lookup-input js-lookup-display" data-target="nhom_hang" value="" placeholder="Bấm kính lúp để chọn nhóm hàng" readonly>
+                    <input type="hidden" name="nhom_hang" class="js-lookup-value" data-target="nhom_hang" value="{{ nhom_hang_filter }}">
+                    <button type="button" class="lookup-btn js-open-lookup" data-target="nhom_hang" title="Tra cứu nhóm hàng"><i class="fas fa-magnifying-glass"></i></button>
+                </div>
             </div>
             <div>
                 <label>Mã hoặc tên hàng</label>
-                <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="VD: Lọc theo mã/tên">
+                <div class="lookup-wrap">
+                    <input type="text" class="form-control lookup-input js-lookup-display" data-target="hang_hoa" value="{{ q }}" placeholder="Bấm kính lúp để chọn mã hàng" readonly>
+                    <input type="hidden" name="q" class="js-lookup-value" data-target="hang_hoa" value="{{ q }}">
+                    <button type="button" class="lookup-btn js-open-lookup" data-target="hang_hoa" title="Tra cứu mã hàng"><i class="fas fa-magnifying-glass"></i></button>
+                </div>
             </div>
             <div>
                 <label>Vị trí/Kệ</label>
-                <input type="text" name="vi_tri" value="{{ vi_tri_filter }}" class="form-control" placeholder="VD: A-D01-K01-T01">
+                <div class="lookup-wrap">
+                    <input type="text" class="form-control lookup-input js-lookup-display" data-target="vi_tri" value="" placeholder="Bấm kính lúp để chọn vị trí/kệ" readonly>
+                    <input type="hidden" name="vi_tri" class="js-lookup-value" data-target="vi_tri" value="{{ vi_tri_filter }}">
+                    <button type="button" class="lookup-btn js-open-lookup" data-target="vi_tri" title="Tra cứu vị trí/kệ"><i class="fas fa-magnifying-glass"></i></button>
+                </div>
             </div>
-            <div>
-                <label>Mã hàng</label>
-                <input type="text" name="ma_hang" value="{{ ma_hang }}" class="form-control">
-            </div>
-            <div>
-                <label>Tên hàng</label>
-                <input type="text" name="ten_hang" value="{{ ten_hang }}" class="form-control">
-            </div>
-            <div>
-                <label>Barcode</label>
-                <input type="text" name="barcode" value="{{ barcode }}" class="form-control" placeholder="(nếu có)">
-            </div>
-            <div class="d-flex align-items-end gap-2">
+        </div>
+        <div class="inventory-filter-actions">
+            <div class="inventory-search-actions">
                 <button type="submit" class="btn btn-primary flex-fill">
                     <i class="fas fa-search"></i> Tìm kiếm
                 </button>
                 <a href="{% url 'ton_kho_list' %}" class="btn btn-light border">Làm mới</a>
             </div>
-        </div>
-
-        <div class="inventory-status">
-            <button type="submit" name="trang_thai_ton" value="" class="{% if not trang_thai_ton_filter %}active{% endif %}">Tất cả</button>
-            <button type="submit" name="trang_thai_ton" value="sap_het" class="{% if trang_thai_ton_filter == 'sap_het' %}active{% endif %}">Sắp hết</button>
-            <button type="submit" name="trang_thai_ton" value="het_hang" class="{% if trang_thai_ton_filter == 'het_hang' %}active{% endif %}">Hết hàng</button>
-            <button type="submit" name="trang_thai_ton" value="vuot_toi_da" class="{% if trang_thai_ton_filter == 'vuot_toi_da' %}active{% endif %}">Vượt tối đa</button>
-            <span class="ms-auto text-muted small d-flex align-items-center">Hiển thị {{ items|length }} dòng</span>
+            <div class="inventory-status">
+                <button type="submit" name="trang_thai_ton" value="" class="{% if not trang_thai_ton_filter %}active{% endif %}">Tất cả</button>
+                <button type="submit" name="trang_thai_ton" value="sap_het" class="{% if trang_thai_ton_filter == 'sap_het' %}active{% endif %}">Sắp hết</button>
+                <button type="submit" name="trang_thai_ton" value="het_hang" class="{% if trang_thai_ton_filter == 'het_hang' %}active{% endif %}">Hết hàng</button>
+                <button type="submit" name="trang_thai_ton" value="vuot_toi_da" class="{% if trang_thai_ton_filter == 'vuot_toi_da' %}active{% endif %}">Vượt tối đa</button>
+            </div>
+            <span class="inventory-count text-muted small d-flex align-items-center">Hiển thị {{ items|length }} dòng</span>
         </div>
     </form>
 
@@ -426,18 +509,34 @@
                         </td>
                         <td>
                             <a href="{% url 'hang_hoa_sua' item.hang_hoa.pk %}" class="inventory-code">{{ item.hang_hoa.ma_hang }}</a>
-                            <div class="inventory-unit">{{ item.hang_hoa.don_vi_tinh.ten|default:'-' }}</div>
+                            {% if item.hang_hoa.don_vi_tinh %}
+                            <div class="inventory-unit">{{ item.hang_hoa.don_vi_tinh.ten }}</div>
+                            {% endif %}
                         </td>
                         <td>
                             <div class="fw-semibold">{{ item.hang_hoa.ten_hang }}</div>
-                            <div class="inventory-unit">{{ item.hang_hoa.thuong_hieu.ten|default:'-' }}</div>
+                            {% if item.hang_hoa.thuong_hieu %}
+                            <div class="inventory-unit">{{ item.hang_hoa.thuong_hieu.ten }}</div>
+                            {% endif %}
                         </td>
                         <td>{{ item.hang_hoa.nhom_hang.ten_nhom|default:'-' }}</td>
                         <td>{{ item.kho.ten_kho }}</td>
                         <td>{{ item.vi_tri_hien_tai }}</td>
-                        <td class="text-end fw-semibold">{{ item.so_luong_thuong|intcomma }}</td>
-                        <td class="text-end {% if item.so_luong_loi > 0 %}text-danger fw-semibold{% endif %}">{{ item.so_luong_loi|intcomma }}</td>
-                        <td class="text-end inventory-value">{{ item.tong_gia_tri|intcomma }} đ</td>
+                        <td class="text-end fw-semibold">
+                            {% if item.so_luong_thuong > 0 %}
+                                {{ item.so_luong_thuong|vnd }}
+                            {% else %}
+                                Không
+                            {% endif %}
+                        </td>
+                        <td class="text-end {% if item.so_luong_loi > 0 %}text-danger fw-semibold{% endif %}">
+                            {% if item.so_luong_loi > 0 %}
+                                {{ item.so_luong_loi|vnd }}
+                            {% else %}
+                                Không
+                            {% endif %}
+                        </td>
+                        <td class="text-end inventory-value">{{ item.tong_gia_tri|vnd }} đ</td>
                         <td class="text-center">
                             {% if item.trang_thai_ton == 'het_hang' %}
                             <span class="inventory-badge danger">Hết hàng</span>
@@ -461,31 +560,22 @@
             </table>
         </div>
     </div>
+</div>
+</div>
 
-    <div class="inventory-footer-cards">
-        <div class="inventory-footer-card">
-            <div>
-                <div class="inventory-footer-label">Tổng giá trị tồn</div>
-                <div class="inventory-footer-value">{{ tong_gia_tri|intcomma }} đ</div>
+<div class="modal fade" id="modalLookupFilter" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalLookupTitle">Tra cứu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <i class="fas fa-wallet text-primary" style="font-size:28px;"></i>
-        </div>
-        <div class="inventory-footer-card">
-            <div>
-                <div class="inventory-footer-label">Tỷ lệ hàng lỗi</div>
-                <div class="inventory-footer-value danger">{{ ty_le_hang_loi }}%</div>
+            <div class="modal-body">
+                <input type="text" id="lookupSearchInput" class="form-control mb-3" placeholder="Nhập để lọc nhanh..." autocomplete="off">
+                <div id="lookupResults" class="lookup-results"></div>
             </div>
-            <i class="fas fa-exclamation-circle text-danger" style="font-size:28px;"></i>
-        </div>
-        <div class="inventory-footer-card">
-            <div>
-                <div class="inventory-footer-label">SKU cảnh báo</div>
-                <div class="inventory-footer-value warning">{{ tong_sku_canh_bao }}</div>
-            </div>
-            <i class="fas fa-triangle-exclamation" style="font-size:28px; color:#b45a06;"></i>
         </div>
     </div>
-</div>
 </div>
 
 <div class="modal fade" id="modalSetMucTon" tabindex="-1">
@@ -535,9 +625,160 @@
 
 {% block extra_js %}
 <script>
+    const lookupData = {
+        kho: [
+            {% for item in kho_options %}
+            { value: '{{ item.id }}', label: '{{ item.label|escapejs }}' }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+        nhom_hang: [
+            {% for item in nhom_hang_options %}
+            { value: '{{ item.id }}', label: '{{ item.label|escapejs }}' }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+        vi_tri: [
+            {% for item in vi_tri_options %}
+            { value: '{{ item.label|escapejs }}', label: '{{ item.label|escapejs }}' }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ],
+        hang_hoa: []
+    };
+
+    let currentLookupTarget = null;
+    let lookupModalInstance = null;
+
+    function normalizeText(value) {
+        return String(value || '').trim().toLowerCase();
+    }
+
+    function getLookupLabel(target, value) {
+        if (target === 'hang_hoa') {
+            return String(value || '');
+        }
+        const items = lookupData[target] || [];
+        const match = items.find(item => String(item.value) === String(value));
+        return match ? match.label : '';
+    }
+
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function loadHangHoaLookup(keyword) {
+        $.ajax({
+            url: '{% url "hang_hoa_lookup_api" %}',
+            method: 'GET',
+            dataType: 'json',
+            data: { q: keyword || '', page: 1, page_size: 30 },
+            success: function(resp) {
+                const items = resp.results || [];
+                if (!items.length) {
+                    $('#lookupResults').html('<div class="p-3 text-center text-muted">Không tìm thấy mã hàng phù hợp.</div>');
+                    return;
+                }
+                let html = '';
+                items.forEach(item => {
+                    const ma = String(item.ma_hang || '');
+                    const ten = String(item.ten_hang || '');
+                    html += `
+                        <button type="button" class="lookup-row js-select-lookup" data-target="hang_hoa" data-value="${escapeHtml(ma)}">
+                            <div class="lookup-row-code">${escapeHtml(ma)}</div>
+                            <div class="lookup-row-name">${escapeHtml(ten)}</div>
+                            <div class="lookup-row-dvt">${escapeHtml(item.dvt || '')}</div>
+                        </button>
+                    `;
+                });
+                $('#lookupResults').html(html);
+            },
+            error: function() {
+                $('#lookupResults').html('<div class="p-3 text-center text-danger">Lỗi tải dữ liệu mã hàng.</div>');
+            }
+        });
+    }
+
+    function renderLookupResults(target, keyword) {
+        if (target === 'hang_hoa') {
+            loadHangHoaLookup(keyword);
+            return;
+        }
+        const items = lookupData[target] || [];
+        const query = normalizeText(keyword);
+        const filtered = items.filter(item => !query || normalizeText(item.label).includes(query) || normalizeText(item.value).includes(query));
+        if (!filtered.length) {
+            $('#lookupResults').html('<div class="p-3 text-center text-muted">Không tìm thấy dữ liệu phù hợp.</div>');
+            return;
+        }
+
+        let html = '';
+        filtered.forEach(item => {
+            html += `
+                <button type="button" class="lookup-row js-select-lookup" data-target="${target}" data-value="${item.value}">
+                    <div class="lookup-row-code">${item.value}</div>
+                    <div class="lookup-row-name">${item.label}</div>
+                    <div class="lookup-row-dvt"></div>
+                </button>
+            `;
+        });
+        $('#lookupResults').html(html);
+    }
+
+    function openLookupModal(target) {
+        currentLookupTarget = target;
+        const titles = {
+            kho: 'Tra cứu kho',
+            nhom_hang: 'Tra cứu nhóm hàng',
+            vi_tri: 'Tra cứu vị trí/kệ',
+            hang_hoa: 'Tra cứu mã hàng'
+        };
+        $('#modalLookupTitle').text(titles[target] || 'Tra cứu');
+        $('#lookupSearchInput').val('');
+        renderLookupResults(target, '');
+        if (!lookupModalInstance) {
+            lookupModalInstance = new bootstrap.Modal(document.getElementById('modalLookupFilter'));
+        }
+        lookupModalInstance.show();
+        setTimeout(() => $('#lookupSearchInput').focus(), 200);
+    }
+
+    function syncLookupDisplays() {
+        $('.js-lookup-value').each(function() {
+            const target = $(this).data('target');
+            const value = String($(this).val() || '');
+            const label = value ? getLookupLabel(target, value) : '';
+            $(`.js-lookup-display[data-target="${target}"]`).val(label);
+        });
+    }
+
     function getSelectedTonKhoRows() {
         return Array.from(document.querySelectorAll('input[name="selected_tonkho"]:checked'));
     }
+
+    syncLookupDisplays();
+
+    $(document).on('click', '.js-open-lookup', function() {
+        openLookupModal($(this).data('target'));
+    });
+
+    $('#lookupSearchInput').on('input', function() {
+        if (!currentLookupTarget) return;
+        renderLookupResults(currentLookupTarget, $(this).val());
+    });
+
+    $(document).on('click', '.js-select-lookup', function() {
+        const target = $(this).data('target');
+        const value = String($(this).data('value') || '');
+        $(`.js-lookup-value[data-target="${target}"]`).val(value);
+        $(`.js-lookup-display[data-target="${target}"]`).val(getLookupLabel(target, value));
+        if (lookupModalInstance) {
+            lookupModalInstance.hide();
+        }
+        currentLookupTarget = null;
+    });
 
     document.getElementById('btnSetMucTon').addEventListener('click', function() {
         const selected = getSelectedTonKhoRows();

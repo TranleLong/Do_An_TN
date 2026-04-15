@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block extra_css %}
 <style>
@@ -75,7 +76,7 @@
                         <td>{{ item.get_loai_nhap_display }}</td>
                         <td>{{ item.kho.ten_kho }}</td>
                         <td>{{ item.nguoi_tao.username }}</td>
-                        <td class="text-right fw-semibold">{{ item.tong_tien|intcomma }} đ</td>
+                        <td class="text-right fw-semibold">{{ item.tong_tien|vnd }} đ</td>
                         <td>
                             {% if item.trang_thai == '1' %}<span class="badge badge-warning">1 - Lập phiếu</span>
                             {% elif item.trang_thai == '2' %}<span class="badge badge-success">2 - Sổ kho</span>

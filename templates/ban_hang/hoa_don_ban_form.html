@@ -68,38 +68,48 @@
         padding: 14px;
     }
     #hoaDonChiTietTable {
-        min-width: 1650px;
+        min-width: 1900px;
     }
     #hoaDonChiTietTable th,
     #hoaDonChiTietTable td {
         white-space: nowrap;
         vertical-align: middle;
+        padding: .95rem .75rem;
+    }
+    #hoaDonChiTietTable thead th {
+        font-size: 11px;
+        font-weight: 700;
+    }
+    #hoaDonChiTietTable tbody td {
+        font-size: 13px;
     }
     #hoaDonChiTietTable select,
-    #hoaDonChiTietTable input {
-        min-width: 88px;
-    }
-    #hoaDonChiTietTable .hang-select {
-        min-width: 210px;
-    }
-    #hoaDonChiTietTable select[name="kho_id[]"] {
-        min-width: 180px;
-    }
-    #hoaDonChiTietTable input[name="so_luong[]"],
-    #hoaDonChiTietTable input[name="gia_ban[]"],
-    #hoaDonChiTietTable input[name="ty_le_ck[]"],
-    #hoaDonChiTietTable input[name="thue_suat[]"] {
-        min-width: 95px;
-    }
-    #hoaDonChiTietTable input[name="tk_doanh_thu[]"],
-    #hoaDonChiTietTable input[name="tk_gia_von[]"] {
-        min-width: 110px;
-    }
-    #hoaDonChiTietTable .tien-hang,
-    #hoaDonChiTietTable .tien-thue,
-    #hoaDonChiTietTable .thanh-tien {
+    #hoaDonChiTietTable input,
+    #hoaDonChiTietTable .form-control {
         min-width: 120px;
+        padding: .55rem .65rem;
+        font-size: 13px;
     }
+    #hoaDonChiTietTable .lookup-box > .lookup-input {
+        padding-right: 46px;
+    }
+    #hoaDonChiTietTable .lookup-box > .lookup-icon-btn {
+        right: 12px;
+    }
+    #hoaDonChiTietTable th:nth-child(1), #hoaDonChiTietTable td:nth-child(1) { min-width: 250px; }
+    #hoaDonChiTietTable th:nth-child(2), #hoaDonChiTietTable td:nth-child(2) { min-width: 240px; }
+    #hoaDonChiTietTable th:nth-child(3), #hoaDonChiTietTable td:nth-child(3) { min-width: 120px; }
+    #hoaDonChiTietTable th:nth-child(4), #hoaDonChiTietTable td:nth-child(4) { min-width: 230px; }
+    #hoaDonChiTietTable th:nth-child(5), #hoaDonChiTietTable td:nth-child(5) { min-width: 90px; }
+    #hoaDonChiTietTable th:nth-child(6), #hoaDonChiTietTable td:nth-child(6) { min-width: 120px; }
+    #hoaDonChiTietTable th:nth-child(7), #hoaDonChiTietTable td:nth-child(7) { min-width: 90px; }
+    #hoaDonChiTietTable th:nth-child(8), #hoaDonChiTietTable td:nth-child(8) { min-width: 90px; }
+    #hoaDonChiTietTable th:nth-child(9), #hoaDonChiTietTable td:nth-child(9) { min-width: 130px; }
+    #hoaDonChiTietTable th:nth-child(10), #hoaDonChiTietTable td:nth-child(10) { min-width: 130px; }
+    #hoaDonChiTietTable th:nth-child(11), #hoaDonChiTietTable td:nth-child(11) { min-width: 130px; }
+    #hoaDonChiTietTable th:nth-child(12), #hoaDonChiTietTable td:nth-child(12) { min-width: 130px; }
+    #hoaDonChiTietTable th:nth-child(13), #hoaDonChiTietTable td:nth-child(13) { min-width: 140px; }
+    #hoaDonChiTietTable th:nth-child(14), #hoaDonChiTietTable td:nth-child(14) { min-width: 70px; }
 </style>
 {% endblock %}
 
@@ -238,18 +248,20 @@
             <table class="table" id="hoaDonChiTietTable">
                 <thead>
                     <tr>
-                        <th style="width: 24%">Mã hàng <span class="text-danger">*</span></th>
-                        <th style="width: 18%">Kho <span class="text-danger">*</span></th>
-                        <th style="width: 8%">SL</th>
-                        <th style="width: 10%">Giá bán</th>
-                        <th style="width: 8%">CK %</th>
-                        <th style="width: 8%">Thuế %</th>
-                        <th style="width: 8%">TK doanh thu</th>
-                        <th style="width: 8%">TK giá vốn</th>
-                        <th style="width: 8%">Tiền hàng</th>
-                        <th style="width: 8%">Tiền thuế</th>
-                        <th style="width: 8%">Thành tiền</th>
-                        <th style="width: 2%"></th>
+                        <th style="width: 10%">Mã hàng <span class="text-danger">*</span></th>
+                        <th style="width: 12%">Tên hàng</th>
+                        <th style="width: 5%">ĐVT</th>
+                        <th style="width: 10%">Kho <span class="text-danger">*</span></th>
+                        <th style="width: 5%">SL</th>
+                        <th style="width: 7%">Giá bán</th>
+                        <th style="width: 5%">CK %</th>
+                        <th style="width: 5%">Thuế %</th>
+                        <th style="width: 7%">TK doanh thu</th>
+                        <th style="width: 7%">TK giá vốn</th>
+                        <th style="width: 7%">Tiền hàng</th>
+                        <th style="width: 7%">Tiền thuế</th>
+                        <th style="width: 9%">Thành tiền</th>
+                        <th style="width: 4%"></th>
                     </tr>
                 </thead>
                 <tbody id="chiTietBody">
@@ -258,16 +270,18 @@
                         <tr class="item-row">
                             <td>
                                 <div class="lookup-box">
-                                    <input type="text" class="form-control lookup-input lookup-display hang-display" list="hang_lookup_list" placeholder="Nhập mã/tên hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
+                                    <input type="text" class="form-control lookup-input lookup-display hang-display" list="hang_lookup_list" placeholder="Nhập mã hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
                                     <select name="hang_id[]" class="form-control hang-select" style="display:none;" required>
                                         <option value="">-- Chọn --</option>
                                         {% for h in hang_list %}
-                                        <option value="{{ h.pk }}" data-ma="{{ h.ma_hang }}" data-ten="{{ h.ten_hang }}" {% if ct.hang_hoa_id == h.pk %}selected{% endif %}>{{ h.ma_hang }} - {{ h.ten_hang }}</option>
+                                        <option value="{{ h.pk }}" data-ma="{{ h.ma_hang }}" data-ten="{{ h.ten_hang }}" data-dvt="{{ h.don_vi_tinh.ten|default:'' }}" {% if ct.hang_hoa_id == h.pk %}selected{% endif %}>{{ h.ma_hang }} - {{ h.ten_hang }}</option>
                                         {% endfor %}
                                     </select>
                                     <button type="button" class="lookup-icon-btn btn-search-hang"><i class="fas fa-search"></i></button>
                                 </div>
                             </td>
+                            <td><input type="text" class="form-control hang-ten-display" value="{{ ct.hang_hoa.ten_hang }}" readonly></td>
+                            <td><input type="text" class="form-control hang-dvt-display text-center" value="{{ ct.hang_hoa.don_vi_tinh.ten|default:'' }}" readonly></td>
                             <td>
                                 <select name="kho_id[]" class="form-control" required>
                                     {% for k in kho_list %}
@@ -276,7 +290,7 @@
                                 </select>
                             </td>
                             <td><input type="number" name="so_luong[]" class="form-control so-luong calc-input" min="1" step="1" value="{{ ct.so_luong|floatformat:0 }}" required></td>
-                            <td><input type="number" name="gia_ban[]" class="form-control gia-ban calc-input" min="0" value="{{ ct.gia_ban|unlocalize }}" required></td>
+                            <td><input type="text" name="gia_ban[]" class="form-control gia-ban calc-input money-input" inputmode="numeric" value="{{ ct.gia_ban|floatformat:0 }}" required></td>
                             <td><input type="number" name="ty_le_ck[]" class="form-control ty-le-ck calc-input" min="0" max="100" step="0.01" value="{{ ct.ty_le_chiet_khau|unlocalize }}"></td>
                             <td><input type="number" name="thue_suat[]" class="form-control thue-suat calc-input" min="0" step="0.01" value="{{ ct.thue_suat|unlocalize }}"></td>
                             <td>
@@ -301,16 +315,18 @@
                         <tr class="item-row">
                             <td>
                                 <div class="lookup-box">
-                                    <input type="text" class="form-control lookup-input lookup-display hang-display" list="hang_lookup_list" placeholder="Nhập mã/tên hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
+                                    <input type="text" class="form-control lookup-input lookup-display hang-display" list="hang_lookup_list" placeholder="Nhập mã hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
                                     <select name="hang_id[]" class="form-control hang-select" style="display:none;" required>
                                         <option value="">-- Chọn --</option>
                                         {% for h in hang_list %}
-                                        <option value="{{ h.pk }}" data-ma="{{ h.ma_hang }}" data-ten="{{ h.ten_hang }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
+                                        <option value="{{ h.pk }}" data-ma="{{ h.ma_hang }}" data-ten="{{ h.ten_hang }}" data-dvt="{{ h.don_vi_tinh.ten|default:'' }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
                                         {% endfor %}
                                     </select>
                                     <button type="button" class="lookup-icon-btn btn-search-hang"><i class="fas fa-search"></i></button>
                                 </div>
                             </td>
+                            <td><input type="text" class="form-control hang-ten-display" readonly></td>
+                            <td><input type="text" class="form-control hang-dvt-display text-center" readonly></td>
                             <td>
                                 <select name="kho_id[]" class="form-control" required>
                                     {% for k in kho_list %}
@@ -319,7 +335,7 @@
                                 </select>
                             </td>
                             <td><input type="number" name="so_luong[]" class="form-control so-luong calc-input" min="1" step="1" value="1" required></td>
-                            <td><input type="number" name="gia_ban[]" class="form-control gia-ban calc-input" min="0" value="0" required></td>
+                            <td><input type="text" name="gia_ban[]" class="form-control gia-ban calc-input money-input" inputmode="numeric" value="0" required></td>
                             <td><input type="number" name="ty_le_ck[]" class="form-control ty-le-ck calc-input" min="0" max="100" step="0.01" value="0"></td>
                             <td><input type="number" name="thue_suat[]" class="form-control thue-suat calc-input" min="0" step="0.01" value="10"></td>
                             <td>
@@ -349,8 +365,7 @@
             {% endfor %}
         </datalist>
 
-        <div class="d-flex justify-content-between align-items-start mt-3">
-            <a href="{% if hoa_don.pk %}{% url 'phieu_thu_them' %}?don_ban={{ hoa_don.don_ban_id|default:'' }}{% else %}#{% endif %}" class="btn btn-outline-success btn-sm {% if not hoa_don.pk %}disabled{% endif %}"><i class="fas fa-money-bill-wave"></i> Tạo phiếu thu</a>
+        <div class="d-flex justify-content-between align-items-end mt-3">
             <div class="summary-box">
                 <div class="d-flex justify-content-between mb-2"><span>Tổng số lượng</span><strong id="tongSoLuong">0</strong></div>
                 <div class="d-flex justify-content-between mb-2"><span>Tổng chiết khấu</span><strong id="tongChietKhau">0</strong></div>
@@ -453,6 +468,14 @@
     let currentTkInput = null;
 
     function fmtNumber(val) { return (parseFloat(val || 0)).toLocaleString('vi-VN'); }
+    function parseMoneyInput(val) {
+        const raw = String(val == null ? '' : val).trim().replace(/\s+/g, '').replace(/\./g, '').replace(/,/g, '.');
+        const num = parseFloat(raw);
+        return Number.isNaN(num) ? 0 : num;
+    }
+    function formatMoneyInputValue(val) {
+        return Math.round(parseMoneyInput(val)).toLocaleString('vi-VN');
+    }
     function escapeHtml(str) {
         return String(str || '')
             .replace(/&/g, '&amp;')
@@ -524,9 +547,14 @@
         if ($opt.val()) {
             const ma = String($opt.data('ma') || '');
             const ten = String($opt.data('ten') || '');
-            $row.find('.hang-display').val((ma ? ma + ' - ' : '') + ten);
+            const dvt = String($opt.data('dvt') || '');
+            $row.find('.hang-display').val(ma);
+            $row.find('.hang-ten-display').val(ten);
+            $row.find('.hang-dvt-display').val(dvt);
         } else {
             $row.find('.hang-display').val('');
+            $row.find('.hang-ten-display').val('');
+            $row.find('.hang-dvt-display').val('');
         }
     }
 
@@ -550,7 +578,7 @@
             const full = normLookup((ma ? (ma + ' - ') : '') + ten);
             const text = normLookup($opt.text());
 
-            if (keyword === ma || keyword === full || keyword === text) {
+            if (keyword === ma || keyword === ten || keyword === full || keyword === text) {
                 matchedValue = optVal;
                 return false;
             }
@@ -608,7 +636,7 @@
 
     function loadHangResults() {
         const q = $('#hangSearchInput').val().trim();
-        $.get('{% url "hang_hoa_lookup_api" %}', { q: q, page: 1, page_size: 20 }, function(resp) {
+        $.get('{% url "hang_hoa_lookup_api" %}', { q: q, page: 1, page_size: 20, only_available: 1, kho_id: $('select[name="kho"]').val() }, function(resp) {
             const rows = resp.results || [];
             if (!rows.length) {
                 $('#hangSearchResults').html('<div class="p-3 text-muted text-center">Không tìm thấy hàng hóa</div>');
@@ -668,7 +696,7 @@
 
     function tinhTongRow($row) {
         const sl = parseFloat($row.find('.so-luong').val()) || 0;
-        const gia = parseFloat($row.find('.gia-ban').val()) || 0;
+        const gia = parseMoneyInput($row.find('.gia-ban').val());
         const ck = parseFloat($row.find('.ty-le-ck').val()) || 0;
         const thue = parseFloat($row.find('.thue-suat').val()) || 0;
         const goc = sl * gia;
@@ -699,13 +727,13 @@
             return;
         }
         $.get('{% url "gia_ban_hang_hoa_api" %}', { hang_id: hangId, so_luong: soLuong }, function(resp) {
-            const currentGia = parseFloat($row.find('.gia-ban').val()) || 0;
+            const currentGia = parseMoneyInput($row.find('.gia-ban').val());
             const currentCk = parseFloat($row.find('.ty-le-ck').val()) || 0;
             const isManualGia = $row.data('manual-price') === true;
             const isManualCk = $row.data('manual-discount') === true;
 
             if (!isManualGia || currentGia <= 0) {
-                $row.find('.gia-ban').val(resp.gia_ban_chuan || 0);
+                $row.find('.gia-ban').val(formatMoneyInputValue(resp.gia_ban_chuan || 0));
             }
             if (!isManualCk || currentCk < 0) {
                 $row.find('.ty-le-ck').val(resp.chiet_khau_phan_tram || 0);
@@ -755,14 +783,17 @@
             $row.find('select[name="hang_id[]"]').val(String(r.hang_hoa_id));
             $row.find('select[name="kho_id[]"]').val(String(r.kho_id));
             $row.find('.so-luong').val(Math.round(r.so_luong || 0));
-            $row.find('.gia-ban').val(r.gia_ban || 0);
+            $row.find('.gia-ban').val(formatMoneyInputValue(r.gia_ban || 0));
             $row.find('.ty-le-ck').val(r.ty_le_ck || 0);
             $row.find('.thue-suat').val(r.thue_suat || 10);
             $body.append($row);
+            bindHangDisplayByRow($row);
         });
 
         if (!data.rows || !data.rows.length) {
-            $body.append($('#chiTietBodyTemplate .item-row').clone());
+            const $row = $('#chiTietBodyTemplate .item-row').clone();
+            $body.append($row);
+            bindHangDisplayByRow($row);
         }
 
         $('#chiTietBody .item-row').each(function() {
@@ -786,6 +817,9 @@
 
     $(document).on('input', '.calc-input', function() {
         const $row = $(this).closest('tr');
+        if ($(this).hasClass('money-input')) {
+            $(this).val(formatMoneyInputValue($(this).val()));
+        }
         if ($(this).hasClass('gia-ban')) {
             $row.data('manual-price', true);
         }
@@ -816,6 +850,8 @@
         const $row = $('#chiTietBody .item-row:first').clone();
         $row.find('select').val('');
         $row.find('.hang-display').val('');
+        $row.find('.hang-ten-display').val('');
+        $row.find('.hang-dvt-display').val('');
         $row.find('.so-luong').val('1');
         $row.find('.gia-ban').val('0');
         $row.find('.ty-le-ck').val('0');
@@ -1013,7 +1049,7 @@
         syncFromSelectedCustomer();
         updateNvDisplay();
         $('#chiTietBody .item-row').each(function() {
-            const gia = parseFloat($(this).find('.gia-ban').val()) || 0;
+            const gia = parseMoneyInput($(this).find('.gia-ban').val());
             const ck = parseFloat($(this).find('.ty-le-ck').val()) || 0;
             bindHangDisplayByRow($(this));
             $(this).data('manual-price', gia > 0);
@@ -1031,16 +1067,18 @@
         <tr class="item-row">
             <td>
                 <div class="lookup-box">
-                    <input type="text" class="form-control lookup-input lookup-display hang-display" list="hang_lookup_list" placeholder="Nhập mã/tên hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
+                    <input type="text" class="form-control lookup-input lookup-display hang-display" list="hang_lookup_list" placeholder="Nhập mã hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
                     <select name="hang_id[]" class="form-control hang-select" style="display:none;" required>
                         <option value="">-- Chọn --</option>
                         {% for h in hang_list %}
-                        <option value="{{ h.pk }}" data-ma="{{ h.ma_hang }}" data-ten="{{ h.ten_hang }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
+                        <option value="{{ h.pk }}" data-ma="{{ h.ma_hang }}" data-ten="{{ h.ten_hang }}" data-dvt="{{ h.don_vi_tinh.ten|default:'' }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
                         {% endfor %}
                     </select>
                     <button type="button" class="lookup-icon-btn btn-search-hang"><i class="fas fa-search"></i></button>
                 </div>
             </td>
+            <td><input type="text" class="form-control hang-ten-display" readonly></td>
+            <td><input type="text" class="form-control hang-dvt-display text-center" readonly></td>
             <td>
                 <select name="kho_id[]" class="form-control" required>
                     {% for k in kho_list %}

@@ -1,6 +1,19 @@
 {% extends 'base.html' %}
 
 {% block content %}
+<style>
+    .delete-confirm-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 50%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff1f2;
+        color: #e11d48;
+        font-size: 24px;
+    }
+</style>
 <div class="card">
     <div class="card-header">
         <div class="card-title"><i class="fas fa-box text-warning"></i> Danh sách hàng hóa/phụ tùng</div>
@@ -76,7 +89,27 @@
     </div>
 </div>
 
-<form method="post" id="formHangDelete" style="display:none;">{% csrf_token %}</form>
+<form method="post" id="formHangDelete" action="{% url 'hang_hoa_xoa_nhieu' %}" style="display:none;">{% csrf_token %}</form>
+
+<div class="modal fade" id="modalHangDeleteConfirm" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title">Xác nhận xóa hàng hóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="delete-confirm-icon mx-auto mb-3"><i class="fas fa-trash"></i></div>
+                <p class="mb-2">Bạn sắp xóa <strong id="hangDeleteCount">0</strong> hàng hóa.</p>
+                <p class="text-muted mb-0" id="hangDeletePreview">Dữ liệu được chọn sẽ bị xóa khỏi danh mục nếu không có ràng buộc liên quan.</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger" id="btnHangDeleteConfirm">Xác nhận</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="modal fade" id="modalHangLoc" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
@@ -125,20 +158,45 @@
     document.getElementById('btnHangDelete').addEventListener('click', function() {
         const selected = getSelectedHangInputs();
         if (selected.length === 0) {
-            alert('Chọn ít nhất 1 hàng hóa để ngừng bán.');
+            alert('Chọn ít nhất 1 hàng hóa để xóa.');
             return;
         }
-        if (!confirm('Bạn có chắc muốn ngừng kinh doanh các hàng hóa đã chọn?')) return;
-        const csrf = document.querySelector('#formHangDelete input[name="csrfmiddlewaretoken"]').value;
-        const requests = selected.map(item =>
-            fetch(item.dataset.deleteUrl, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrf }
-            })
-        );
-        Promise.all(requests).then(function() {
-            window.location.reload();
+        const countEl = document.getElementById('hangDeleteCount');
+        const previewEl = document.getElementById('hangDeletePreview');
+        if (countEl) countEl.textContent = String(selected.length);
+
+        const codes = selected.slice(0, 5).map(function(input) {
+            const row = input.closest('tr');
+            const codeEl = row ? row.querySelector('td:nth-child(2) strong') : null;
+            return codeEl ? codeEl.textContent.trim() : input.value;
         });
+        const suffix = selected.length > 5 ? '...' : '';
+        if (previewEl) {
+            previewEl.textContent = codes.length
+                ? ('Mã đã chọn: ' + codes.join(', ') + suffix)
+                : 'Dữ liệu được chọn sẽ bị xóa khỏi danh mục nếu không có ràng buộc liên quan.';
+        }
+
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalHangDeleteConfirm'));
+        modal.show();
+    });
+
+    document.getElementById('btnHangDeleteConfirm').addEventListener('click', function() {
+        const selected = getSelectedHangInputs();
+        if (!selected.length) {
+            alert('Không có hàng hóa nào được chọn.');
+            return;
+        }
+        const form = document.getElementById('formHangDelete');
+        form.querySelectorAll('input[name="ids[]"]').forEach(function(el) { el.remove(); });
+        selected.forEach(function(input) {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'ids[]';
+            hidden.value = input.value;
+            form.appendChild(hidden);
+        });
+        form.submit();
     });
 
     document.getElementById('btnHangSearch').addEventListener('click', function() {

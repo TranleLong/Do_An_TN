@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block content %}
 
@@ -45,14 +46,14 @@
                 <div class="kpi-icon" style="background:#fef3c7;"><i class="fas fa-file-export" style="color:#f59e0b; font-size:1.4rem;"></i></div>
                 <div class="kpi-info">
                     <h4>Tổng GV từ Phiếu Xuất</h4>
-                    <div class="kpi-value" style="color:#f59e0b; font-size:1.2rem;">{{ tong_gia_von_xuat|intcomma }} đ</div>
+                    <div class="kpi-value" style="color:#f59e0b; font-size:1.2rem;">{{ tong_gia_von_xuat|vnd }} đ</div>
                 </div>
             </div>
             <div class="kpi-card" style="border-left:4px solid #10b981;">
                 <div class="kpi-icon" style="background:#d1fae5;"><i class="fas fa-boxes" style="color:#10b981; font-size:1.4rem;"></i></div>
                 <div class="kpi-info">
                     <h4>Tổng GV Tồn Kho Hiện Tại</h4>
-                    <div class="kpi-value" style="color:#10b981; font-size:1.2rem;">{{ tong_ton_hien_tai|intcomma }} đ</div>
+                    <div class="kpi-value" style="color:#10b981; font-size:1.2rem;">{{ tong_ton_hien_tai|vnd }} đ</div>
                 </div>
             </div>
             <div class="kpi-card" style="border-left:4px solid {% if chenh_lech_tong == 0 %}#10b981{% else %}#ef4444{% endif %};">
@@ -60,7 +61,7 @@
                 <div class="kpi-info">
                     <h4>Chênh lệch tổng</h4>
                     <div class="kpi-value" style="color:{% if chenh_lech_tong == 0 %}#10b981{% else %}#ef4444{% endif %}; font-size:1.2rem;">
-                        {% if chenh_lech_tong >= 0 %}+{% endif %}{{ chenh_lech_tong|intcomma }} đ
+                        {% if chenh_lech_tong >= 0 %}+{% endif %}{{ chenh_lech_tong|vnd }} đ
                     </div>
                 </div>
             </div>
@@ -86,10 +87,10 @@
                         <td><code class="text-primary fw-bold">{{ row.ma_hang }}</code></td>
                         <td>{{ row.ten_hang }}</td>
                         <td><span class="text-muted" style="font-size:0.85rem;"><i class="fas fa-warehouse me-1"></i>{{ row.ten_kho }}</span></td>
-                        <td class="text-end fw-semibold" style="color:#f59e0b;">{{ row.gv_xuat|intcomma }} đ</td>
-                        <td class="text-end fw-semibold text-success">{{ row.gv_ton|intcomma }} đ</td>
+                        <td class="text-end fw-semibold" style="color:#f59e0b;">{{ row.gv_xuat|vnd }} đ</td>
+                        <td class="text-end fw-semibold text-success">{{ row.gv_ton|vnd }} đ</td>
                         <td class="text-end fw-bold" style="color: {% if row.chenh_lech == 0 %}#10b981{% elif row.chenh_lech > 0 %}#3b82f6{% else %}#ef4444{% endif %};">
-                            {% if row.chenh_lech >= 0 %}+{% endif %}{{ row.chenh_lech|intcomma }} đ
+                            {% if row.chenh_lech >= 0 %}+{% endif %}{{ row.chenh_lech|vnd }} đ
                         </td>
                         <td class="text-center">
                             {% if row.chenh_lech == 0 %}

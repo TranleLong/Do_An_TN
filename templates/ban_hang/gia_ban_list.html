@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block content %}
 <div class="card">
@@ -64,7 +65,7 @@
                             </td>
                             <td><strong>{{ ct.hang_hoa__ma_hang }}</strong></td>
                             <td>{{ ct.hang_hoa__ten_hang }}</td>
-                            <td class="text-right fw-semibold">{{ ct.gia_ban_chuan|floatformat:0|intcomma }}</td>
+                            <td class="text-right fw-semibold">{{ ct.gia_ban_chuan|floatformat:0|vnd }}</td>
                             <td>{{ ct.hang_hoa__don_vi_tinh__ten }}</td>
                             <td>{{ ct.phieu__loai_tien_te }}</td>
                             <td>{% if ct.phieu__ngay_hieu_luc %}{{ ct.phieu__ngay_hieu_luc|date:'d/m/Y' }}{% endif %}</td>

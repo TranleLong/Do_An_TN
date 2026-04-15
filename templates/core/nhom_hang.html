@@ -77,7 +77,8 @@
                 <input type="hidden" name="action" value="create">
                 <div class="mb-3">
                     <label class="form-label">Mã nhóm <span class="text-danger">*</span></label>
-                    <input type="text" name="ma_nhom" class="form-control" required>
+                    <input type="text" name="ma_nhom" class="form-control" value="{{ nhom_next_ma }}" readonly>
+                    <small class="text-muted">Mã tự động theo định dạng NH00001.</small>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Tên nhóm <span class="text-danger">*</span></label>

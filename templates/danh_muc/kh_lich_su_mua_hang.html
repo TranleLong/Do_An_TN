@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block content %}
 <div class="card" style="margin-bottom: 16px;">
@@ -59,7 +60,7 @@
                 <tr>
                     <td>{{ don.so_don }}</td>
                     <td>{{ don.ngay_chung_tu|date:"d/m/Y" }}</td>
-                    <td class="text-right">{{ don.tong_thanh_toan|intcomma }} đ</td>
+                    <td class="text-right">{{ don.tong_thanh_toan|vnd }} đ</td>
                     <td>
                         {% if don.trang_thai == '1' %}
                             <span class="badge badge-warning">1 - Lập chứng từ</span>

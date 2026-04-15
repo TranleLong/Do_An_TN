@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block content %}
 <div class="card">
@@ -37,7 +38,7 @@
                 <table class="table" style="background: transparent;">
                     <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Người tạo:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.nguoi_tao.username|default:"-" }}</td></tr>
                     <tr><th style="border:none; padding: 0.5rem 0;">Ngày tạo:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.ngay_tao|date:"d/m/Y H:i" }}</td></tr>
-                    <tr><th style="border:none; padding: 0.5rem 0;">Tổng giá vốn:</th><td style="border:none; padding: 0.5rem 0; color: var(--warning); font-weight: bold; font-size: 1.1em;">{{ phieu.tong_gia_von|floatformat:0|intcomma }} đ</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Tổng giá vốn:</th><td style="border:none; padding: 0.5rem 0; color: var(--warning); font-weight: bold; font-size: 1.1em;">{{ phieu.tong_gia_von|floatformat:0|vnd }} đ</td></tr>
                 </table>
             </div>
         </div>
@@ -68,11 +69,11 @@
                         <td>{{ forloop.counter }}</td>
                         <td><strong>{{ ct.hang_hoa.ma_hang }}</strong></td>
                         <td>{{ ct.hang_hoa.ten_hang }}</td>
-                        <td class="text-right fw-semibold">{{ ct.so_luong|floatformat:0|intcomma }}</td>
+                        <td class="text-right fw-semibold">{{ ct.so_luong|floatformat:0|vnd }}</td>
                         <td class="text-center">{{ ct.tk_no|default:'-' }}</td>
                         <td class="text-center">{{ ct.tk_co|default:'-' }}</td>
-                        <td class="text-right">{{ ct.gia_von|floatformat:0|intcomma }} đ</td>
-                        <td class="text-right fw-bold text-warning">{{ ct.tong_gia_von|floatformat:0|intcomma }} đ</td>
+                        <td class="text-right">{{ ct.gia_von|floatformat:0|vnd }} đ</td>
+                        <td class="text-right fw-bold text-warning">{{ ct.tong_gia_von|floatformat:0|vnd }} đ</td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="8" class="text-center text-muted">Không có chi tiết mặt hàng.</td></tr>

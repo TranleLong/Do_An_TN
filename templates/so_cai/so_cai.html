@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block content %}
 <div class="card">
@@ -92,7 +93,7 @@
                     {% if report.account %}
                     <tr style="background:#fffbe6;">
                         <td colspan="8"><strong>So du dau ky</strong></td>
-                        <td class="text-right"><strong>{{ report.opening_balance|floatformat:0|intcomma }}</strong></td>
+                        <td class="text-right"><strong>{{ report.opening_balance|floatformat:0|vnd }}</strong></td>
                     </tr>
                     {% for row in report.rows %}
                     <tr>
@@ -102,9 +103,9 @@
                         <td>{{ row.document_type }}</td>
                         <td>{{ row.document_number }}</td>
                         <td>{{ row.description }}</td>
-                        <td class="text-right">{{ row.debit|floatformat:0|intcomma }}</td>
-                        <td class="text-right">{{ row.credit|floatformat:0|intcomma }}</td>
-                        <td class="text-right fw-bold">{{ row.running_balance|floatformat:0|intcomma }}</td>
+                        <td class="text-right">{{ row.debit|floatformat:0|vnd }}</td>
+                        <td class="text-right">{{ row.credit|floatformat:0|vnd }}</td>
+                        <td class="text-right fw-bold">{{ row.running_balance|floatformat:0|vnd }}</td>
                     </tr>
                     {% empty %}
                     <tr>
@@ -113,13 +114,13 @@
                     {% endfor %}
                     <tr style="background:#f8fafc;">
                         <td colspan="6"><strong>Cong phat sinh trong ky</strong></td>
-                        <td class="text-right"><strong>{{ report.total_debit|floatformat:0|intcomma }}</strong></td>
-                        <td class="text-right"><strong>{{ report.total_credit|floatformat:0|intcomma }}</strong></td>
+                        <td class="text-right"><strong>{{ report.total_debit|floatformat:0|vnd }}</strong></td>
+                        <td class="text-right"><strong>{{ report.total_credit|floatformat:0|vnd }}</strong></td>
                         <td></td>
                     </tr>
                     <tr style="background:#eaf9ef;">
                         <td colspan="8"><strong>So du cuoi ky</strong></td>
-                        <td class="text-right"><strong>{{ report.closing_balance|floatformat:0|intcomma }}</strong></td>
+                        <td class="text-right"><strong>{{ report.closing_balance|floatformat:0|vnd }}</strong></td>
                     </tr>
                     {% else %}
                     <tr>

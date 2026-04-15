@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card-title mb-0"><i class="fas fa-file-pen text-danger"></i> Danh sách phiếu điều chỉnh kiểm kê</div>
+        <a href="{% url 'kiem_ke_list' %}" class="btn btn-outline-secondary btn-sm">Về phiếu kiểm kê</a>
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-2 mb-3">
+            <div class="col-md-5">
+                <label class="form-label">Từ khóa</label>
+                <input type="text" name="q" class="form-control" value="{{ q }}" placeholder="Số phiếu, kho, lý do...">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Trạng thái</label>
+                <select name="trang_thai" class="form-control">
+                    <option value="">-- Tất cả --</option>
+                    <option value="1" {% if trang_thai == '1' %}selected{% endif %}>Chờ duyệt</option>
+                    <option value="2" {% if trang_thai == '2' %}selected{% endif %}>Đã duyệt</option>
+                </select>
+            </div>
+            <div class="col-md-4 d-flex align-items-end gap-2">
+                <a href="{% url 'kiem_ke_dieu_chinh_list' %}" class="btn btn-light border">Bỏ lọc</a>
+                <button class="btn btn-primary" type="submit">Tìm kiếm</button>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Số phiếu ĐC</th>
+                        <th>Phiếu kiểm kê</th>
+                        <th>Ngày điều chỉnh</th>
+                        <th>Kho</th>
+                        <th>Người lập</th>
+                        <th class="text-center">Trạng thái</th>
+                        <th class="text-center">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td><strong>{{ item.so_phieu }}</strong></td>
+                        <td>{{ item.kiem_ke.ma_phieu }}</td>
+                        <td>{{ item.ngay_dieu_chinh|date:'d/m/Y' }}</td>
+                        <td>{{ item.kho.ma_kho }} - {{ item.kho.ten_kho }}</td>
+                        <td>{% if item.nguoi_lap %}{{ item.nguoi_lap.get_full_name|default:item.nguoi_lap.username }}{% else %}-{% endif %}</td>
+                        <td class="text-center">
+                            {% if item.trang_thai == '1' %}
+                                <span class="badge badge-warning">Chờ duyệt</span>
+                            {% else %}
+                                <span class="badge badge-success">Đã duyệt</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            <a href="{% url 'kiem_ke_dieu_chinh_detail' item.pk %}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted py-4">Không có phiếu điều chỉnh</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

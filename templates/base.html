@@ -124,6 +124,53 @@
             min-width: 95px;
             text-align: center;
         }
+        .sidebar .nav-link.dropdown-toggle::after {
+            display: none !important;
+        }
+        .warehouse-group {
+            margin: 2px 0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .warehouse-group-toggle {
+            width: 100%;
+            border: 0;
+            background: transparent;
+            color: #7389a4;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 10px;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(120, 147, 176, 0.18);
+            transition: background-color .15s ease, color .15s ease;
+        }
+        .warehouse-group-toggle:hover {
+            background: rgba(56, 114, 181, 0.08);
+            color: #3e6289;
+        }
+        .warehouse-group-toggle i {
+            font-size: 12px;
+            transition: transform .15s ease;
+            color: #7f95b0;
+        }
+        .warehouse-group-body {
+            display: none;
+            padding: 4px 0 6px;
+        }
+        .warehouse-group.open .warehouse-group-body {
+            display: block;
+        }
+        .warehouse-group.open .warehouse-group-toggle {
+            background: rgba(56, 114, 181, 0.1);
+            color: #375a81;
+            border-bottom-color: transparent;
+        }
+        .warehouse-group.open .warehouse-group-toggle i {
+            transform: rotate(180deg);
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -182,25 +229,58 @@
                     </div>
                 </div>
 
-                <div class="nav-item {% if active_menu == 'ton_kho' or active_menu == 'phieu_nhap' or active_menu == 'phieu_xuat' or active_menu == 'kiem_ke' or active_menu == 'bao_cao_kho' or active_menu == 'tinh_gia_xuat' or active_menu == 'doi_chieu_kho' or active_menu == 'so_do_kho' %}open{% endif %}">
+                <div class="nav-item {% if active_menu == 'ton_kho' or active_menu == 'phieu_nhap' or active_menu == 'phieu_xuat' or active_menu == 'kiem_ke' or active_menu == 'bao_cao_xnt' or active_menu == 'so_chi_tiet_hang_hoa' or active_menu == 'bao_cao_ton_hien_tai' or active_menu == 'bao_cao_kho' or active_menu == 'tinh_gia_xuat' or active_menu == 'doi_chieu_kho' or active_menu == 'so_do_kho' %}open{% endif %}">
                     <a href="#" class="nav-link dropdown-toggle" onclick="toggleSubmenu(event, this)">
                         <i class="fas fa-boxes"></i> Phân hệ Kho
                         <i class="fas fa-chevron-down ms-auto"></i>
                     </a>
                     <div class="submenu">
-                        <div class="submenu-title">Quản lý kho</div>
-                        <a href="{% url 'phieu_nhap_list' %}" class="submenu-link {% if active_menu == 'phieu_nhap' %}active{% endif %}">Phiếu nhập kho</a>
-                        <a href="{% url 'phieu_xuat_list' %}" class="submenu-link {% if active_menu == 'phieu_xuat' %}active{% endif %}">Phiếu xuất kho</a>
-                        <a href="{% url 'ton_kho_list' %}" class="submenu-link {% if active_menu == 'ton_kho' %}active{% endif %}">Tồn kho hiện tại</a>
-                        <a href="{% url 'kiem_ke_list' %}" class="submenu-link {% if active_menu == 'kiem_ke' %}active{% endif %}">Kiểm kê kho</a>
-                        <a href="{% url 'so_do_kho' %}" class="submenu-link {% if active_menu == 'so_do_kho' %}active{% endif %}">Sơ đồ kho</a>
-                        
-                        <div class="submenu-title">Kế toán kho</div>
-                        <a href="{% url 'tinh_gia_xuat' %}" class="submenu-link {% if active_menu == 'tinh_gia_xuat' %}active{% endif %}">Tính giá xuất kho</a>
-                        <a href="{% url 'doi_chieu_so_lieu' %}" class="submenu-link {% if active_menu == 'doi_chieu_kho' %}active{% endif %}">Đối chiếu số liệu</a>
-                        
-                        <div class="submenu-title">Báo cáo & Phân tích</div>
-                        <a href="{% url 'bao_cao_ton_kho' %}" class="submenu-link {% if active_menu == 'bao_cao_kho' %}active{% endif %}">Báo cáo tồn kho</a>
+                        <div class="warehouse-group {% if active_menu == 'phieu_nhap' or active_menu == 'phieu_xuat' or active_menu == 'ton_kho' or active_menu == 'so_do_kho' %}open{% endif %}">
+                            <button type="button" class="warehouse-group-toggle" onclick="toggleWarehouseGroup(event, this)">
+                                <span>Quản lý kho</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="warehouse-group-body">
+                                <a href="{% url 'phieu_nhap_list' %}" class="submenu-link {% if active_menu == 'phieu_nhap' %}active{% endif %}">Phiếu nhập kho</a>
+                                <a href="{% url 'phieu_xuat_list' %}" class="submenu-link {% if active_menu == 'phieu_xuat' %}active{% endif %}">Phiếu xuất kho</a>
+                                <a href="{% url 'ton_kho_list' %}" class="submenu-link {% if active_menu == 'ton_kho' %}active{% endif %}">Tồn kho hiện tại</a>
+                                <a href="{% url 'so_do_kho' %}" class="submenu-link {% if active_menu == 'so_do_kho' %}active{% endif %}">Sơ đồ kho</a>
+                            </div>
+                        </div>
+
+                        <div class="warehouse-group {% if active_menu == 'kiem_ke' %}open{% endif %}">
+                            <button type="button" class="warehouse-group-toggle" onclick="toggleWarehouseGroup(event, this)">
+                                <span>Kiểm kê kho</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="warehouse-group-body">
+                                <a href="{% url 'kiem_ke_list' %}" class="submenu-link {% if active_menu == 'kiem_ke' and '/kho/kiem-ke/dieu-chinh/' not in request.path %}active{% endif %}">Phiếu kiểm kê</a>
+                                <a href="{% url 'kiem_ke_dieu_chinh_list' %}" class="submenu-link {% if active_menu == 'kiem_ke' and '/kho/kiem-ke/dieu-chinh/' in request.path and request.GET.trang_thai != '1' %}active{% endif %}">Phiếu điều chỉnh</a>
+                                <a href="{% url 'kiem_ke_dieu_chinh_list' %}?trang_thai=1" class="submenu-link {% if active_menu == 'kiem_ke' and '/kho/kiem-ke/dieu-chinh/' in request.path and request.GET.trang_thai == '1' %}active{% endif %}">Màn hình duyệt điều chỉnh</a>
+                            </div>
+                        </div>
+
+                        <div class="warehouse-group {% if active_menu == 'tinh_gia_xuat' %}open{% endif %}">
+                            <button type="button" class="warehouse-group-toggle" onclick="toggleWarehouseGroup(event, this)">
+                                <span>Kế toán kho</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="warehouse-group-body">
+                                <a href="{% url 'tinh_gia_xuat' %}" class="submenu-link {% if active_menu == 'tinh_gia_xuat' %}active{% endif %}">Tính giá xuất kho</a>
+                            </div>
+                        </div>
+
+                        <div class="warehouse-group {% if active_menu == 'bao_cao_xnt' or active_menu == 'bao_cao_ton_hien_tai' or active_menu == 'so_chi_tiet_hang_hoa' %}open{% endif %}">
+                            <button type="button" class="warehouse-group-toggle" onclick="toggleWarehouseGroup(event, this)">
+                                <span>Báo cáo & Phân tích</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="warehouse-group-body">
+                                <a href="{% url 'bao_cao_xuat_nhap_ton' %}" class="submenu-link {% if active_menu == 'bao_cao_xnt' %}active{% endif %}">Báo cáo xuất nhập tồn</a>
+                                <a href="{% url 'bao_cao_ton_hien_tai' %}" class="submenu-link {% if active_menu == 'bao_cao_ton_hien_tai' %}active{% endif %}">Báo cáo tồn kho</a>
+                                <a href="{% url 'so_chi_tiet_hang_hoa' %}" class="submenu-link {% if active_menu == 'so_chi_tiet_hang_hoa' %}active{% endif %}">Sổ chi tiết hàng hóa</a>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -266,6 +346,15 @@
         function toggleSubmenu(event, element) {
             event.preventDefault();
             element.parentElement.classList.toggle('open');
+        }
+
+        function toggleWarehouseGroup(event, element) {
+            event.preventDefault();
+            event.stopPropagation();
+            const group = element.closest('.warehouse-group');
+            if (group) {
+                group.classList.toggle('open');
+            }
         }
 
         // Lookup UX shared across forms:
@@ -606,18 +695,25 @@
 
             function injectToolbar($card) {
                 const addUrl = pickAddUrl($card);
-                const addButton = addUrl
-                    ? '<a href="' + addUrl + '" class="erp-toolbar-btn" title="Thêm mới" aria-label="Thêm mới"><i class="fas fa-plus"></i></a>'
-                    : '<button type="button" class="erp-toolbar-btn disabled" title="Thêm mới" aria-label="Thêm mới"><i class="fas fa-plus"></i></button>';
+                const hasSearchFields = $card.find('form input[type="text"], form input[type="search"], form select').filter(':visible').length > 0;
+
+                const toolbarParts = [];
+                if (addUrl) {
+                    toolbarParts.push('<a href="' + addUrl + '" class="erp-toolbar-btn" title="Thêm mới" aria-label="Thêm mới"><i class="fas fa-plus"></i></a>');
+                }
+                if (hasSearchFields) {
+                    if (toolbarParts.length) {
+                        toolbarParts.push('<span class="erp-toolbar-sep"></span>');
+                    }
+                    toolbarParts.push('<button type="button" class="erp-toolbar-btn js-auto-search" title="Tìm" aria-label="Tìm"><i class="fas fa-magnifying-glass"></i></button>');
+                }
+                if (!toolbarParts.length) {
+                    return;
+                }
+                toolbarParts.push('<button type="button" class="erp-toolbar-btn js-auto-refresh" title="Làm mới" aria-label="Làm mới"><i class="fas fa-rotate-right"></i></button>');
 
                 const $toolbar = $('<div class="erp-toolbar erp-toolbar-auto" role="toolbar" aria-label="Thanh thao tác mặc định">' +
-                    addButton +
-                    '<button type="button" class="erp-toolbar-btn js-auto-edit" title="Sửa" aria-label="Sửa"><i class="fas fa-pen-to-square"></i></button>' +
-                    '<button type="button" class="erp-toolbar-btn js-auto-delete" title="Xóa" aria-label="Xóa"><i class="fas fa-trash"></i></button>' +
-                    '<span class="erp-toolbar-sep"></span>' +
-                    '<button type="button" class="erp-toolbar-btn js-auto-search" title="Tìm" aria-label="Tìm"><i class="fas fa-magnifying-glass"></i></button>' +
-                    '<button type="button" class="erp-toolbar-btn js-auto-view" title="Xem" aria-label="Xem"><i class="fas fa-eye"></i></button>' +
-                    '<button type="button" class="erp-toolbar-btn js-auto-refresh" title="Làm mới" aria-label="Làm mới"><i class="fas fa-rotate-right"></i></button>' +
+                    toolbarParts.join('') +
                 '</div>');
 
                 const $cardBody = $card.find('.card-body').first();
@@ -631,35 +727,6 @@
                 } else {
                     $card.prepend($toolbar);
                 }
-
-                $toolbar.on('click', '.js-auto-edit, .js-auto-view', function () {
-                    const $row = pickSelectedRow($card);
-                    const href = pickRowLink($row);
-                    if (!href) {
-                        alert('Không tìm thấy dòng dữ liệu để mở chi tiết.');
-                        return;
-                    }
-                    window.location.href = href;
-                });
-
-                $toolbar.on('click', '.js-auto-delete', function () {
-                    const $row = pickSelectedRow($card);
-                    const del = findDeleteTarget($row);
-                    if (!del) {
-                        alert('Màn hình này chưa cấu hình xóa nhanh trên danh sách.');
-                        return;
-                    }
-                    if (!confirm('Bạn có chắc muốn xóa dữ liệu đã chọn?')) {
-                        return;
-                    }
-                    if (del.type === 'form' && del.form && del.form.length) {
-                        del.form.trigger('submit');
-                        return;
-                    }
-                    if (del.type === 'link' && del.href) {
-                        window.location.href = del.href;
-                    }
-                });
 
                 $toolbar.on('click', '.js-auto-search', function () {
                     const $focusTarget = $card.find('form input[type="text"], form input[type="search"], form select').filter(':visible').first();
@@ -683,8 +750,8 @@
                 });
             });
 
-            function makePlaceholderButton(iconClass, title) {
-                return $('<button type="button" class="erp-toolbar-btn" title="' + title + '" aria-label="' + title + '"><i class="' + iconClass + '"></i></button>');
+            function makePlaceholderButton(iconClass, title, action) {
+                return $('<button type="button" class="erp-toolbar-btn js-dm-fallback" data-action="' + action + '" title="' + title + '" aria-label="' + title + '"><i class="' + iconClass + '"></i></button>');
             }
 
             function activateToolbarNode($node) {
@@ -717,8 +784,14 @@
                 const $edit = findToolbarNode($toolbar, ['button.erp-toolbar-btn:has(i.fa-pen-to-square)']);
                 const $delete = findToolbarNode($toolbar, ['button.erp-toolbar-btn:has(i.fa-trash)']);
                 const $copy = findToolbarNode($toolbar, ['button.erp-toolbar-btn:has(i.fa-copy)']);
-                const $export = findToolbarNode($toolbar, ['a.erp-toolbar-btn:has(i.fa-file-export)']);
-                const $download = findToolbarNode($toolbar, ['a.erp-toolbar-btn:has(i.fa-file-arrow-down)']);
+                const $export = findToolbarNode($toolbar, [
+                    'a.erp-toolbar-btn:has(i.fa-file-export)',
+                    'button.erp-toolbar-btn:has(i.fa-file-export)'
+                ]);
+                const $download = findToolbarNode($toolbar, [
+                    'a.erp-toolbar-btn:has(i.fa-file-arrow-down)',
+                    'button.erp-toolbar-btn:has(i.fa-file-arrow-down)'
+                ]);
                 const $importBtn = findToolbarNode($toolbar, ['button.erp-toolbar-btn:has(i.fa-file-import)']);
                 const $search = findToolbarNode($toolbar, ['button.erp-toolbar-btn:has(i.fa-magnifying-glass)']);
                 const $view = findToolbarNode($toolbar, ['button.erp-toolbar-btn:has(i.fa-eye)']);
@@ -730,26 +803,246 @@
                 const $query = findToolbarNode($toolbar, ['button.erp-toolbar-btn:has(i.fa-filter)']);
                 const $refresh = findToolbarNode($toolbar, ['button.erp-toolbar-btn:has(i.fa-rotate-right)']);
 
-                const nodes = [
-                    $add.length ? activateToolbarNode($add.detach()) : makePlaceholderButton('fas fa-plus', 'Thêm mới'),
-                    $edit.length ? activateToolbarNode($edit.detach()) : makePlaceholderButton('fas fa-pen-to-square', 'Sửa'),
-                    $delete.length ? activateToolbarNode($delete.detach()) : makePlaceholderButton('fas fa-trash', 'Xóa'),
-                    $('<span class="erp-toolbar-sep"></span>'),
-                    $copy.length ? activateToolbarNode($copy.detach()) : makePlaceholderButton('fas fa-copy', 'Chép dữ liệu'),
-                    $export.length ? activateToolbarNode($export.detach()) : makePlaceholderButton('fas fa-file-export', 'Kết xuất dữ liệu'),
-                    $download.length ? activateToolbarNode($download.detach()) : makePlaceholderButton('fas fa-file-arrow-down', 'Tải tệp xuống (mẫu)'),
-                    $importBtn.length ? activateToolbarNode($importBtn.detach()) : makePlaceholderButton('fas fa-file-import', 'Đẩy dữ liệu lên'),
-                    $search.length ? activateToolbarNode($search.detach()) : makePlaceholderButton('fas fa-magnifying-glass', 'Tìm kiếm'),
-                    $view.length ? activateToolbarNode($view.detach()) : makePlaceholderButton('fas fa-eye', 'Xem'),
-                    $print.length ? activateToolbarNode($print.detach()) : makePlaceholderButton('fas fa-print', 'In'),
-                    $query.length ? activateToolbarNode($query.detach()) : makePlaceholderButton('fas fa-filter', 'Truy vấn'),
-                    $refresh.length ? activateToolbarNode($refresh.detach()) : makePlaceholderButton('fas fa-rotate-right', 'Làm mới')
-                ];
+                const nodes = [];
+                const pushNode = function ($node, fallbackIcon, fallbackTitle, fallbackAction) {
+                    if ($node.length) {
+                        nodes.push(activateToolbarNode($node.detach()));
+                        return;
+                    }
+                    nodes.push(makePlaceholderButton(fallbackIcon, fallbackTitle, fallbackAction));
+                };
+
+                pushNode($add, 'fas fa-plus', 'Thêm mới', 'add');
+                pushNode($edit, 'fas fa-pen-to-square', 'Sửa', 'edit');
+                pushNode($delete, 'fas fa-trash', 'Xóa', 'delete');
+                nodes.push($('<span class="erp-toolbar-sep"></span>'));
+
+                pushNode($copy, 'fas fa-copy', 'Chép dữ liệu', 'copy');
+                pushNode($export, 'fas fa-file-export', 'Kết xuất dữ liệu', 'export');
+                pushNode($download, 'fas fa-file-arrow-down', 'Tải tệp xuống (mẫu)', 'download-template');
+                pushNode($importBtn, 'fas fa-file-import', 'Đẩy dữ liệu lên', 'import');
+                pushNode($search, 'fas fa-magnifying-glass', 'Tìm kiếm', 'search');
+                pushNode($view, 'fas fa-eye', 'Xem', 'view');
+                pushNode($print, 'fas fa-print', 'In', 'print');
+                pushNode($query, 'fas fa-filter', 'Truy vấn', 'filter');
+                pushNode($refresh, 'fas fa-rotate-right', 'Làm mới', 'refresh');
 
                 $toolbar.empty();
                 nodes.forEach(function ($node) {
                     $toolbar.append($node);
                 });
+            }
+
+            function resolveSelectedInputs($scope) {
+                const $inputs = $scope.find('tbody input[type="checkbox"]:checked');
+                return $inputs.length ? $inputs : $();
+            }
+
+            function csvEscape(val) {
+                const text = String(val == null ? '' : val);
+                if (/[",\n]/.test(text)) {
+                    return '"' + text.replace(/"/g, '""') + '"';
+                }
+                return text;
+            }
+
+            function exportTableAsCsv($table, fileName, includeBody) {
+                if (!$table.length) {
+                    alert('Không tìm thấy bảng dữ liệu để xuất.');
+                    return;
+                }
+                const headers = $table.find('thead th').map(function () {
+                    return csvEscape($(this).text().trim());
+                }).get();
+                const lines = [];
+                if (headers.length) {
+                    lines.push(headers.join(','));
+                }
+                if (includeBody) {
+                    $table.find('tbody tr').each(function () {
+                        const $cells = $(this).find('td');
+                        if (!$cells.length || $cells.filter('[colspan]').length) {
+                            return;
+                        }
+                        const row = $cells.map(function () {
+                            return csvEscape($(this).text().replace(/\s+/g, ' ').trim());
+                        }).get();
+                        lines.push(row.join(','));
+                    });
+                }
+
+                const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+            }
+
+            function pickOneUrlFromSelected($selected) {
+                if ($selected.length !== 1) {
+                    return '';
+                }
+                const el = $selected.get(0);
+                return el.dataset.detailUrl || el.dataset.viewUrl || el.dataset.historyUrl || el.dataset.editUrl || '';
+            }
+
+            function handleDanhMucFallbackAction($button, $toolbar) {
+                const action = String($button.data('action') || '').trim();
+                if (!action) {
+                    return;
+                }
+                const $scope = $toolbar.closest('.card').length ? $toolbar.closest('.card') : $(document.body);
+                const $table = $scope.find('.table-responsive table.table').first();
+                const $selected = resolveSelectedInputs($scope);
+
+                if (action === 'add') {
+                    const $headerAdd = $scope.find('.card-header a[href*="them"], .card-header a[href*="add"]').first();
+                    if ($headerAdd.length) {
+                        window.location.href = String($headerAdd.attr('href') || '');
+                        return;
+                    }
+                    const $modalBtn = $scope.find('button[id*="Add"], button[id*="Them"], button[id*="add"], button[id*="them"]').first();
+                    if ($modalBtn.length) {
+                        $modalBtn.trigger('click');
+                        return;
+                    }
+                    alert('Màn hình này chưa cấu hình thêm mới.');
+                    return;
+                }
+
+                if (action === 'edit') {
+                    if ($selected.length !== 1) {
+                        alert('Vui lòng chọn đúng 1 dòng để sửa.');
+                        return;
+                    }
+                    const targetUrl = $selected.get(0).dataset.editUrl || $selected.get(0).dataset.detailUrl || '';
+                    if (targetUrl) {
+                        window.location.href = targetUrl;
+                        return;
+                    }
+                    alert('Dòng đã chọn chưa có đường dẫn sửa.');
+                    return;
+                }
+
+                if (action === 'delete') {
+                    if (!$selected.length) {
+                        alert('Vui lòng chọn ít nhất 1 dòng để xóa.');
+                        return;
+                    }
+                    const deleteUrls = $selected.map(function (_, input) {
+                        return input.dataset.deleteUrl || '';
+                    }).get().filter(Boolean);
+                    if (!deleteUrls.length) {
+                        $selected.prop('checked', false);
+                        alert('Đã bỏ chọn các dòng hiện tại.');
+                        return;
+                    }
+                    if (!window.confirm('Bạn có chắc muốn xóa các dòng đã chọn?')) {
+                        return;
+                    }
+                    const csrf = $('input[name="csrfmiddlewaretoken"]').first().val() || '';
+                    Promise.all(deleteUrls.map(function (url) {
+                        return fetch(url, {
+                            method: 'POST',
+                            headers: csrf ? { 'X-CSRFToken': csrf } : {}
+                        });
+                    })).then(function () {
+                        window.location.reload();
+                    }).catch(function () {
+                        alert('Có lỗi khi xóa dữ liệu.');
+                    });
+                    return;
+                }
+
+                if (action === 'copy') {
+                    if (!$selected.length) {
+                        alert('Vui lòng chọn dòng cần chép dữ liệu.');
+                        return;
+                    }
+                    const lines = $selected.map(function (_, input) {
+                        const rowText = $(input).closest('tr').text().replace(/\s+/g, ' ').trim();
+                        return rowText;
+                    }).get().filter(Boolean);
+                    navigator.clipboard.writeText(lines.join('\n')).then(function () {
+                        alert('Đã chép ' + lines.length + ' dòng vào clipboard.');
+                    }).catch(function () {
+                        alert('Không thể chép dữ liệu.');
+                    });
+                    return;
+                }
+
+                if (action === 'export') {
+                    exportTableAsCsv($table, 'danh-muc-export.csv', true);
+                    return;
+                }
+
+                if (action === 'download-template') {
+                    exportTableAsCsv($table, 'danh-muc-template.csv', false);
+                    return;
+                }
+
+                if (action === 'import') {
+                    let $fileInput = $scope.find('input[type="file"].js-dm-import-input').first();
+                    if (!$fileInput.length) {
+                        $fileInput = $('<input type="file" class="js-dm-import-input" accept=".csv,.xlsx,.xls" style="display:none;">');
+                        $scope.append($fileInput);
+                        $fileInput.on('change', function () {
+                            const file = this.files && this.files[0];
+                            if (file) {
+                                alert('Đã chọn tệp: ' + file.name + '. Màn hình này chưa cấu hình API import riêng.');
+                            }
+                        });
+                    }
+                    $fileInput.trigger('click');
+                    return;
+                }
+
+                if (action === 'search' || action === 'filter') {
+                    const $modal = $scope.find('.modal[id*="Search"], .modal[id*="search"], .modal[id*="Loc"], .modal[id*="loc"], .modal[id*="Filter"], .modal[id*="filter"]').first();
+                    if ($modal.length && window.bootstrap && bootstrap.Modal) {
+                        bootstrap.Modal.getOrCreateInstance($modal.get(0)).show();
+                        return;
+                    }
+                    const $filterBox = $scope.find('#khoFilterBox, #viTriFilterBox, [id*="FilterBox"], [id*="filterBox"]').first();
+                    if ($filterBox.length) {
+                        const hidden = $filterBox.css('display') === 'none';
+                        $filterBox.css('display', hidden ? '' : 'none');
+                        if (hidden) {
+                            $filterBox.find('input,select,textarea').first().trigger('focus');
+                        }
+                        return;
+                    }
+                    const $searchInput = $scope.find('input[type="search"], input[name="q"], input[placeholder*="Tìm"], input[placeholder*="tìm"]').first();
+                    if ($searchInput.length) {
+                        $searchInput.trigger('focus');
+                        return;
+                    }
+                    alert('Màn hình này chưa cấu hình vùng tìm kiếm/lọc.');
+                    return;
+                }
+
+                if (action === 'view') {
+                    const target = pickOneUrlFromSelected($selected);
+                    if (!target) {
+                        alert('Vui lòng chọn đúng 1 dòng để xem.');
+                        return;
+                    }
+                    window.open(target, '_blank');
+                    return;
+                }
+
+                if (action === 'print') {
+                    window.print();
+                    return;
+                }
+
+                if (action === 'refresh') {
+                    window.location.reload();
+                }
             }
 
             $(function () {
@@ -759,6 +1052,11 @@
                 }
                 $('.erp-toolbar').not('.erp-toolbar-auto').each(function () {
                     normalizeDanhMucToolbar($(this));
+                });
+
+                $(document).on('click', '.erp-toolbar .js-dm-fallback', function (e) {
+                    e.preventDefault();
+                    handleDanhMucFallbackAction($(this), $(this).closest('.erp-toolbar'));
                 });
             });
 

@@ -124,29 +124,44 @@
         text-align: right;
     }
     #chiTietTable {
-        min-width: 1280px;
+        min-width: 1650px;
     }
     #chiTietTable th,
     #chiTietTable td {
         white-space: nowrap;
         vertical-align: middle;
+        padding: .95rem .75rem;
     }
-    #chiTietTable select[name="hang_id[]"] {
-        min-width: 260px;
+    #chiTietTable thead th {
+        font-size: 11px;
+        font-weight: 700;
     }
-    #chiTietTable input[name="so_luong_nhan[]"] {
-        min-width: 96px;
+    #chiTietTable tbody td {
+        font-size: 13px;
     }
-    #chiTietTable input[name="don_gia[]"] {
-        min-width: 130px;
+    #chiTietTable input,
+    #chiTietTable select,
+    #chiTietTable .form-control {
+        min-width: 110px;
+        padding: .55rem .65rem;
+        font-size: 13px;
     }
-    #chiTietTable input[name="tk_no[]"],
-    #chiTietTable input[name="tk_co[]"] {
-        min-width: 120px;
+    #chiTietTable .lookup-wrap > .lookup-input {
+        padding-right: 42px;
     }
-    #chiTietTable .thanh-tien {
-        min-width: 140px;
+    #chiTietTable .lookup-wrap > .lookup-btn {
+        right: 8px;
     }
+    #chiTietTable th:nth-child(1), #chiTietTable td:nth-child(1) { min-width: 250px; }
+    #chiTietTable th:nth-child(2), #chiTietTable td:nth-child(2) { min-width: 240px; }
+    #chiTietTable th:nth-child(3), #chiTietTable td:nth-child(3) { min-width: 110px; }
+    #chiTietTable th:nth-child(4), #chiTietTable td:nth-child(4) { min-width: 120px; }
+    #chiTietTable th:nth-child(5), #chiTietTable td:nth-child(5) { min-width: 150px; }
+    #chiTietTable th:nth-child(6), #chiTietTable td:nth-child(6) { min-width: 130px; }
+    #chiTietTable th:nth-child(7), #chiTietTable td:nth-child(7) { min-width: 130px; }
+    #chiTietTable th:nth-child(8), #chiTietTable td:nth-child(8) { min-width: 150px; }
+    #chiTietTable th:nth-child(9), #chiTietTable td:nth-child(9) { min-width: 150px; }
+    #chiTietTable th:nth-child(10), #chiTietTable td:nth-child(10) { min-width: 70px; }
 </style>
 {% endblock %}
 
@@ -177,9 +192,8 @@
             <div class="col col-2 form-group">
                 <label class="form-label">Loại chứng từ <span class="text-danger">*</span></label>
                 <select name="loai_nhap" id="loaiChungTu" class="form-control" required style="font-weight:600;">
-                    <option value="1" selected>1 - Mua nhà cung cấp</option>
-                    <option value="2">2 - Khách hàng trả hàng</option>
-                    <option value="3">3 - Điều chỉnh tồn kho</option>
+                    <option value="1" {% if editing_phieu and editing_phieu.loai_nhap == '1' %}selected{% endif %}>1 - Mua nhà cung cấp</option>
+                    <option value="2" {% if editing_phieu and editing_phieu.loai_nhap == '2' or editing_phieu.loai_nhap == '3' %}selected{% endif %}>2 - Khách hàng trả hàng</option>
                 </select>
             </div>
             <div class="col col-4 form-group">
@@ -212,6 +226,13 @@
                 </datalist>
                 <small id="nccHint" class="text-muted">Chỉ hiện khách hàng có tích Nhà cung cấp.</small>
             </div>
+            <div class="col col-5 form-group" id="doiTraSourceWrap" style="display:none;">
+                <label class="form-label">Kế thừa từ phiếu đổi trả <span class="text-danger">*</span></label>
+                <select name="phieu_doi_tra_id" id="phieuDoiTraSelect" class="form-control" data-selected="{{ selected_doi_tra_id|default:'' }}" data-selected-label="{{ selected_doi_tra_label|default:'' }}">
+                    <option value="">-- Chọn phiếu đổi trả (trạng thái lập chứng từ) --</option>
+                </select>
+                <small class="text-muted">Chỉ hiển thị phiếu đổi trả đang ở bước 1 - Lập chứng từ.</small>
+            </div>
             <div class="col col-5 form-group">
                 <label class="form-label">Lý do / Ghi chú</label>
                 <input type="text" name="ghi_chu" class="form-control" placeholder="Ghi chú thêm...">
@@ -221,7 +242,7 @@
                 <select name="trang_thai" id="trangThaiXuLy" class="form-control" style="font-weight:600;">
                     <option value="1" selected>1 - Lập phiếu</option>
                     <option value="2">2 - Sổ kho</option>
-                    <option value="3">3 - Chuyển sổ</option>
+                    <option value="3">3 - Chuyển số cái</option>
                 </select>
             </div>
         </div>
@@ -232,31 +253,37 @@
             <table class="table" id="chiTietTable">
                 <thead>
                     <tr>
-                        <th style="width: 28%">Phụ tùng / Hàng hóa</th>
-                        <th style="width: 10%">Số lượng</th>
-                        <th style="width: 14%">Đơn giá nhập (VND)</th>
-                        <th style="width: 13%">TK Nợ</th>
-                        <th style="width: 13%">TK Có</th>
-                        <th style="width: 12%" class="text-right">Thành tiền</th>
-                        <th style="width: 8%">Gợi ý vị trí</th>
-                        <th style="width: 2%">Xóa</th>
+                        <th style="width: 13%">Mã hàng</th>
+                        <th style="width: 17%">Tên hàng</th>
+                        <th style="width: 6%">ĐVT</th>
+                        <th style="width: 8%">Số lượng</th>
+                        <th style="width: 11%">Đơn giá nhập (VND)</th>
+                        <th style="width: 10%">TK Nợ</th>
+                        <th style="width: 10%">TK Có</th>
+                        <th style="width: 10%" class="text-right">Thành tiền</th>
+                        <th style="width: 12%">Gợi ý vị trí</th>
+                        <th style="width: 3%">Xóa</th>
                     </tr>
                 </thead>
                 <tbody id="chiTietBody">
                     <tr class="item-row">
                         <td>
+                            <input type="hidden" name="doi_tra_ct_id[]" value="">
                             <div class="lookup-wrap">
-                                <select name="hang_id[]" class="form-control hang-select lookup-input" required>
+                                <input type="text" class="form-control hang-display lookup-input" placeholder="Nhập mã hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
+                                <select name="hang_id[]" class="form-control hang-select" style="display:none;" required>
                                     <option value="">-- Chọn vật tư --</option>
                                     {% for h in hang_list %}
-                                    <option value="{{ h.pk }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
+                                    <option value="{{ h.pk }}" data-ma="{{ h.ma_hang }}" data-ten="{{ h.ten_hang }}" data-dvt="{{ h.don_vi_tinh.ten|default:'' }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
                                     {% endfor %}
                                 </select>
                                 <button type="button" class="lookup-btn btn-search-hang" title="Tra cứu vật tư"><i class="fas fa-search"></i></button>
                             </div>
                         </td>
+                        <td><input type="text" class="form-control hang-ten-display" readonly></td>
+                        <td><input type="text" class="form-control hang-dvt-display text-center" readonly></td>
                         <td><input type="number" name="so_luong_nhan[]" class="form-control so-luong calc-input" min="1" step="1" required></td>
-                        <td><input type="number" name="don_gia[]" class="form-control don-gia calc-input" min="0" required></td>
+                        <td><input type="text" name="don_gia[]" class="form-control don-gia calc-input money-input" inputmode="numeric" value="0" required></td>
                         <td>
                             <div class="lookup-wrap">
                                 <input name="tk_no[]" class="form-control tk-no lookup-input" placeholder="VD: 156" autocomplete="off" />
@@ -276,7 +303,7 @@
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="8">
+                        <td colspan="10">
                             <button type="button" class="btn btn-secondary btn-sm" id="btnAddRow"><i class="fas fa-plus"></i> Thêm vật tư</button>
                         </td>
                     </tr>
@@ -381,6 +408,7 @@
     </form>
 </div>
 {% if copy_data %}{{ copy_data|json_script:"copyNhapData" }}{% endif %}
+{{ doi_tra_pending_payload|json_script:"doiTraNhapData" }}
 {% endblock %}
 
 {% block extra_js %}
@@ -399,8 +427,68 @@
     const tkPageSize = 5;
     const nccPageSize = 5;
     const hangPageSize = 5;
+    const doiTraPayload = JSON.parse((document.getElementById('doiTraNhapData') || {}).textContent || '[]');
     
     function fmtMoney(val) { return parseFloat(val || 0).toLocaleString('vi-VN') + ' đ'; }
+
+    function parseMoneyInput(value) {
+        const normalized = String(value || '').replace(/\s+/g, '').replace(/\./g, '').replace(/,/g, '.');
+        const parsed = parseFloat(normalized);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+
+    function formatMoneyInputValue(value) {
+        const parsed = parseMoneyInput(value);
+        if (!parsed) {
+            return '0';
+        }
+        return Math.round(parsed).toLocaleString('vi-VN');
+    }
+
+    function bindHangDisplayByRow(row) {
+        const $opt = row.find('.hang-select option:selected');
+        if ($opt.val()) {
+            row.find('.hang-display').val(String($opt.data('ma') || ''));
+            row.find('.hang-ten-display').val(String($opt.data('ten') || ''));
+            row.find('.hang-dvt-display').val(String($opt.data('dvt') || ''));
+        } else {
+            row.find('.hang-display').val('');
+            row.find('.hang-ten-display').val('');
+            row.find('.hang-dvt-display').val('');
+        }
+    }
+
+    function syncHangDisplayToSelectByRow(row) {
+        const input = row.find('.hang-display');
+        const select = row.find('.hang-select');
+        const keyword = String(input.val() || '').trim().toLowerCase();
+
+        if (!keyword) {
+            select.val('').trigger('change');
+            return false;
+        }
+
+        let matchedValue = '';
+        select.find('option').each(function() {
+            const opt = $(this);
+            const optVal = String(opt.val() || '');
+            if (!optVal) return;
+            const ma = String(opt.data('ma') || '').toLowerCase();
+            const ten = String(opt.data('ten') || '').toLowerCase();
+            const text = String(opt.text() || '').toLowerCase();
+            if (keyword === ma || keyword === ten || keyword === text) {
+                matchedValue = optVal;
+                return false;
+            }
+        });
+
+        if (matchedValue) {
+            select.val(matchedValue).trigger('change');
+            return true;
+        }
+
+        return false;
+    }
 
     function updateNccRequired() {
         const loai = $('#loaiChungTu').val();
@@ -412,12 +500,85 @@
             $('#nccRequiredMark').hide();
             $('#nccHint').text('Không bắt buộc với loại chứng từ 2/3.');
         }
+
+        const isReturnType = loai === '2';
+        $('#doiTraSourceWrap').toggle(isReturnType);
+        $('#phieuDoiTraSelect').prop('required', isReturnType);
+
+        if (!isReturnType) {
+            $('#phieuDoiTraSelect').val('');
+        }
+    }
+
+    function rebuildFromDoiTraSource() {
+        const sourceId = String($('#phieuDoiTraSelect').val() || '');
+        if (!sourceId) {
+            return;
+        }
+        const source = doiTraPayload.find(function(item) { return String(item.id) === sourceId; });
+        if (!source || !Array.isArray(source.rows) || source.rows.length === 0) {
+            return;
+        }
+
+        if (source.ngay_lap) {
+            $('input[name="ngay_lap"]').val(source.ngay_lap);
+        }
+        if (source.ngay_hach_toan) {
+            $('input[name="ngay_hach_toan"]').val(source.ngay_hach_toan);
+        }
+        if (source.kho_id_mac_dinh) {
+            $('select[name="kho"]').val(String(source.kho_id_mac_dinh));
+        }
+        const note = (source.ly_do_tra || source.dien_giai || '').trim();
+        if (note) {
+            $('input[name="ghi_chu"]').val(note);
+        }
+
+        const body = $('#chiTietBody');
+        const rowTemplate = $('.item-row:first').clone();
+        body.empty();
+
+        source.rows.forEach(function(item, index) {
+            let row = rowTemplate.clone();
+            row.find('input').val('');
+            row.find('select').val('');
+            fillNhapRow(row, item);
+            body.append(row);
+        });
+
+        tinhTongDH();
+        $('.item-row').each(function() {
+            goiYChoDong($(this));
+        });
+    }
+
+    function initDoiTraSourceSelect() {
+        const select = $('#phieuDoiTraSelect');
+        const currentVal = String(select.attr('data-selected') || select.val() || '');
+        const currentLabel = String(select.attr('data-selected-label') || '').trim();
+        const opts = ['<option value="">-- Chọn phiếu đổi trả (trạng thái lập chứng từ) --</option>'];
+
+        doiTraPayload.forEach(function(item) {
+            const label = item.so_phieu || 'DT';
+            opts.push('<option value="' + item.id + '">' + escapeHtml(label) + '</option>');
+        });
+
+        select.html(opts.join(''));
+        if (currentVal && !select.find('option[value="' + currentVal + '"]').length) {
+            const fallbackLabel = currentLabel || ('DT' + currentVal);
+            select.append('<option value="' + escapeHtml(currentVal) + '">' + escapeHtml(fallbackLabel) + '</option>');
+        }
+        if (currentVal) {
+            select.val(currentVal);
+        }
     }
 
     function fillNhapRow(row, item) {
+        row.find('input[name="doi_tra_ct_id[]"]').val(String(item.doi_tra_ct_id || ''));
         row.find('select[name="hang_id[]"]').val(String(item.hang_id || ''));
+        bindHangDisplayByRow(row);
         row.find('input[name="so_luong_nhan[]"]').val(Math.round(item.so_luong_nhan || 0));
-        row.find('input[name="don_gia[]"]').val(item.don_gia || 0);
+        row.find('input[name="don_gia[]"]').val(formatMoneyInputValue(item.don_gia || 0));
         row.find('input[name="tk_no[]"]').val(item.tk_no || '');
         row.find('input[name="tk_co[]"]').val(item.tk_co || '');
         const thanhTien = (parseFloat(item.don_gia || 0) || 0) * (parseFloat(item.so_luong_nhan || 0) || 0);
@@ -434,6 +595,10 @@
         if (data.ngay_lap) $('input[name="ngay_lap"]').val(data.ngay_lap);
         if (data.ngay_hach_toan) $('input[name="ngay_hach_toan"]').val(data.ngay_hach_toan);
         if (data.loai_nhap) $('#loaiChungTu').val(data.loai_nhap);
+        if (data.trang_thai) $('#trangThaiXuLy').val(String(data.trang_thai));
+        if (data.phieu_doi_tra_id) {
+            $('#phieuDoiTraSelect').attr('data-selected', String(data.phieu_doi_tra_id));
+        }
         if (data.kho_id) $('select[name="kho"]').val(data.kho_id);
         if (data.so_hd_ncc !== undefined) $('input[name="so_hd_ncc"]').val(data.so_hd_ncc || '');
         if (data.ngay_hd_ncc !== undefined) $('input[name="ngay_hd_ncc"]').val(data.ngay_hd_ncc || '');
@@ -457,6 +622,10 @@
         }
 
         updateNccRequired();
+        if (data.phieu_doi_tra_id) {
+            initDoiTraSourceSelect();
+            $('#phieuDoiTraSelect').val(String(data.phieu_doi_tra_id));
+        }
     }
 
     function setSelectedNcc(nccId, label) {
@@ -540,7 +709,7 @@
 
     function tinhTongRow(row) {
         let sl = parseFloat(row.find('.so-luong').val()) || 0;
-        let gia = parseFloat(row.find('.don-gia').val()) || 0;
+        let gia = parseMoneyInput(row.find('.don-gia').val());
         let thanh_tien = gia * sl;
         row.find('.thanh-tien').val(fmtMoney(thanh_tien));
         row.data('thanh_tien', thanh_tien);
@@ -797,7 +966,20 @@
         currentHangSelectElement = null;
     });
 
+    $(document).on('change blur', '.hang-display', function() {
+        syncHangDisplayToSelectByRow($(this).closest('tr'));
+    });
+
+    $(document).on('input', '.money-input', function() {
+        $(this).val(formatMoneyInputValue($(this).val()));
+    });
+
     $('#loaiChungTu').on('change', updateNccRequired);
+    $('#phieuDoiTraSelect').on('change', function() {
+        rebuildFromDoiTraSource();
+    });
+
+    initDoiTraSourceSelect();
     updateNccRequired();
 
     // Đồng bộ giá trị NCC ban đầu từ select sang ô hiển thị
@@ -815,16 +997,26 @@
             $('#nccSelect').focus();
             return;
         }
+        if ($('#loaiChungTu').val() === '2' && !$('#phieuDoiTraSelect').val()) {
+            e.preventDefault();
+            alert('Loại chứng từ 2 - Khách hàng trả hàng bắt buộc chọn phiếu đổi trả kế thừa.');
+            $('#phieuDoiTraSelect').focus();
+            return;
+        }
     });
 
     $(document).on('change', '.hang-select', function() {
         let row = $(this).closest('tr');
+        bindHangDisplayByRow(row);
         if ($(this).val()) {
             if (!row.find('.so-luong').val()) row.find('.so-luong').val(1);
-            if (!row.find('.don-gia').val()) row.find('.don-gia').val(0);
+            if (!row.find('.don-gia').val()) row.find('.don-gia').val('0');
             tinhTongRow(row);
             goiYChoDong(row);
         } else {
+            row.find('.hang-display').val('');
+            row.find('.hang-ten-display').val('');
+            row.find('.hang-dvt-display').val('');
             row.find('.thanh-tien').val('');
             row.find('.goi-y-vi-tri').html('<span class="text-muted">Chưa gợi ý</span>');
         }
@@ -832,6 +1024,9 @@
 
     $(document).on('input', '.calc-input', function() {
         let row = $(this).closest('tr');
+        if ($(this).hasClass('money-input')) {
+            $(this).val(formatMoneyInputValue($(this).val()));
+        }
         tinhTongRow(row);
         goiYChoDong(row);
     });
@@ -843,10 +1038,18 @@
     });
 
     $('#btnAddRow').click(function() {
+        if ($('#loaiChungTu').val() === '2') {
+            alert('Loại chứng từ 2 sử dụng dữ liệu kế thừa từ phiếu đổi trả.');
+            return;
+        }
         let newRow = $('.item-row:first').clone();
         newRow.find('input').val('');
+        newRow.find('input[name="doi_tra_ct_id[]"]').val('');
         newRow.find('.so-luong').val(1);
-        newRow.find('.don-gia').val(0);
+        newRow.find('.don-gia').val('0');
+        newRow.find('.hang-display').val('');
+        newRow.find('.hang-ten-display').val('');
+        newRow.find('.hang-dvt-display').val('');
         newRow.find('.thanh-tien').val('0 đ');
         newRow.find('.goi-y-vi-tri').html('<span class="text-muted">Chưa gợi ý</span>');
         newRow.data('thanh_tien', 0);

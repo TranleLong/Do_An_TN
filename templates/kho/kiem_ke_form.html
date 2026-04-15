@@ -1,49 +1,386 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-7">
-        <div class="card">
-            <div class="card-header">
-                <div class="card-title"><i class="fas fa-clipboard-list text-warning"></i> Tạo phiếu kiểm kê kho</div>
-            </div>
-            <div class="card-body">
-                <div class="alert alert-info" style="border-radius:10px; font-size:0.9rem;">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Sau khi tạo phiếu, hệ thống sẽ tự động tải danh sách <strong>tất cả mặt hàng</strong> đang có trong kho được chọn vào phiếu kiểm kê.
+<style>
+    .lookup-wrap {
+        position: relative;
+    }
+    .lookup-input {
+        padding-right: 42px;
+    }
+    .lookup-btn {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        border: 0;
+        background: transparent;
+        color: #6b7d94;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+    }
+    .lookup-btn:hover {
+        background: #eaf2fd;
+        color: #1d5ea8;
+    }
+    .lookup-row {
+        display: grid;
+        grid-template-columns: 160px 1fr;
+        gap: 10px;
+        width: 100%;
+        padding: 10px 12px;
+        border: 0;
+        border-bottom: 1px solid #e9eef5;
+        background: #fff;
+        text-align: left;
+    }
+    .lookup-row:hover {
+        background: #f2f8ff;
+    }
+    .lookup-row-code {
+        font-weight: 700;
+        color: #0d4b86;
+    }
+</style>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-clipboard-list text-primary"></i> Lập phiếu kiểm kê</div>
+    </div>
+    <div class="card-body">
+        <form method="post">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Ngày kiểm kê *</label>
+                    <input type="date" name="ngay_kiem_ke" class="form-control" value="{% if form_data.ngay_kiem_ke %}{{ form_data.ngay_kiem_ke }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}" required>
                 </div>
-                <form method="post">
-                    {% csrf_token %}
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Kho cần kiểm kê <span class="text-danger">*</span></label>
-                        <select name="kho" class="form-control" required>
-                            <option value="">-- Chọn kho --</option>
-                            {% for k in kho_list %}
-                            <option value="{{ k.pk }}">{{ k.ten_kho }}</option>
-                            {% endfor %}
-                        </select>
+                <div class="col-md-5">
+                    <label class="form-label">Kho *</label>
+                    <div class="lookup-wrap">
+                        <input type="text" name="kho_display" id="kho_display" class="form-control lookup-input" list="kho_suggestions" placeholder="Gõ để gợi ý kho..." autocomplete="off" value="{{ form_data.kho_display|default:'' }}">
+                        <button type="button" class="lookup-btn" data-lookup-field="kho" title="Chọn kho"><i class="fas fa-search"></i></button>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Ngày kiểm kê</label>
-                        <input type="date" name="ngay" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+                    <datalist id="kho_suggestions"></datalist>
+                    <input type="hidden" name="kho" id="kho_value" value="{{ form_data.kho|default:'' }}">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Khu vực kiểm kê *</label>
+                    <div class="lookup-wrap">
+                        <input type="text" name="khu_vuc_display" id="khu_vuc_display" class="form-control lookup-input" list="khu_vuc_suggestions" placeholder="Gõ để gợi ý khu vực..." autocomplete="off" value="{{ form_data.khu_vuc_display|default:'' }}">
+                        <button type="button" class="lookup-btn" data-lookup-field="khu_vuc" title="Chọn khu vực"><i class="fas fa-search"></i></button>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Người phụ trách kiểm kê</label>
-                        <input type="text" name="nguoi_kiem" class="form-control" placeholder="Tên người kiểm kê...">
+                    <datalist id="khu_vuc_suggestions"></datalist>
+                    <input type="hidden" name="khu_vuc" id="khu_vuc_value" value="{{ form_data.khu_vuc|default:'' }}">
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Vị trí hàng lỗi</label>
+                    <div class="lookup-wrap">
+                        <input type="text" name="vi_tri_hang_loi_display" id="vi_tri_hang_loi_display" class="form-control lookup-input" list="vi_tri_hang_loi_suggestions" placeholder="Chọn vị trí hàng lỗi nếu có..." autocomplete="off" value="{{ form_data.vi_tri_hang_loi_display|default:'' }}">
+                        <button type="button" class="lookup-btn" data-lookup-field="vi_tri_hang_loi" title="Chọn vị trí hàng lỗi"><i class="fas fa-search"></i></button>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Ghi chú</label>
-                        <textarea name="ghi_chu" class="form-control" rows="3" placeholder="Ghi chú thêm về đợt kiểm kê..."></textarea>
+                    <datalist id="vi_tri_hang_loi_suggestions"></datalist>
+                    <input type="hidden" name="vi_tri_hang_loi" id="vi_tri_hang_loi_value" value="{{ form_data.vi_tri_hang_loi|default:'' }}">
+                </div>
+
+                <div class="col-md-6">
+                    <label class="form-label">Phạm vi nhóm hàng</label>
+                    <div class="lookup-wrap">
+                        <input type="text" name="nhom_hang_display" id="nhom_hang_display" class="form-control lookup-input" list="nhom_hang_suggestions" placeholder="Gõ để gợi ý nhóm hàng..." autocomplete="off" value="{{ form_data.nhom_hang_display|default:'' }}">
+                        <button type="button" class="lookup-btn" data-lookup-field="nhom_hang" title="Chọn nhóm hàng"><i class="fas fa-search"></i></button>
                     </div>
-                    <div class="d-flex gap-2 justify-content-end border-top pt-3 mt-4">
-                        <a href="{% url 'kiem_ke_list' %}" class="btn btn-secondary">Hủy</a>
-                        <button type="submit" class="btn btn-warning text-white fw-bold">
-                            <i class="fas fa-clipboard-check me-1"></i> Tạo phiếu kiểm kê
-                        </button>
+                    <datalist id="nhom_hang_suggestions"></datalist>
+                    <input type="hidden" name="nhom_hang" id="nhom_hang_value" value="{{ form_data.nhom_hang|default:'' }}">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Người kiểm kê *</label>
+                    <div class="lookup-wrap">
+                        <input type="text" name="nguoi_kiem_display" id="nguoi_kiem_display" class="form-control lookup-input" list="nguoi_kiem_suggestions" placeholder="Gõ để gợi ý nhân viên..." autocomplete="off" value="{{ form_data.nguoi_kiem_display|default:'' }}">
+                        <button type="button" class="lookup-btn" data-lookup-field="nguoi_kiem" title="Chọn nhân viên"><i class="fas fa-search"></i></button>
                     </div>
-                </form>
+                    <datalist id="nguoi_kiem_suggestions"></datalist>
+                    <input type="hidden" name="nguoi_kiem" id="nguoi_kiem_value" value="{{ form_data.nguoi_kiem|default:'' }}">
+                </div>
+
+                <div class="col-12">
+                    <label class="form-label">Ghi chú</label>
+                    <textarea name="ghi_chu" rows="3" class="form-control" placeholder="Nội dung bổ sung cho đợt kiểm kê">{{ form_data.ghi_chu|default:'' }}</textarea>
+                </div>
+            </div>
+            <div class="mt-4 d-flex justify-content-end gap-2">
+                <a href="{% url 'kiem_ke_list' %}" class="btn btn-light border">Quay lại</a>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-check me-1"></i>Tạo phiếu</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="lookupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="lookupModalTitle">Chọn dữ liệu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="p-2 border-bottom">
+                    <input type="text" class="form-control" id="lookupModalSearch" placeholder="Gõ để lọc...">
+                </div>
+                <div id="lookupModalList"></div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    (function () {
+        const data = {
+            kho: [
+                {% for k in kho_list %}
+                { id: '{{ k.pk }}', code: '{{ k.ma_kho|escapejs }}', name: '{{ k.ten_kho|escapejs }}' },
+                {% endfor %}
+            ],
+            khu_vuc: [
+                {% for vt in vi_tri_list %}
+                { id: '{{ vt.pk }}', khoId: '{{ vt.kho_id }}', code: '{{ vt.ma_vi_tri|escapejs }}', name: '{{ vt.kho.ma_kho|escapejs }} - {{ vt.ma_vi_tri|escapejs }}' },
+                {% endfor %}
+            ],
+            vi_tri_hang_loi: [
+                {% for vt in vi_tri_list %}
+                { id: '{{ vt.pk }}', khoId: '{{ vt.kho_id }}', code: '{{ vt.ma_vi_tri|escapejs }}', name: '{{ vt.kho.ma_kho|escapejs }} - {{ vt.ma_vi_tri|escapejs }}' },
+                {% endfor %}
+            ],
+            nhom_hang: [
+                {% for n in nhom_hang_list %}
+                { id: '{{ n.pk }}', code: '{{ n.ma_nhom|escapejs }}', name: '{{ n.ten_nhom|escapejs }}' },
+                {% endfor %}
+            ],
+            nguoi_kiem: [
+                {% for nv in nhan_vien_list %}
+                { id: '{{ nv.pk }}', code: '{{ nv.ma_kh|escapejs }}', name: '{{ nv.ten_kh|escapejs }}' },
+                {% endfor %}
+            ]
+        };
+
+        const fields = {
+            kho: { display: document.getElementById('kho_display'), hidden: document.getElementById('kho_value'), datalist: document.getElementById('kho_suggestions'), title: 'Chọn kho' },
+            khu_vuc: { display: document.getElementById('khu_vuc_display'), hidden: document.getElementById('khu_vuc_value'), datalist: document.getElementById('khu_vuc_suggestions'), title: 'Chọn khu vực kiểm kê' },
+            vi_tri_hang_loi: { display: document.getElementById('vi_tri_hang_loi_display'), hidden: document.getElementById('vi_tri_hang_loi_value'), datalist: document.getElementById('vi_tri_hang_loi_suggestions'), title: 'Chọn vị trí hàng lỗi' },
+            nhom_hang: { display: document.getElementById('nhom_hang_display'), hidden: document.getElementById('nhom_hang_value'), datalist: document.getElementById('nhom_hang_suggestions'), title: 'Chọn nhóm hàng' },
+            nguoi_kiem: { display: document.getElementById('nguoi_kiem_display'), hidden: document.getElementById('nguoi_kiem_value'), datalist: document.getElementById('nguoi_kiem_suggestions'), title: 'Chọn người kiểm kê' }
+        };
+
+        const modalEl = document.getElementById('lookupModal');
+        const modalSearch = document.getElementById('lookupModalSearch');
+        const modalTitle = document.getElementById('lookupModalTitle');
+        const modalList = document.getElementById('lookupModalList');
+        if (!modalEl || !modalSearch || !modalTitle || !modalList) {
+            return;
+        }
+        let bootstrapModal = null;
+        let fallbackBackdrop = null;
+
+        function showLookupModal() {
+            if (window.bootstrap && window.bootstrap.Modal) {
+                if (!bootstrapModal) {
+                    bootstrapModal = new window.bootstrap.Modal(modalEl);
+                }
+                bootstrapModal.show();
+                return;
+            }
+
+            modalEl.style.display = 'block';
+            modalEl.classList.add('show');
+            modalEl.setAttribute('aria-modal', 'true');
+            modalEl.removeAttribute('aria-hidden');
+            document.body.classList.add('modal-open');
+
+            if (!fallbackBackdrop) {
+                fallbackBackdrop = document.createElement('div');
+                fallbackBackdrop.className = 'modal-backdrop fade show';
+                fallbackBackdrop.addEventListener('click', hideLookupModal);
+            }
+            document.body.appendChild(fallbackBackdrop);
+        }
+
+        function hideLookupModal() {
+            if (window.bootstrap && window.bootstrap.Modal) {
+                if (!bootstrapModal) {
+                    bootstrapModal = new window.bootstrap.Modal(modalEl);
+                }
+                bootstrapModal.hide();
+                return;
+            }
+
+            modalEl.style.display = 'none';
+            modalEl.classList.remove('show');
+            modalEl.setAttribute('aria-hidden', 'true');
+            modalEl.removeAttribute('aria-modal');
+            document.body.classList.remove('modal-open');
+            if (fallbackBackdrop && fallbackBackdrop.parentNode) {
+                fallbackBackdrop.parentNode.removeChild(fallbackBackdrop);
+            }
+        }
+
+        let activeField = null;
+
+        function normalize(text) {
+            return (text || '').toLowerCase().trim();
+        }
+
+        function getLabel(item) {
+            if (item.code && item.name) {
+                return item.code + ' - ' + item.name;
+            }
+            return item.name || item.code || '';
+        }
+
+        function getItems(fieldKey) {
+            if (fieldKey === 'khu_vuc' || fieldKey === 'vi_tri_hang_loi') {
+                const khoId = fields.kho.hidden.value;
+                if (!khoId) {
+                    return [];
+                }
+                return data.khu_vuc.filter(function (it) { return String(it.khoId) === String(khoId); });
+            }
+            return data[fieldKey] || [];
+        }
+
+        function setFieldValue(fieldKey, item) {
+            const field = fields[fieldKey];
+            if (!field) {
+                return;
+            }
+            if (!item) {
+                field.display.value = '';
+                field.hidden.value = '';
+                return;
+            }
+            field.display.value = getLabel(item);
+            field.hidden.value = item.id;
+
+            if (fieldKey === 'kho') {
+                setFieldValue('khu_vuc', null);
+                setFieldValue('vi_tri_hang_loi', null);
+                renderDatalist('khu_vuc');
+                renderDatalist('vi_tri_hang_loi');
+            }
+        }
+
+        function renderDatalist(fieldKey) {
+            const field = fields[fieldKey];
+            if (!field || !field.datalist) {
+                return;
+            }
+            const items = getItems(fieldKey);
+            field.datalist.innerHTML = items.map(function (it) {
+                const label = getLabel(it).replace(/"/g, '&quot;');
+                return '<option value="' + label + '"></option>';
+            }).join('');
+        }
+
+        function syncHiddenByDisplay(fieldKey) {
+            const field = fields[fieldKey];
+            if (!field) {
+                return;
+            }
+            const typed = normalize(field.display.value);
+            if (!typed) {
+                field.hidden.value = '';
+                return;
+            }
+
+            const matched = getItems(fieldKey).find(function (it) {
+                return normalize(getLabel(it)) === typed;
+            });
+            field.hidden.value = matched ? matched.id : '';
+        }
+
+        function renderModalList(fieldKey, keyword) {
+            const key = normalize(keyword);
+            const rows = getItems(fieldKey).filter(function (it) {
+                const text = normalize(getLabel(it));
+                return !key || text.indexOf(key) >= 0;
+            });
+
+            if (!rows.length) {
+                modalList.innerHTML = '<div class="text-center text-muted py-3">Không có dữ liệu phù hợp.</div>';
+                return;
+            }
+
+            modalList.innerHTML = rows.map(function (it) {
+                return '<button type="button" class="lookup-row" data-id="' + it.id + '">' +
+                    '<div class="lookup-row-code">' + (it.code || '') + '</div>' +
+                    '<div>' + (it.name || '') + '</div>' +
+                '</button>';
+            }).join('');
+        }
+
+        Object.keys(fields).forEach(function (fieldKey) {
+            renderDatalist(fieldKey);
+            const field = fields[fieldKey];
+            field.display.addEventListener('input', function () {
+                syncHiddenByDisplay(fieldKey);
+            });
+            field.display.addEventListener('blur', function () {
+                syncHiddenByDisplay(fieldKey);
+            });
+        });
+
+        document.querySelectorAll('[data-lookup-field]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                activeField = btn.getAttribute('data-lookup-field');
+                if (!activeField || !fields[activeField]) {
+                    return;
+                }
+                if (activeField === 'khu_vuc' && !fields.kho.hidden.value) {
+                    modalTitle.textContent = fields[activeField].title;
+                    modalSearch.value = '';
+                    modalList.innerHTML = '<div class="text-center text-muted py-3">Vui lòng chọn kho trước, sau đó chọn khu vực kiểm kê.</div>';
+                    showLookupModal();
+                    return;
+                }
+                modalTitle.textContent = fields[activeField].title;
+                modalSearch.value = '';
+                renderModalList(activeField, '');
+                showLookupModal();
+                setTimeout(function () { modalSearch.focus(); }, 100);
+            });
+        });
+
+        modalSearch.addEventListener('input', function () {
+            if (!activeField) {
+                return;
+            }
+            renderModalList(activeField, modalSearch.value);
+        });
+
+        modalList.addEventListener('click', function (event) {
+            const row = event.target.closest('.lookup-row');
+            if (!row || !activeField) {
+                return;
+            }
+            const item = getItems(activeField).find(function (it) { return String(it.id) === String(row.dataset.id); });
+            setFieldValue(activeField, item || null);
+            hideLookupModal();
+        });
+
+        modalEl.querySelectorAll('[data-bs-dismiss="modal"], .btn-close').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                hideLookupModal();
+            });
+        });
+
+        document.querySelector('form').addEventListener('submit', function (event) {
+            ['kho', 'khu_vuc', 'nguoi_kiem'].forEach(function (fieldKey) {
+                syncHiddenByDisplay(fieldKey);
+            });
+            syncHiddenByDisplay('nhom_hang');
+        });
+
+        renderDatalist('khu_vuc');
+    })();
+</script>
 {% endblock %}

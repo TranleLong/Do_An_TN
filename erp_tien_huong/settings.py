@@ -39,6 +39,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'erp_tien_huong.middleware.ProtectedErrorMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 

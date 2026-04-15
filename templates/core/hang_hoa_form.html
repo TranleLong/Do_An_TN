@@ -17,7 +17,13 @@
         <div class="form-row">
             <div class="col col-4 form-group">
                 <label class="form-label">Mã hàng <span class="text-danger">*</span></label>
-                <input type="text" name="ma_hang" class="form-control" value="{{ hang.ma_hang }}" required autofocus>
+                {% if hang and hang.pk %}
+                <input type="text" name="ma_hang" class="form-control" value="{{ hang.ma_hang }}" readonly>
+                <small class="text-muted">Mã hàng không cho phép chỉnh sửa.</small>
+                {% else %}
+                <input type="text" name="ma_hang" class="form-control" value="{{ hang.ma_hang }}" required autofocus readonly>
+                <small class="text-muted">Mã tự động (không cần nhập)</small>
+                {% endif %}
             </div>
             <div class="col col-8 form-group">
                 <label class="form-label">Tên phụ tùng/hàng hóa <span class="text-danger">*</span></label>
@@ -27,9 +33,9 @@
 
         <div class="form-row">
             <div class="col col-4 form-group">
-                <label class="form-label">Nhóm hàng <span class="text-danger">*</span></label>
-                <select name="nhom_hang" class="form-control" required>
-                    <option value="">-- Chọn nhóm --</option>
+                <label class="form-label">Nhóm hàng</label>
+                <select name="nhom_hang" class="form-control">
+                    <option value="">-- Không chọn nhóm --</option>
                     {% for n in nhom_list %}
                     <option value="{{ n.pk }}" {% if hang.nhom_hang_id == n.pk %}selected{% endif %}>{{ n.ten_nhom }}</option>
                     {% endfor %}

@@ -1,105 +1,144 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block content %}
-<div class="card mb-4">
-    <div class="card-header">
-        <div class="card-title">
-            <i class="fas fa-clipboard-list text-warning"></i>
-            Kiểm kê kho: <strong>{{ kk.kho.ten_kho }}</strong> — {{ kk.ngay_kiem_ke|date:"d/m/Y" }}
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card-title mb-0">
+            <i class="fas fa-clipboard-check text-warning"></i>
+            Phiếu {{ kk.ma_phieu }} - {{ kk.kho.ma_kho }} {{ kk.kho.ten_kho }}
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 align-items-center">
             {% if kk.trang_thai == '1' %}
-                <span class="badge badge-warning align-self-center"><i class="fas fa-file-alt me-1"></i>1 - Lập phiếu</span>
+                <span class="badge badge-warning">Chờ kiểm kê</span>
             {% elif kk.trang_thai == '2' %}
-                <span class="badge badge-success align-self-center"><i class="fas fa-boxes me-1"></i>2 - Nhập kho</span>
+                <span class="badge badge-danger">Chờ điều chỉnh</span>
             {% else %}
-                <span class="badge badge-info align-self-center"><i class="fas fa-book me-1"></i>3 - Sổ cái</span>
+                <span class="badge badge-success">Hoàn thành</span>
+            {% endif %}
+            <a href="{% url 'kiem_ke_in' kk.pk %}" target="_blank" class="btn btn-sm btn-outline-secondary">In phiếu</a>
+            {% if not phieu_dieu_chinh %}
+            <form method="post" action="{% url 'kiem_ke_xoa' kk.pk %}" class="d-inline" onsubmit="return confirm('Xóa phiếu kiểm kê {{ kk.ma_phieu }}?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger">Xóa phiếu</button>
+            </form>
             {% endif %}
         </div>
     </div>
-
     <div class="card-body">
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <small class="text-muted">Người kiểm kê</small>
-                <div class="fw-semibold">{{ kk.nguoi_kiem|default:"Không rõ" }}</div>
-            </div>
-            <div class="col-md-3">
-                <small class="text-muted">Ngày tạo</small>
-                <div class="fw-semibold">{{ kk.ngay_tao|date:"d/m/Y H:i" }}</div>
-            </div>
-            <div class="col-md-6">
-                <small class="text-muted">Ghi chú</small>
-                <div class="fw-semibold">{{ kk.ghi_chu|default:"—" }}</div>
-            </div>
+        <div class="row mb-3">
+            <div class="col-md-3"><small class="text-muted">Ngày kiểm kê</small><div>{{ kk.ngay_kiem_ke|date:'d/m/Y' }}</div></div>
+            <div class="col-md-3"><small class="text-muted">Người kiểm kê</small><div>{{ kk.nguoi_kiem|default:'-' }}</div></div>
+            <div class="col-md-3"><small class="text-muted">Khu vực</small><div>{{ kk.khu_vuc|default:'-' }}</div></div>
+            <div class="col-md-3"><small class="text-muted">Vị trí hàng lỗi</small><div>{% if kk.vi_tri_hang_loi %}{{ kk.vi_tri_hang_loi.ma_vi_tri }}{% else %}-{% endif %}</div></div>
+            <div class="col-md-3"><small class="text-muted">Nhóm hàng</small><div>{% if kk.nhom_hang %}{{ kk.nhom_hang.ten_nhom }}{% else %}Tất cả{% endif %}</div></div>
         </div>
 
-        {% if kk.trang_thai == '1' %}
-        <div class="alert alert-warning" style="border-radius:10px; font-size:0.9rem;">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            Nhập số lượng <strong>thực tế</strong> đếm được vào cột "SL Thực tế".
+        {% if kk.trang_thai != '3' %}
+        <div class="alert alert-info">
+            Có thể nhập riêng số lượng hàng lỗi theo từng dòng. Hàng lỗi sẽ được chuyển sang vị trí lỗi khi duyệt phiếu điều chỉnh.
         </div>
         {% endif %}
 
-        <form method="post">
+        <form method="post" class="mb-3">
             {% csrf_token %}
             <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-light">
+                <table class="table table-sm align-middle">
+                    <thead>
                         <tr>
                             <th>Mã hàng</th>
                             <th>Tên hàng</th>
-                            <th class="text-center" style="color:#1d4ed8;">SL Sổ sách</th>
-                            <th class="text-center" style="color:#f59e0b;">SL Thực tế</th>
-                            <th class="text-center">Chênh lệch</th>
-                            <th>Ghi chú</th>
+                            <th>ĐVT</th>
+                            <th class="text-end">SL hệ thống</th>
+                            <th class="text-end">SL hàng lỗi</th>
+                            <th class="text-end">SL tốt</th>
+                            <th class="text-end">SL thực tế</th>
+                            <th class="text-end">Chênh lệch</th>
+                            <th>Tình trạng</th>
+                            <th>Lý do chênh lệch</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for ct in chi_tiet %}
                         <tr>
-                            <input type="hidden" name="ct_id[]" value="{{ ct.pk }}">
-                            <td><code class="text-primary">{{ ct.hang_hoa.ma_hang }}</code></td>
+                            <td>{{ ct.hang_hoa.ma_hang }}</td>
                             <td>{{ ct.hang_hoa.ten_hang }}</td>
-                            <td class="text-center fw-bold text-primary">{{ ct.so_luong_so_sach|floatformat:0|intcomma }}</td>
-                            <td class="text-center">
-                                {% if kk.trang_thai == '1' %}
-                                    <input type="number" name="sl_thuc_te[]" class="form-control form-control-sm text-center text-warning fw-bold" value="{{ ct.so_luong_thuc_te|floatformat:0 }}" style="width: 90px; margin: 0 auto;" step="1" min="0">
+                            <td>{{ ct.hang_hoa.don_vi_tinh.ten_dvt|default:'-' }}</td>
+                            <td class="text-end">{{ ct.so_luong_so_sach|floatformat:0|intcomma }}</td>
+                            <td class="text-end">
+                                <input type="number" name="sl_loi[]" min="0" step="1" class="form-control form-control-sm text-end" value="{{ ct.so_luong_loi|default:0|floatformat:0 }}" style="max-width:120px; margin-left:auto;" {% if kk.trang_thai == '3' %}readonly{% endif %}>
+                            </td>
+                            <td class="text-end fw-semibold text-warning">
+                                {{ ct.so_luong_tot|default:0|floatformat:0|intcomma }}
+                            </td>
+                            <td class="text-end">
+                                <input type="hidden" name="ct_id[]" value="{{ ct.pk }}">
+                                {% if kk.trang_thai != '3' %}
+                                <input type="number" name="sl_thuc_te[]" min="0" step="1" class="form-control form-control-sm text-end" value="{{ ct.so_luong_thuc_te|default:0|floatformat:0 }}" style="max-width:130px; margin-left:auto;">
                                 {% else %}
-                                    <span class="fw-bold text-warning">{{ ct.so_luong_thuc_te|floatformat:0|intcomma }}</span>
+                                {{ ct.so_luong_thuc_te|floatformat:0|intcomma }}
                                 {% endif %}
                             </td>
-                            <td class="text-center">
-                                {% if ct.chenh_lech > 0 %}
-                                    <span class="badge badge-success">+{{ ct.chenh_lech }}</span>
-                                {% elif ct.chenh_lech < 0 %}
-                                    <span class="badge badge-danger">{{ ct.chenh_lech }}</span>
+                            <td class="text-end">
+                                {% if ct.chenh_lech > 0 %}<span class="text-success">+{{ ct.chenh_lech|floatformat:0|intcomma }}</span>{% elif ct.chenh_lech < 0 %}<span class="text-danger">{{ ct.chenh_lech|floatformat:0|intcomma }}</span>{% else %}<span class="text-muted">0</span>{% endif %}
+                            </td>
+                            <td>
+                                {% if kk.trang_thai != '3' %}
+                                <select name="tinh_trang[]" class="form-control form-control-sm">
+                                    <option value="tot_100" {% if ct.tinh_trang == 'tot_100' %}selected{% endif %}>Tốt 100%</option>
+                                    <option value="hu_hong" {% if ct.tinh_trang == 'hu_hong' %}selected{% endif %}>Hư hỏng</option>
+                                    <option value="thieu_hang" {% if ct.tinh_trang == 'thieu_hang' %}selected{% endif %}>Thiếu hàng</option>
+                                </select>
                                 {% else %}
-                                    <span class="badge" style="background:#e5e7eb; color:#6b7280;">0</span>
+                                {{ ct.get_tinh_trang_display }}
                                 {% endif %}
                             </td>
-                            <td class="text-muted" style="font-size:0.85rem;">{{ ct.ly_do|default:"—" }}</td>
+                            <td>
+                                {% if kk.trang_thai != '3' %}
+                                <input type="text" name="ly_do[]" class="form-control form-control-sm" value="{{ ct.ly_do|default:'' }}" placeholder="Nhập lý do nếu có chênh lệch">
+                                {% else %}
+                                {{ ct.ly_do|default:'-' }}
+                                {% endif %}
+                            </td>
                         </tr>
                         {% empty %}
-                        <tr>
-                            <td colspan="6" class="text-center text-muted py-4">Không có dữ liệu chi tiết.</td>
-                        </tr>
+                        <tr><td colspan="8" class="text-center text-muted py-3">Không có chi tiết kiểm kê</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
-            {% if kk.trang_thai == '1' %}
-            <div class="d-flex justify-content-end gap-2 border-top pt-3 mt-3">
-                <a href="{% url 'kiem_ke_list' %}" class="btn btn-secondary">Quay lại</a>
-                {% if kk.trang_thai == '1' %}
-                <button type="submit" name="action" value="save" class="btn btn-warning text-white fw-bold">
-                    <i class="fas fa-save me-1"></i> Lưu số liệu kiểm kê
-                </button>
-                {% endif %}
+            {% if kk.trang_thai != '3' %}
+            <div class="d-flex justify-content-end gap-2">
+                <button type="submit" name="action" value="save_numbers" class="btn btn-outline-primary">Lưu số liệu kiểm kê</button>
+                <button type="submit" name="action" value="confirm_numbers" class="btn btn-primary">Xác nhận đối chiếu</button>
             </div>
             {% endif %}
         </form>
+
+        {% if kk.trang_thai == '2' and not phieu_dieu_chinh %}
+        <div class="card border-danger mt-3">
+            <div class="card-header bg-light"><strong>Lập phiếu điều chỉnh chênh lệch</strong></div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create_adjustment">
+                    <div class="mb-3">
+                        <label class="form-label">Lý do điều chỉnh *</label>
+                        <textarea name="ly_do_dieu_chinh" class="form-control" rows="3" placeholder="Bắt buộc nhập lý do"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-danger">Tạo phiếu điều chỉnh</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if phieu_dieu_chinh %}
+        <div class="alert alert-warning mt-3 mb-0">
+            Phiếu này đã có phiếu điều chỉnh: <strong>{{ phieu_dieu_chinh.so_phieu }}</strong>.
+            <a href="{% url 'kiem_ke_dieu_chinh_detail' phieu_dieu_chinh.pk %}" class="alert-link">Xem chi tiết</a>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

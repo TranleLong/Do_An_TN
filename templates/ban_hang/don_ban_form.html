@@ -80,16 +80,45 @@
         padding: 14px;
     }
     #chiTietTable {
-        min-width: 1180px;
+        min-width: 1500px;
     }
-    #chiTietTable .don-gia,
-    #chiTietTable .thanh-tien {
-        min-width: 120px;
+    #chiTietTable th,
+    #chiTietTable td {
+        white-space: nowrap;
+        vertical-align: middle;
+        padding: .95rem .75rem;
     }
-    #chiTietTable .chiet-khau,
-    #chiTietTable .thue-vat {
-        min-width: 78px;
+    #chiTietTable thead th {
+        font-size: 11px;
+        font-weight: 700;
     }
+    #chiTietTable tbody td {
+        font-size: 13px;
+    }
+    #chiTietTable input,
+    #chiTietTable select,
+    #chiTietTable .form-control {
+        min-width: 110px;
+        padding: .55rem .65rem;
+        font-size: 13px;
+    }
+    #chiTietTable .lookup-box > .lookup-input {
+        padding-right: 46px;
+    }
+    #chiTietTable .lookup-box > .lookup-icon-btn {
+        right: 12px;
+    }
+    #chiTietTable th:nth-child(1), #chiTietTable td:nth-child(1) { min-width: 250px; }
+    #chiTietTable th:nth-child(2), #chiTietTable td:nth-child(2) { min-width: 220px; }
+    #chiTietTable th:nth-child(3), #chiTietTable td:nth-child(3) { min-width: 110px; }
+    #chiTietTable th:nth-child(4), #chiTietTable td:nth-child(4) { min-width: 100px; }
+    #chiTietTable th:nth-child(5), #chiTietTable td:nth-child(5) { min-width: 100px; }
+    #chiTietTable th:nth-child(6), #chiTietTable td:nth-child(6) { min-width: 130px; }
+    #chiTietTable th:nth-child(7), #chiTietTable td:nth-child(7) { min-width: 90px; }
+    #chiTietTable th:nth-child(8), #chiTietTable td:nth-child(8) { min-width: 90px; }
+    #chiTietTable th:nth-child(9), #chiTietTable td:nth-child(9) { min-width: 150px; }
+    #chiTietTable th:nth-child(10), #chiTietTable td:nth-child(10) { min-width: 130px; }
+    #chiTietTable th:nth-child(11), #chiTietTable td:nth-child(11) { min-width: 70px; }
     #chiTietTable input[type=number]::-webkit-outer-spin-button,
     #chiTietTable input[type=number]::-webkit-inner-spin-button {
         -webkit-appearance: none;
@@ -218,15 +247,17 @@
             <table class="table" id="chiTietTable">
                 <thead>
                     <tr>
-                        <th style="width: 28%">Mã hàng <span class="text-danger">*</span></th>
-                        <th style="width: 9%">SL tồn</th>
-                        <th style="width: 8%">Số lượng</th>
-                        <th style="width: 12%">Giá bán</th>
-                        <th style="width: 8%">CK %</th>
-                        <th style="width: 8%">Thuế %</th>
+                        <th style="width: 12%">Mã hàng <span class="text-danger">*</span></th>
+                        <th style="width: 16%">Tên hàng</th>
+                        <th style="width: 6%">ĐVT</th>
+                        <th style="width: 7%">SL tồn</th>
+                        <th style="width: 7%">Số lượng</th>
+                        <th style="width: 9%">Giá bán</th>
+                        <th style="width: 6%">CK %</th>
+                        <th style="width: 6%">Thuế %</th>
                         <th style="width: 12%">Ngày giao <span class="text-danger">*</span></th>
-                        <th style="width: 12%">Tiền hàng</th>
-                        <th style="width: 3%"></th>
+                        <th style="width: 11%">Tiền hàng</th>
+                        <th style="width: 4%"></th>
                     </tr>
                 </thead>
                 <tbody id="chiTietBody">
@@ -235,19 +266,21 @@
                         <tr class="item-row">
                             <td>
                                 <div class="lookup-box">
-                                    <input type="text" class="form-control lookup-input lookup-display hang-display" list="hang_lookup_list" placeholder="Nhập mã/tên hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
+                                    <input type="text" class="form-control lookup-input lookup-display hang-display" list="hang_lookup_list" placeholder="Nhập mã hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
                                     <select name="hang_id[]" class="form-control hang-select" style="display:none;" required>
                                         <option value="">-- Chọn --</option>
                                         {% for h in hang_list %}
-                                        <option value="{{ h.pk }}" data-ma="{{ h.ma_hang }}" data-ten="{{ h.ten_hang }}" {% if ct.hang_hoa_id == h.pk %}selected{% endif %}>{{ h.ma_hang }} - {{ h.ten_hang }}</option>
+                                        <option value="{{ h.pk }}" data-ma="{{ h.ma_hang }}" data-ten="{{ h.ten_hang }}" data-dvt="{{ h.don_vi_tinh.ten|default:'' }}" {% if ct.hang_hoa_id == h.pk %}selected{% endif %}>{{ h.ma_hang }} - {{ h.ten_hang }}</option>
                                         {% endfor %}
                                     </select>
                                     <button type="button" class="lookup-icon-btn btn-search-hang" title="Tra cứu hàng"><i class="fas fa-search"></i></button>
                                 </div>
                             </td>
+                            <td><input type="text" class="form-control hang-ten-display" value="{{ ct.hang_hoa.ten_hang }}" readonly></td>
+                            <td><input type="text" class="form-control hang-dvt-display text-center" value="{{ ct.hang_hoa.don_vi_tinh.ten|default:'' }}" readonly></td>
                             <td><input type="text" class="form-control ton-kho text-center" readonly></td>
                             <td><input type="number" name="so_luong[]" class="form-control so-luong calc-input" min="1" step="1" value="{{ ct.so_luong|floatformat:0 }}" required></td>
-                            <td><input type="number" name="don_gia[]" class="form-control don-gia calc-input" min="0" value="{{ ct.don_gia }}" required></td>
+                            <td><input type="text" name="don_gia[]" class="form-control don-gia calc-input money-input" inputmode="numeric" value="{{ ct.don_gia|floatformat:0 }}" required></td>
                             <td><input type="number" name="chiet_khau[]" class="form-control chiet-khau calc-input" min="0" max="100" step="0.01" value="{{ ct.chiet_khau }}"></td>
                             <td><input type="number" name="vat[]" class="form-control thue-vat calc-input" min="0" step="0.01" value="{{ ct.thue_vat }}"></td>
                             <td><input type="date" name="ngay_giao[]" class="form-control" value="{{ ct.ngay_giao|date:'Y-m-d' }}" required></td>
@@ -259,19 +292,21 @@
                         <tr class="item-row">
                             <td>
                                 <div class="lookup-box">
-                                    <input type="text" class="form-control lookup-input lookup-display hang-display" list="hang_lookup_list" placeholder="Nhập mã/tên hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
+                                    <input type="text" class="form-control lookup-input lookup-display hang-display" list="hang_lookup_list" placeholder="Nhập mã hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
                                     <select name="hang_id[]" class="form-control hang-select" style="display:none;" required>
                                         <option value="">-- Chọn --</option>
                                         {% for h in hang_list %}
-                                        <option value="{{ h.pk }}" data-ma="{{ h.ma_hang }}" data-ten="{{ h.ten_hang }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
+                                        <option value="{{ h.pk }}" data-ma="{{ h.ma_hang }}" data-ten="{{ h.ten_hang }}" data-dvt="{{ h.don_vi_tinh.ten|default:'' }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
                                         {% endfor %}
                                     </select>
                                     <button type="button" class="lookup-icon-btn btn-search-hang" title="Tra cứu hàng"><i class="fas fa-search"></i></button>
                                 </div>
                             </td>
+                            <td><input type="text" class="form-control hang-ten-display" readonly></td>
+                            <td><input type="text" class="form-control hang-dvt-display text-center" readonly></td>
                             <td><input type="text" class="form-control ton-kho text-center" readonly></td>
                             <td><input type="number" name="so_luong[]" class="form-control so-luong calc-input" min="1" step="1" value="1" required></td>
-                            <td><input type="number" name="don_gia[]" class="form-control don-gia calc-input" min="0" value="0" required></td>
+                            <td><input type="text" name="don_gia[]" class="form-control don-gia calc-input money-input" inputmode="numeric" value="0" required></td>
                             <td><input type="number" name="chiet_khau[]" class="form-control chiet-khau calc-input" min="0" max="100" step="0.01" value="0"></td>
                             <td><input type="number" name="vat[]" class="form-control thue-vat calc-input" min="0" step="0.01" value="10"></td>
                             <td><input type="date" name="ngay_giao[]" class="form-control" value="{{ today|date:'Y-m-d' }}" required></td>
@@ -282,7 +317,7 @@
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="9">
+                        <td colspan="10">
                             <button type="button" class="btn btn-secondary btn-sm" id="btnAddRow"><i class="fas fa-plus"></i> Thêm dòng</button>
                         </td>
                     </tr>
@@ -366,6 +401,16 @@
 
     function fmtMoney(val) {
         return (parseFloat(val || 0)).toLocaleString('vi-VN') + ' đ';
+    }
+
+    function parseMoneyInput(val) {
+        const raw = String(val == null ? '' : val).trim().replace(/\s+/g, '').replace(/\./g, '').replace(/,/g, '.');
+        const num = parseFloat(raw);
+        return Number.isNaN(num) ? 0 : num;
+    }
+
+    function formatMoneyInputValue(val) {
+        return Math.round(parseMoneyInput(val)).toLocaleString('vi-VN');
     }
 
     function escapeHtml(str) {
@@ -452,9 +497,14 @@
         if ($opt.val()) {
             const ma = String($opt.data('ma') || '');
             const ten = String($opt.data('ten') || '');
-            $row.find('.hang-display').val((ma ? ma + ' - ' : '') + ten);
+            const dvt = String($opt.data('dvt') || '');
+            $row.find('.hang-display').val(ma);
+            $row.find('.hang-ten-display').val(ten);
+            $row.find('.hang-dvt-display').val(dvt);
         } else {
             $row.find('.hang-display').val('');
+            $row.find('.hang-ten-display').val('');
+            $row.find('.hang-dvt-display').val('');
         }
     }
 
@@ -478,7 +528,7 @@
             const full = normLookup((ma ? (ma + ' - ') : '') + ten);
             const text = normLookup($opt.text());
 
-            if (keyword === ma || keyword === full || keyword === text) {
+            if (keyword === ma || keyword === ten || keyword === full || keyword === text) {
                 matchedValue = optVal;
                 return false;
             }
@@ -528,7 +578,7 @@
                 const $row = $seed.clone();
                 $row.find('select[name="hang_id[]"]').val(String(item.hang_hoa_id || ''));
                 $row.find('.so-luong').val(Math.round(item.so_luong || 1));
-                $row.find('.don-gia').val(item.don_gia || 0);
+                $row.find('.don-gia').val(formatMoneyInputValue(item.don_gia || 0));
                 $row.find('.chiet-khau').val(item.chiet_khau || 0);
                 $row.find('.thue-vat').val(item.vat || 10);
                 $row.find('input[name="ngay_giao[]"]').val(item.ngay_giao || '{{ today|date:"Y-m-d" }}');
@@ -579,7 +629,7 @@
 
     function loadHangResults() {
         const q = $('#hangSearchInput').val().trim();
-        $.get('{% url "hang_hoa_lookup_api" %}', { q: q, page: 1, page_size: 20 }, function(resp) {
+        $.get('{% url "hang_hoa_lookup_api" %}', { q: q, page: 1, page_size: 20, only_available: 1, kho_id: $('select[name="kho"]').val() }, function(resp) {
             const rows = resp.results || [];
             if (!rows.length) {
                 $('#hangSearchResults').html('<div class="p-3 text-muted text-center">Không tìm thấy hàng hóa</div>');
@@ -599,7 +649,7 @@
 
     function tinhTongRow($row) {
         const sl = parseFloat($row.find('.so-luong').val()) || 0;
-        const gia = parseFloat($row.find('.don-gia').val()) || 0;
+        const gia = parseMoneyInput($row.find('.don-gia').val());
         const ck = parseFloat($row.find('.chiet-khau').val()) || 0;
         const vat = parseFloat($row.find('.thue-vat').val()) || 0;
         const goc = sl * gia;
@@ -652,13 +702,13 @@
             return;
         }
         $.get('{% url "gia_ban_hang_hoa_api" %}', { hang_id: hangId, so_luong: soLuong }, function(resp) {
-            const currentGia = parseFloat($row.find('.don-gia').val()) || 0;
+            const currentGia = parseMoneyInput($row.find('.don-gia').val());
             const currentCk = parseFloat($row.find('.chiet-khau').val()) || 0;
             const isManualGia = $row.data('manual-price') === true;
             const isManualCk = $row.data('manual-discount') === true;
 
             if (!isManualGia || currentGia <= 0) {
-                $row.find('.don-gia').val(resp.gia_ban_chuan || 0);
+                $row.find('.don-gia').val(formatMoneyInputValue(resp.gia_ban_chuan || 0));
             }
             if (!isManualCk || currentCk < 0) {
                 $row.find('.chiet-khau').val(resp.chiet_khau_phan_tram || 0);
@@ -699,6 +749,9 @@
 
     $(document).on('input', '.calc-input', function() {
         const $row = $(this).closest('tr');
+        if ($(this).hasClass('money-input')) {
+            $(this).val(formatMoneyInputValue($(this).val()));
+        }
         if ($(this).hasClass('don-gia')) {
             $row.data('manual-price', true);
         }
@@ -715,6 +768,8 @@
         const $row = $('#chiTietBody .item-row:first').clone();
         $row.find('select').val('');
         $row.find('.hang-display').val('');
+        $row.find('.hang-ten-display').val('');
+        $row.find('.hang-dvt-display').val('');
         $row.find('.ton-kho').val('');
         $row.find('.so-luong').val('1');
         $row.find('.don-gia').val('0');

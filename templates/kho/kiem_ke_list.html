@@ -2,66 +2,100 @@
 {% load humanize %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header">
-        <div class="card-title"><i class="fas fa-clipboard-list text-warning"></i> Danh sách phiếu kiểm kê kho</div>
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card-title mb-0"><i class="fas fa-clipboard-check text-warning"></i> Quản lý kiểm kê kho</div>
     </div>
     <div class="px-3 pt-3">
-        <div class="erp-toolbar" role="toolbar" aria-label="Thanh thao tác phiếu kiểm kê">
+        <div class="erp-toolbar" role="toolbar" aria-label="Thanh thao tác kiểm kê">
             <a href="{% url 'kiem_ke_them' %}" class="erp-toolbar-btn" title="Thêm mới" aria-label="Thêm mới"><i class="fas fa-plus"></i></a>
-            <button type="button" class="erp-toolbar-btn" id="btnKiemKeEdit" title="Sửa" aria-label="Sửa"><i class="fas fa-pen-to-square"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnKiemKeOpen" title="Chi tiết / Sửa" aria-label="Chi tiết / Sửa"><i class="fas fa-eye"></i></button>
             <button type="button" class="erp-toolbar-btn" id="btnKiemKeDelete" title="Xóa" aria-label="Xóa"><i class="fas fa-trash"></i></button>
             <span class="erp-toolbar-sep"></span>
-            <button type="button" class="erp-toolbar-btn" id="btnKiemKeCopy" title="Chép dữ liệu" aria-label="Chép dữ liệu"><i class="fas fa-copy"></i></button>
-            <button type="button" class="erp-toolbar-btn" id="btnKiemKeSearch" title="Tìm" aria-label="Tìm"><i class="fas fa-magnifying-glass"></i></button>
-            <button type="button" class="erp-toolbar-btn" id="btnKiemKeView" title="Xem" aria-label="Xem"><i class="fas fa-eye"></i></button>
-            <button type="button" class="erp-toolbar-btn" onclick="window.print()" title="In" aria-label="In"><i class="fas fa-print"></i></button>
-            <button type="button" class="erp-toolbar-btn" id="btnKiemKeQuery" title="Truy vấn" aria-label="Truy vấn"><i class="fas fa-filter"></i></button>
-            <button type="button" class="erp-toolbar-btn" onclick="window.location.reload()" title="Làm mới" aria-label="Làm mới"><i class="fas fa-rotate-right"></i></button>
+            <a href="{% url 'kiem_ke_export_data' %}?{{ request.GET.urlencode }}" class="erp-toolbar-btn" title="Kết xuất dữ liệu" aria-label="Kết xuất dữ liệu"><i class="fas fa-file-export"></i></a>
+            <a href="{% url 'kiem_ke_dieu_chinh_list' %}" class="erp-toolbar-btn" title="Phiếu điều chỉnh" aria-label="Phiếu điều chỉnh"><i class="fas fa-file-pen"></i></a>
+            <button type="button" class="erp-toolbar-btn" id="btnKiemKePrint" title="In" aria-label="In"><i class="fas fa-print"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnKiemKeFilterFocus" title="Tìm kiếm / Lọc" aria-label="Tìm kiếm / Lọc"><i class="fas fa-filter"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnKiemKeRefresh" title="Làm mới" aria-label="Làm mới"><i class="fas fa-rotate-right"></i></button>
         </div>
     </div>
     <div class="card-body">
+        <form method="get" class="row g-2 mb-3" id="kiemKeFilterForm">
+            <div class="col-md-3">
+                <label class="form-label">Mã phiếu</label>
+                <input type="text" name="ma_phieu" class="form-control" value="{{ ma_phieu }}" placeholder="VD: KK00001">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Kho</label>
+                <select name="kho" class="form-control">
+                    <option value="">-- Tất cả kho --</option>
+                    {% for k in kho_list %}
+                    <option value="{{ k.pk }}" {% if k.pk|stringformat:'s' == kho_filter %}selected{% endif %}>{{ k.ma_kho }} - {{ k.ten_kho }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Ngày kiểm kê</label>
+                <input type="date" name="ngay" class="form-control" value="{{ ngay_filter }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Trạng thái</label>
+                <select name="trang_thai" class="form-control">
+                    <option value="">-- Tất cả --</option>
+                    <option value="1" {% if trang_thai_filter == '1' %}selected{% endif %}>1 - Chờ kiểm kê</option>
+                    <option value="2" {% if trang_thai_filter == '2' %}selected{% endif %}>2 - Chờ điều chỉnh</option>
+                    <option value="3" {% if trang_thai_filter == '3' %}selected{% endif %}>3 - Hoàn thành</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Từ khóa</label>
+                <input type="text" name="q" class="form-control" value="{{ q }}" placeholder="Khu vực, người kiểm...">
+            </div>
+            <div class="col-12 d-flex justify-content-end gap-2 mt-2">
+                <a href="{% url 'kiem_ke_list' %}" class="btn btn-light border">Bỏ lọc</a>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-filter me-1"></i>Tìm kiếm</button>
+            </div>
+        </form>
+
         <div class="table-responsive">
-            <table class="table">
+            <table class="table align-middle">
                 <thead>
                     <tr>
                         <th style="width:42px;">Chọn</th>
-                        <th>#</th>
+                        <th>Mã phiếu</th>
                         <th>Ngày kiểm kê</th>
                         <th>Kho</th>
+                        <th>Khu vực</th>
+                        <th>Loại hàng</th>
                         <th>Người kiểm kê</th>
                         <th class="text-center">Trạng thái</th>
-                        <th>Ghi chú</th>
-                        <th class="text-center">Thao tác</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for item in items %}
                     <tr>
-                        <td class="text-center"><input type="radio" name="selected_kiemke" class="erp-row-select" value="{{ item.pk }}" data-detail-url="{% url 'kiem_ke_detail' item.pk %}"></td>
-                        <td class="text-muted" style="font-size:0.85rem;">{{ forloop.counter }}</td>
-                        <td><strong>{{ item.ngay_kiem_ke|date:"d/m/Y" }}</strong></td>
-                        <td><i class="fas fa-warehouse text-primary me-1"></i>{{ item.kho.ten_kho }}</td>
-                        <td>{{ item.nguoi_kiem|default:"—" }}</td>
+                        <td class="text-center">
+                            <input type="checkbox" name="selected_kiem_ke" class="erp-row-select" value="{{ item.pk }}" data-detail-url="{% url 'kiem_ke_detail' item.pk %}" data-print-url="{% url 'kiem_ke_in' item.pk %}" data-delete-url="{% url 'kiem_ke_xoa' item.pk %}">
+                        </td>
+                        <td><strong>{{ item.ma_phieu|default:'-' }}</strong></td>
+                        <td>{{ item.ngay_kiem_ke|date:'d/m/Y' }}</td>
+                        <td>{{ item.kho.ma_kho }}</td>
+                        <td>{{ item.khu_vuc|default:'-' }}</td>
+                        <td>{% if item.nhom_hang %}{{ item.nhom_hang.ten_nhom }}{% else %}Tất cả{% endif %}</td>
+                        <td>{{ item.nguoi_kiem|default:'-' }}</td>
                         <td class="text-center">
                             {% if item.trang_thai == '1' %}
-                                <span class="badge badge-warning"><i class="fas fa-file-alt me-1"></i>1 - Lập phiếu</span>
+                                <span class="badge badge-warning">Chờ kiểm kê</span>
                             {% elif item.trang_thai == '2' %}
-                                <span class="badge badge-success"><i class="fas fa-boxes me-1"></i>2 - Nhập kho</span>
+                                <span class="badge badge-danger">Chờ điều chỉnh</span>
                             {% else %}
-                                <span class="badge badge-info"><i class="fas fa-book me-1"></i>3 - Sổ cái</span>
+                                <span class="badge badge-success">Hoàn thành</span>
                             {% endif %}
-                        </td>
-                        <td class="text-muted" style="font-size:0.9rem;">{{ item.ghi_chu|default:"—" }}</td>
-                        <td class="text-center">
-                            <a href="{% url 'kiem_ke_detail' item.pk %}" class="btn btn-sm btn-outline-primary"><i class="fas fa-eye"></i> Chi tiết</a>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="8" class="text-center text-muted py-5">
-                            <i class="fas fa-clipboard fa-2x mb-2 text-light"></i><br>Chưa có phiếu kiểm kê nào.
-                        </td>
+                        <td colspan="8" class="text-center text-muted py-4">Không tìm thấy dữ liệu kiểm kê</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -70,52 +104,67 @@
     </div>
 </div>
 
-<div class="modal fade" id="modalKiemKeLoc" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Điều kiện lọc</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form method="get" class="modal-body">
-                <div class="mb-3">
-                    <label class="form-label">Từ khóa</label>
-                    <input type="text" name="q" class="form-control" value="{{ q }}" placeholder="Kho, người kiểm kê, ghi chú...">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Kho</label>
-                    <select name="kho" class="form-control">
-                        <option value="">-- Tất cả kho --</option>
-                        {% for k in kho_list %}
-                        <option value="{{ k.pk }}" {% if k.pk|stringformat:"s" == kho_filter %}selected{% endif %}>{{ k.ten_kho }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="d-flex justify-content-end gap-2">
-                    <a href="{% url 'kiem_ke_list' %}" class="btn btn-light border">Bỏ lọc</a>
-                    <button type="submit" class="btn btn-primary">Nhận</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+<form method="post" id="formKiemKeDelete" action="{% url 'kiem_ke_xoa_nhieu' %}" style="display:none;">{% csrf_token %}</form>
 
 <script>
-    function getSelectedKiemKeDetailUrl() {
-        const selected = document.querySelector('input[name="selected_kiemke"]:checked');
-        return selected ? selected.dataset.detailUrl : '';
+    function getSelectedKiemKeInputs() {
+        return Array.from(document.querySelectorAll('input[name="selected_kiem_ke"]:checked'));
     }
-    document.getElementById('btnKiemKeView').addEventListener('click', function() {
-        const url = getSelectedKiemKeDetailUrl();
-        if (url) window.location.href = url;
+
+    function getSelectedSingleKiemKe() {
+        const selected = getSelectedKiemKeInputs();
+        return selected.length === 1 ? selected[0] : null;
+    }
+
+    document.getElementById('btnKiemKeOpen').addEventListener('click', function() {
+        const input = getSelectedSingleKiemKe();
+        if (!input) {
+            alert('Vui lòng chọn đúng 1 phiếu để xem/sửa.');
+            return;
+        }
+        window.location.href = input.dataset.detailUrl;
     });
-    document.getElementById('btnKiemKeSearch').addEventListener('click', function() {
-        const modal = new bootstrap.Modal(document.getElementById('modalKiemKeLoc'));
-        modal.show();
+
+    document.getElementById('btnKiemKePrint').addEventListener('click', function() {
+        const input = getSelectedSingleKiemKe();
+        if (!input) {
+            alert('Vui lòng chọn đúng 1 phiếu để in.');
+            return;
+        }
+        window.open(input.dataset.printUrl, '_blank');
     });
-    document.getElementById('btnKiemKeQuery').addEventListener('click', function() {
-        const modal = new bootstrap.Modal(document.getElementById('modalKiemKeLoc'));
-        modal.show();
+
+    document.getElementById('btnKiemKeDelete').addEventListener('click', function() {
+        const selected = getSelectedKiemKeInputs();
+        if (!selected.length) {
+            alert('Vui lòng chọn ít nhất 1 phiếu để xóa.');
+            return;
+        }
+        if (!confirm('Bạn chắc chắn muốn xóa các phiếu kiểm kê đã chọn?')) {
+            return;
+        }
+        const form = document.getElementById('formKiemKeDelete');
+        form.querySelectorAll('input[name="ids[]"]').forEach(function(el) { el.remove(); });
+        selected.forEach(function(input) {
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = 'ids[]';
+            hidden.value = input.value;
+            form.appendChild(hidden);
+        });
+        form.submit();
+    });
+
+    document.getElementById('btnKiemKeFilterFocus').addEventListener('click', function() {
+        const target = document.querySelector('input[name="q"]');
+        if (target) {
+            target.focus();
+            target.select();
+        }
+    });
+
+    document.getElementById('btnKiemKeRefresh').addEventListener('click', function() {
+        window.location.reload();
     });
 </script>
 {% endblock %}

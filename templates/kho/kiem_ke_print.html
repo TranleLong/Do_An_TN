@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>In phiếu kiểm kê {{ kk.ma_phieu }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; font-size: 13px; color: #111; }
+        .header { text-align: center; margin-bottom: 16px; }
+        .title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #999; padding: 6px; }
+        th { background: #f3f4f6; }
+        .text-end { text-align: right; }
+        .meta { margin-top: 6px; }
+        .sign { margin-top: 30px; display: flex; justify-content: space-between; }
+        .sign div { width: 30%; text-align: center; }
+    </style>
+</head>
+<body onload="window.print()">
+    <div class="header">
+        <div class="title">PHIẾU KIỂM KÊ KHO</div>
+        <div>Số phiếu: <strong>{{ kk.ma_phieu }}</strong></div>
+    </div>
+
+    <div class="meta">Ngày kiểm kê: {{ kk.ngay_kiem_ke|date:'d/m/Y' }}</div>
+    <div class="meta">Kho: {{ kk.kho.ma_kho }} - {{ kk.kho.ten_kho }}</div>
+    <div class="meta">Người kiểm kê: {{ kk.nguoi_kiem|default:'-' }}</div>
+    <div class="meta">Khu vực: {{ kk.khu_vuc|default:'-' }}</div>
+    <div class="meta">Vị trí hàng lỗi: {% if kk.vi_tri_hang_loi %}{{ kk.vi_tri_hang_loi.ma_vi_tri }}{% else %}-{% endif %}</div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>STT</th>
+                <th>Mã hàng</th>
+                <th>Tên hàng</th>
+                <th>ĐVT</th>
+                <th class="text-end">SL hệ thống</th>
+                <th class="text-end">SL hàng lỗi</th>
+                <th class="text-end">SL tốt</th>
+                <th class="text-end">SL thực tế</th>
+                <th class="text-end">Chênh lệch</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for ct in chi_tiet %}
+            <tr>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ ct.hang_hoa.ma_hang }}</td>
+                <td>{{ ct.hang_hoa.ten_hang }}</td>
+                <td>{{ ct.hang_hoa.don_vi_tinh.ten_dvt|default:'-' }}</td>
+                <td class="text-end">{{ ct.so_luong_so_sach|floatformat:0 }}</td>
+                <td class="text-end">{{ ct.so_luong_loi|default:0|floatformat:0 }}</td>
+                <td class="text-end">{{ ct.so_luong_tot|default:0|floatformat:0 }}</td>
+                <td class="text-end">{{ ct.so_luong_thuc_te|floatformat:0 }}</td>
+                <td class="text-end">{{ ct.chenh_lech|floatformat:0 }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="9" style="text-align:center;">Không có dữ liệu</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="sign">
+        <div>
+            Người kiểm kê
+            <br><br><br>
+            (Ký, ghi rõ họ tên)
+        </div>
+        <div>
+            Kế toán kho
+            <br><br><br>
+            (Ký, ghi rõ họ tên)
+        </div>
+        <div>
+            Quản lý kho
+            <br><br><br>
+            (Ký, ghi rõ họ tên)
+        </div>
+    </div>
+</body>
+</html>

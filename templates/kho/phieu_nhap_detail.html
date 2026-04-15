@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block extra_css %}
 <style>
@@ -57,7 +58,7 @@
                 <table class="table" style="background: transparent;">
                     <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Nhà cung cấp:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.nha_cung_cap.ten_ncc|default:"-" }}</td></tr>
                     <tr><th style="border:none; padding: 0.5rem 0;">Người tạo:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.nguoi_tao.username }}</td></tr>
-                    <tr><th style="border:none; padding: 0.5rem 0;">Tổng giá trị:</th><td style="border:none; padding: 0.5rem 0; color: var(--warning); font-weight: bold; font-size: 1.1em;">{{ phieu.tong_tien|floatformat:0|intcomma }} đ</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Tổng giá trị:</th><td style="border:none; padding: 0.5rem 0; color: var(--warning); font-weight: bold; font-size: 1.1em;">{{ phieu.tong_tien|floatformat:0|vnd }} đ</td></tr>
                 </table>
             </div>
         </div>
@@ -92,11 +93,11 @@
                         <td><strong>{{ ct.hang_hoa.ma_hang }}</strong></td>
                         <td>{{ ct.hang_hoa.ten_hang }}</td>
                         <td class="text-center">{{ ct.hang_hoa.don_vi_tinh.ten|default:"-" }}</td>
-                        <td class="text-right fw-semibold text-success">+{{ ct.so_luong_nhan|floatformat:0|intcomma }}</td>
-                        <td class="text-right">{{ ct.don_gia|floatformat:0|intcomma }} đ</td>
+                        <td class="text-right fw-semibold text-success">+{{ ct.so_luong_nhan|floatformat:0|vnd }}</td>
+                        <td class="text-right">{{ ct.don_gia|floatformat:0|vnd }} đ</td>
                         <td class="text-center">{{ ct.tk_no|default:"-" }}</td>
                         <td class="text-center">{{ ct.tk_co|default:"-" }}</td>
-                        <td class="text-right fw-bold">{{ ct.thanh_tien|floatformat:0|intcomma }} đ</td>
+                        <td class="text-right fw-bold">{{ ct.thanh_tien|floatformat:0|vnd }} đ</td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="9" class="text-center text-muted">Không có chi tiết mặt hàng.</td></tr>
@@ -108,7 +109,7 @@
                         <td class="text-right fw-bold text-success">{{ chi_tiet|length }} Loại</td>
                         <td colspan="3"></td>
                         <td class="text-right fw-bold text-warning" style="font-size: 1.1rem;">
-                            {{ phieu.tong_tien|floatformat:0|intcomma }} đ
+                            {{ phieu.tong_tien|floatformat:0|vnd }} đ
                         </td>
                     </tr>
                 </tfoot>

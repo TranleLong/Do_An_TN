@@ -37,14 +37,23 @@ urlpatterns = [
 
     # ─── Kiểm kê kho
     path('kiem-ke/', views.kiem_ke_list, name='kiem_ke_list'),
+    path('kiem-ke/export-data/', views.kiem_ke_export_data, name='kiem_ke_export_data'),
     path('kiem-ke/them/', views.kiem_ke_them, name='kiem_ke_them'),
     path('kiem-ke/<int:pk>/', views.kiem_ke_detail, name='kiem_ke_detail'),
+    path('kiem-ke/<int:pk>/xoa/', views.kiem_ke_xoa, name='kiem_ke_xoa'),
+    path('kiem-ke/xoa-nhieu/', views.kiem_ke_xoa_nhieu, name='kiem_ke_xoa_nhieu'),
+    path('kiem-ke/<int:pk>/in/', views.kiem_ke_in, name='kiem_ke_in'),
+    path('kiem-ke/dieu-chinh/', views.kiem_ke_dieu_chinh_list, name='kiem_ke_dieu_chinh_list'),
+    path('kiem-ke/dieu-chinh/<int:pk>/', views.kiem_ke_dieu_chinh_detail, name='kiem_ke_dieu_chinh_detail'),
 
     # ─── Kế toán kho
     path('ke-toan/tinh-gia-xuat/', views.tinh_gia_xuat, name='tinh_gia_xuat'),
     path('ke-toan/doi-chieu/', views.doi_chieu_so_lieu, name='doi_chieu_so_lieu'),
 
     # ─── Báo cáo
+    path('bao-cao/xuat-nhap-ton/', views.bao_cao_xuat_nhap_ton, name='bao_cao_xuat_nhap_ton'),
+    path('bao-cao/so-chi-tiet-hang-hoa/', views.bao_cao_ton_kho, name='so_chi_tiet_hang_hoa'),
+    path('bao-cao/ton-kho-hien-tai/', views.bao_cao_ton_hien_tai, name='bao_cao_ton_hien_tai'),
     path('bao-cao/ton-kho/', views.bao_cao_ton_kho, name='bao_cao_ton_kho'),
 ]
 

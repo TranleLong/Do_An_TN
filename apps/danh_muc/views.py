@@ -1,11 +1,16 @@
 """Views cho app Danh Mục: KhachHang, NhaCungCap"""
+import json
 import re
 from datetime import date, timedelta
+from urllib.error import URLError
+from urllib.request import urlopen
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
+from django.db import transaction
 from django.db.models import Q, Sum
+from django.db.models.deletion import ProtectedError
 from django.db.models.functions import Length
 from django.db.utils import OperationalError, ProgrammingError
 from django.http import JsonResponse
@@ -27,20 +32,131 @@ def _is_valid_phone(phone):
     return bool(PHONE_REGEX.match((phone or "").strip()))
 
 
+def _parse_int_field(value, default=0):
+    text = re.sub(r'[^0-9-]', '', str(value or '').strip())
+    if text in ('', '-'): 
+        return default
+    try:
+        return int(text)
+    except ValueError:
+        return default
+
+
+def _parse_decimal_field(value, default=0):
+    text = str(value or '').strip().replace('.', '').replace(',', '.')
+    text = re.sub(r'[^0-9.-]', '', text)
+    if text in ('', '-', '.', '-.'):
+        return default
+    try:
+        return float(text)
+    except ValueError:
+        return default
+
+
+def _build_protected_error_message(exc, default_message='Không thể xóa vì còn dữ liệu liên quan.'):
+    protected = list(getattr(exc, 'protected_objects', []) or [])
+    if not protected:
+        return default_message
+
+    labels = []
+    for obj in protected[:5]:
+        meta = getattr(obj, '_meta', None)
+        model_name = meta.verbose_name if meta else obj.__class__.__name__
+        labels.append(f'{model_name}: {obj}')
+    if len(protected) > 5:
+        labels.append('...')
+    return f"{default_message} ({'; '.join(labels)})"
+
+
+def _normalize_tax_code(code):
+    return re.sub(r'[^0-9]', '', (code or '').strip())
+
+
+def _lookup_tax_code_external(ma_so_thue):
+    """Tra cứu MST từ nguồn công khai khi nội bộ chưa có dữ liệu."""
+    normalized = _normalize_tax_code(ma_so_thue)
+    if not normalized:
+        return None
+
+    url = f'https://esgoo.net/api-mst/{normalized}.htm'
+    try:
+        with urlopen(url, timeout=8) as response:
+            payload = json.loads(response.read().decode('utf-8'))
+    except (URLError, TimeoutError, ValueError, json.JSONDecodeError):
+        return None
+
+    if not isinstance(payload, dict):
+        return None
+    data = payload.get('data')
+    if not isinstance(data, dict):
+        return None
+
+    ten_kh = (data.get('ten') or '').strip()
+    dia_chi = (data.get('dc') or '').strip()
+    so_dien_thoai = (data.get('dt') or '').strip()
+    mst = (data.get('mst') or normalized).strip()
+
+    if not ten_kh:
+        return None
+
+    return {
+        'id': None,
+        'ma_kh': '',
+        'ten_kh': ten_kh,
+        'loai_kh': '2',
+        'ma_so_thue': mst,
+        'dia_chi': '' if dia_chi.lower() == 'null' else dia_chi,
+        'so_dien_thoai': '' if so_dien_thoai.lower() == 'null' else so_dien_thoai,
+        'email': '',
+        'nhom_kh_id': '',
+        'han_muc_cong_no': 0,
+        'so_ngay_no_max': 0,
+        'chiet_khau_mac_dinh': 0,
+        'ghi_chu': '',
+        'lookup_source': 'tax-api',
+    }
+
+
 def _generate_next_ma_kh():
-    """Sinh mã KH tiếp theo theo định dạng KH001, KH002, ..."""
-    last_kh = KhachHang.objects.all().order_by('-ma_kh').first()
-    if not last_kh:
-        return 'KH001'
-    
-    last_ma = last_kh.ma_kh
-    # Nếu mã có dạng KHnnn, lấy phần số
-    if last_ma.startswith('KH') and last_ma[2:].isdigit():
-        num = int(last_ma[2:]) + 1
-        return f'KH{num:03d}'
-    
-    # Nếu không đúng định dạng, tự động tạo
-    return f'KH{KhachHang.objects.count() + 1:03d}'
+    """Sinh mã KH tiếp theo theo định dạng KH00001, KH00002, ..."""
+    prefix = 'KH'
+    max_index = 0
+    for code in KhachHang.objects.filter(ma_kh__istartswith=prefix).values_list('ma_kh', flat=True):
+        text = str(code or '').strip().upper()
+        if not text.startswith(prefix):
+            continue
+        suffix = text[len(prefix):]
+        if suffix.isdigit():
+            max_index = max(max_index, int(suffix))
+    return f'{prefix}{max_index + 1:05d}'
+
+
+def _generate_next_ma_hang():
+    """Sinh mã hàng tiếp theo theo định dạng HH00001, HH00002, ..."""
+    prefix = 'HH'
+    max_index = 0
+    for code in HangHoa.objects.filter(ma_hang__istartswith=prefix).values_list('ma_hang', flat=True):
+        text = str(code or '').strip().upper()
+        if not text.startswith(prefix):
+            continue
+        suffix = text[len(prefix):]
+        if suffix.isdigit():
+            max_index = max(max_index, int(suffix))
+    return f'{prefix}{max_index + 1:05d}'
+
+
+def _generate_next_ma_nhom():
+    """Sinh mã nhóm tiếp theo theo định dạng NH00001, NH00002, ..."""
+    prefix = 'NH'
+    max_index = 0
+    for code in NhomHang.objects.filter(ma_nhom__istartswith=prefix).values_list('ma_nhom', flat=True):
+        text = str(code or '').strip().upper()
+        if not text.startswith(prefix):
+            continue
+        suffix = text[len(prefix):]
+        if suffix.isdigit():
+            max_index = max(max_index, int(suffix))
+    return f'{prefix}{max_index + 1:05d}'
 
 
 def _extract_slot_size_and_note(ghi_chu):
@@ -233,9 +349,9 @@ def kh_form(request, pk=None):
         obj.dia_chi = data.get('dia_chi', '').strip()
         obj.so_dien_thoai = data.get('so_dien_thoai', '').strip()
         obj.email = data.get('email', '').strip()
-        obj.han_muc_cong_no = data.get('han_muc_cong_no', 0) or 0
-        obj.so_ngay_no_max = data.get('so_ngay_no_max', 0) or 0
-        obj.chiet_khau_mac_dinh = data.get('chiet_khau_mac_dinh', 0) or 0
+        obj.han_muc_cong_no = _parse_int_field(data.get('han_muc_cong_no', 0))
+        obj.so_ngay_no_max = _parse_int_field(data.get('so_ngay_no_max', 0))
+        obj.chiet_khau_mac_dinh = _parse_decimal_field(data.get('chiet_khau_mac_dinh', 0))
         obj.ghi_chu = data.get('ghi_chu', '').strip()
 
         ma_kh = obj.ma_kh
@@ -248,12 +364,12 @@ def kh_form(request, pk=None):
         la_nhan_vien = obj.la_nhan_vien
 
         # Kiểm tra trường bắt buộc
-        if not ten_kh or not so_dien_thoai:
+        if not ten_kh:
             messages.error(request, 'Vui lòng nhập đầy đủ thông tin bắt buộc')
             return _render_kh_form(request, obj, pk)
 
-        # Kiểm tra định dạng số điện thoại
-        if not _is_valid_phone(so_dien_thoai):
+        # Số điện thoại là tùy chọn; nếu có nhập thì phải đúng định dạng.
+        if so_dien_thoai and not _is_valid_phone(so_dien_thoai):
             messages.error(request, 'Số điện thoại không đúng định dạng (bắt đầu bằng 0 hoặc +84, 10-11 chữ số)')
             return _render_kh_form(request, obj, pk)
 
@@ -296,9 +412,9 @@ def kh_form(request, pk=None):
         obj.dia_chi = data.get('dia_chi', '').strip()
         obj.so_dien_thoai = so_dien_thoai
         obj.email = data.get('email', '').strip()
-        obj.han_muc_cong_no = data.get('han_muc_cong_no', 0) or 0
-        obj.so_ngay_no_max = data.get('so_ngay_no_max', 0) or 0
-        obj.chiet_khau_mac_dinh = data.get('chiet_khau_mac_dinh', 0) or 0
+        obj.han_muc_cong_no = _parse_int_field(data.get('han_muc_cong_no', 0))
+        obj.so_ngay_no_max = _parse_int_field(data.get('so_ngay_no_max', 0))
+        obj.chiet_khau_mac_dinh = _parse_decimal_field(data.get('chiet_khau_mac_dinh', 0))
         obj.ghi_chu = data.get('ghi_chu', '').strip()
         try:
             obj.save()
@@ -374,12 +490,15 @@ def kh_lich_su_mua_hang(request, pk):
 def kh_lookup_masothue(request):
     """API endpoint để lookup khách hàng theo mã số thuế"""
     ma_so_thue = request.GET.get('ma_so_thue', '').strip()
+    normalized_tax_code = _normalize_tax_code(ma_so_thue)
     
-    if not ma_so_thue:
+    if not normalized_tax_code:
         return JsonResponse({'error': 'Mã số thuế không được để trống'}, status=400)
-    
+
     try:
-        kh = KhachHang.objects.get(ma_so_thue=ma_so_thue, la_khach_hang=True)
+        kh = KhachHang.objects.filter(la_khach_hang=True).exclude(ma_so_thue='').get(
+            Q(ma_so_thue=ma_so_thue) | Q(ma_so_thue=normalized_tax_code)
+        )
         return JsonResponse({
             'id': kh.id,
             'ma_kh': kh.ma_kh,
@@ -394,9 +513,36 @@ def kh_lookup_masothue(request):
             'so_ngay_no_max': kh.so_ngay_no_max,
             'chiet_khau_mac_dinh': float(kh.chiet_khau_mac_dinh),
             'ghi_chu': kh.ghi_chu or '',
+            'lookup_source': 'internal',
         })
     except KhachHang.DoesNotExist:
-        return JsonResponse({'error': 'Không tìm thấy khách hàng với mã số thuế này'}, status=404)
+        for kh in KhachHang.objects.filter(la_khach_hang=True).exclude(ma_so_thue=''):
+            if _normalize_tax_code(kh.ma_so_thue) == normalized_tax_code:
+                return JsonResponse({
+                    'id': kh.id,
+                    'ma_kh': kh.ma_kh,
+                    'ten_kh': kh.ten_kh,
+                    'loai_kh': kh.loai_kh,
+                    'ma_so_thue': kh.ma_so_thue,
+                    'dia_chi': kh.dia_chi or '',
+                    'so_dien_thoai': kh.so_dien_thoai or '',
+                    'email': kh.email or '',
+                    'nhom_kh_id': kh.nhom_kh_id or '',
+                    'han_muc_cong_no': float(kh.han_muc_cong_no),
+                    'so_ngay_no_max': kh.so_ngay_no_max,
+                    'chiet_khau_mac_dinh': float(kh.chiet_khau_mac_dinh),
+                    'ghi_chu': kh.ghi_chu or '',
+                    'lookup_source': 'internal',
+                })
+
+        external_data = _lookup_tax_code_external(normalized_tax_code)
+        if external_data:
+            return JsonResponse(external_data)
+
+        return JsonResponse(
+            {'error': 'Không tìm thấy khách hàng nội bộ hoặc dữ liệu MST từ nguồn thuế'},
+            status=404,
+        )
 
 
 # ─── NHÀ CUNG CẤP ────────────────────────────────────────────
@@ -495,7 +641,7 @@ def ncc_xoa(request, pk):
 def hang_hoa_list(request):
     q = request.GET.get('q', '').strip()
     nhom = request.GET.get('nhom', '').strip()
-    items = HangHoa.objects.select_related('nhom_hang', 'thuong_hieu', 'don_vi_tinh')
+    items = HangHoa.objects.select_related('nhom_hang', 'thuong_hieu', 'don_vi_tinh').filter(trang_thai='dang_ban')
     if q:
         items = items.filter(
             Q(ma_hang__icontains=q) | Q(ten_hang__icontains=q) | Q(xe_tuong_thich__icontains=q)
@@ -534,6 +680,8 @@ def hang_hoa_form(request, pk=None):
 
     if hang:
         so_vi_tri_default, _ = _extract_slot_size_and_note(hang.ghi_chu)
+    elif request.method != 'POST':
+        hang = HangHoa(ma_hang=_generate_next_ma_hang())
 
     def _render_hang_form(hang_obj):
         return render(request, 'core/hang_hoa_form.html', {
@@ -564,9 +712,12 @@ def hang_hoa_form(request, pk=None):
             messages.error(request, 'Số vị trí chiếm dụng phải từ 1 đến 5')
             return _render_hang_form(hang)
 
-        if not ma_hang or not ten_hang or not nhom_hang_id or not don_vi_tinh_id:
+        if not ten_hang or not don_vi_tinh_id:
             messages.error(request, 'Vui lòng nhập đầy đủ thông tin bắt buộc')
             return _render_hang_form(hang)
+
+        if not ma_hang:
+            ma_hang = _generate_next_ma_hang()
 
         if not pk and HangHoa.objects.filter(ma_hang=ma_hang).exists():
             messages.error(request, 'Mã hàng đã tồn tại')
@@ -601,9 +752,47 @@ def hang_hoa_form(request, pk=None):
 def hang_hoa_xoa(request, pk):
     hang = get_object_or_404(HangHoa, pk=pk)
     if request.method == 'POST':
-        hang.trang_thai = 'ngung_ban'
-        hang.save()
-        messages.success(request, f'Đã ngừng bán: {hang.ten_hang}')
+        ma_hang = hang.ma_hang
+        ten_hang = hang.ten_hang
+        try:
+            hang.delete()
+            messages.success(request, f'Đã xóa hàng hóa: {ma_hang} - {ten_hang}')
+        except ProtectedError:
+            messages.error(request, f'Không thể xóa {ma_hang} vì đang phát sinh chứng từ/tồn kho liên quan.')
+    return redirect('hang_hoa_list')
+
+
+@login_required
+def hang_hoa_xoa_nhieu(request):
+    if request.method != 'POST':
+        return redirect('hang_hoa_list')
+
+    ids = [int(x) for x in request.POST.getlist('ids[]') if str(x).isdigit()]
+    if not ids:
+        messages.error(request, 'Vui lòng chọn ít nhất 1 hàng hóa để xóa.')
+        return redirect('hang_hoa_list')
+
+    items = list(HangHoa.objects.filter(pk__in=ids))
+    deleted = 0
+    blocked_codes = []
+    for item in items:
+        try:
+            item.delete()
+            deleted += 1
+        except ProtectedError:
+            blocked_codes.append(item.ma_hang)
+
+    if deleted:
+        messages.success(request, f'Đã xóa {deleted} hàng hóa.')
+
+    if blocked_codes:
+        preview = ', '.join(blocked_codes[:5])
+        suffix = '...' if len(blocked_codes) > 5 else ''
+        messages.error(request, f'Không thể xóa {len(blocked_codes)} mã do có dữ liệu liên quan: {preview}{suffix}')
+
+    if not deleted and not blocked_codes:
+        messages.error(request, 'Không có hàng hóa hợp lệ để xóa.')
+
     return redirect('hang_hoa_list')
 
 
@@ -638,6 +827,8 @@ def hang_hoa_api(request):
 def hang_hoa_lookup_api(request):
     """Tra cứu hàng hóa theo mã/tên để dùng trong popup lọc."""
     q = request.GET.get('q', '').strip()
+    only_available = str(request.GET.get('only_available', '')).strip().lower() in ('1', 'true', 'yes', 'on')
+    kho_id = request.GET.get('kho_id')
     try:
         page = max(int(request.GET.get('page', 1)), 1)
     except ValueError:
@@ -655,6 +846,15 @@ def hang_hoa_lookup_api(request):
             Q(ten_hang__icontains=q) |
             Q(ghi_chu__icontains=q)
         )
+
+    if only_available:
+        from apps.kho.models import TonKho
+
+        ton_qs = TonKho.objects.filter(so_luong__gte=1)
+        if kho_id:
+            ton_qs = ton_qs.filter(kho_id=kho_id)
+        available_ids = ton_qs.values_list('hang_hoa_id', flat=True).distinct()
+        items = items.filter(pk__in=available_ids)
 
     items = items.order_by('ma_hang')
     total = items.count()
@@ -701,12 +901,14 @@ def nhom_hang_list(request):
     if request.method == 'POST':
         action = (request.POST.get('action') or 'create').strip()
         if action == 'create':
-            ma = request.POST.get('ma_nhom', '').strip()
+            ma = request.POST.get('ma_nhom', '').strip().upper()
             ten = request.POST.get('ten_nhom', '').strip()
             mo_ta = request.POST.get('mo_ta', '').strip()
             hang_ids = [x for x in request.POST.getlist('hang_ids[]') if str(x).isdigit()]
-            if not ma or not ten:
-                messages.error(request, 'Vui lòng nhập đủ mã nhóm và tên nhóm')
+            if not ma:
+                ma = _generate_next_ma_nhom()
+            if not ten:
+                messages.error(request, 'Vui lòng nhập tên nhóm')
             elif NhomHang.objects.filter(ma_nhom=ma).exists():
                 messages.error(request, 'Mã nhóm đã tồn tại')
             else:
@@ -744,9 +946,16 @@ def nhom_hang_list(request):
             else:
                 qs = NhomHang.objects.filter(pk__in=ids)
                 so_nhom = qs.count()
-                HangHoa.objects.filter(nhom_hang__in=qs).update(nhom_hang=None)
-                qs.delete()
-                messages.success(request, f'Đã xóa {so_nhom} nhóm hàng')
+                try:
+                    with transaction.atomic():
+                        HangHoa.objects.filter(nhom_hang__in=qs).update(nhom_hang=None)
+                        qs.delete()
+                    messages.success(request, f'Đã xóa {so_nhom} nhóm hàng')
+                except ProtectedError as exc:
+                    messages.error(request, _build_protected_error_message(
+                        exc,
+                        'Không thể xóa nhóm hàng do còn chứng từ đang tham chiếu',
+                    ))
         return redirect('nhom_hang_list')
 
     items = NhomHang.objects.order_by('ten_nhom')
@@ -770,7 +979,8 @@ def nhom_hang_list(request):
         'items': items,
         'page_obj': items,
         'q': q,
-        'hang_list': HangHoa.objects.filter(trang_thai='dang_ban').order_by('ma_hang'),
+        'hang_list': HangHoa.objects.all().order_by('ma_hang'),
+        'nhom_next_ma': _generate_next_ma_nhom(),
         'nhom_meta': nhom_meta,
         'page_title': 'Nhóm hàng',
         'active_menu': 'nhom_hang',

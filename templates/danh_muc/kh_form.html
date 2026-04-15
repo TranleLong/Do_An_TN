@@ -59,8 +59,8 @@
                 </select>
             </div>
             <div class="col col-4 form-group">
-                <label class="form-label">Số điện thoại <span class="text-danger">*</span></label>
-                <input type="text" name="so_dien_thoai" class="form-control" value="{{ obj.so_dien_thoai }}" required>
+                <label class="form-label">Số điện thoại</label>
+                <input type="text" name="so_dien_thoai" class="form-control" value="{{ obj.so_dien_thoai }}">
             </div>
             <div class="col col-4 form-group">
                 <label class="form-label" id="ma_so_thue_label">
@@ -111,19 +111,19 @@
         <div class="form-row mt-4">
             <div class="col col-6 form-group">
                 <label class="form-label">Hạn mức nợ cho phép (VNĐ)</label>
-                <input type="number" name="han_muc_cong_no" class="form-control" value="{{ obj.han_muc_cong_no|default:'0' }}" min="0">
+                <input type="text" name="han_muc_cong_no" class="form-control js-number-format" value="{{ obj.han_muc_cong_no|default:'0' }}" inputmode="numeric" autocomplete="off">
                 <small class="text-muted">Nhập 0 nếu không cho nợ</small>
             </div>
             <div class="col col-6 form-group">
                 <label class="form-label">Số ngày nợ tối đa</label>
-                <input type="number" name="so_ngay_no_max" class="form-control" value="{{ obj.so_ngay_no_max|default:'0' }}" min="0">
+                <input type="text" name="so_ngay_no_max" class="form-control js-number-format" value="{{ obj.so_ngay_no_max|default:'0' }}" inputmode="numeric" autocomplete="off">
             </div>
         </div>
 
         <div class="form-row">
             <div class="col col-6 form-group">
                 <label class="form-label">Chiết khấu mặc định (%)</label>
-                <input type="number" name="chiet_khau_mac_dinh" class="form-control" value="{{ obj.chiet_khau_mac_dinh|default:'0' }}" step="0.1" min="0" max="100">
+                <input type="text" name="chiet_khau_mac_dinh" class="form-control js-decimal-format" value="{{ obj.chiet_khau_mac_dinh|default:'0' }}" inputmode="decimal" autocomplete="off">
             </div>
         </div>
 
@@ -145,6 +145,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const nccCheckbox = document.querySelector('input[name="la_nha_cung_cap"]');
     const nvCheckbox = document.querySelector('input[name="la_nhan_vien"]');
     const maSoThueInput = document.getElementById('ma_so_thue');
+    const tenKhInput = document.querySelector('input[name="ten_kh"]');
+    const soDienThoaiInput = document.querySelector('input[name="so_dien_thoai"]');
+    const diaChiField = document.querySelector('input[name="dia_chi"]');
+    const emailInput = document.querySelector('input[name="email"]');
+    const loaiKhField = document.querySelector('select[name="loai_kh"]');
+    const hanMucInput = document.querySelector('input[name="han_muc_cong_no"]');
+    const soNgayNoInput = document.querySelector('input[name="so_ngay_no_max"]');
+    const chietKhauInput = document.querySelector('input[name="chiet_khau_mac_dinh"]');
+    const ghiChuInput = document.querySelector('textarea[name="ghi_chu"]');
+    const nhomKhField = document.querySelector('select[name="nhom_kh"]');
     const maSoThueRequired = document.getElementById('ma_so_thue_required');
     const maSoThueHint = document.getElementById('ma_so_thue_hint');
     const diaChiInput = document.getElementById('dia_chi');
@@ -152,6 +162,58 @@ document.addEventListener('DOMContentLoaded', function() {
     const diaChiHint = document.getElementById('dia_chi_hint');
     const lookupSpinner = document.getElementById('lookup_spinner');
     const lookupStatus = document.getElementById('lookup_status');
+    const btnLookupMst = document.getElementById('btn_lookup_mst');
+    let isLookupLoading = false;
+
+    const numberFields = Array.from(document.querySelectorAll('.js-number-format'));
+    const decimalFields = Array.from(document.querySelectorAll('.js-decimal-format'));
+
+    function stripNumberChars(value) {
+        return (value || '')
+            .toString()
+            .replace(/[^0-9]/g, '');
+    }
+
+    function stripDecimalChars(value) {
+        return (value || '')
+            .toString()
+            .replace(/[^0-9.,]/g, '')
+            .replace(/,/g, '.');
+    }
+
+    function formatIntegerDots(value) {
+        const clean = stripNumberChars(value);
+        if (!clean) {
+            return '';
+        }
+        return clean.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    function formatDecimalDots(value) {
+        const clean = stripDecimalChars(value);
+        if (!clean) {
+            return '';
+        }
+        const parts = clean.split('.');
+        const integerPart = parts.shift() || '';
+        const decimalPart = parts.join('');
+        const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        return decimalPart ? formattedInteger + '.' + decimalPart : formattedInteger;
+    }
+
+    function normalizeNumberField(field) {
+        if (!field) {
+            return;
+        }
+        field.value = formatIntegerDots(field.value);
+    }
+
+    function normalizeDecimalField(field) {
+        if (!field) {
+            return;
+        }
+        field.value = formatDecimalDots(field.value);
+    }
 
     // Hàm cập nhật conditional required
     function updateMaSoThueRequired() {
@@ -192,19 +254,57 @@ document.addEventListener('DOMContentLoaded', function() {
     if (nccCheckbox) nccCheckbox.addEventListener('change', updateMaSoThueRequired);
     if (nvCheckbox) nvCheckbox.addEventListener('change', updateMaSoThueRequired);
 
+    numberFields.forEach(function (field) {
+        field.addEventListener('input', function () {
+            const raw = stripNumberChars(field.value);
+            field.value = raw ? raw.replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '';
+        });
+        field.addEventListener('blur', function () {
+            normalizeNumberField(field);
+        });
+    });
+
+    decimalFields.forEach(function (field) {
+        field.addEventListener('input', function () {
+            const raw = stripDecimalChars(field.value);
+            const parts = raw.split('.');
+            const integerPart = parts.shift() || '';
+            const decimalPart = parts.join('');
+            const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            field.value = decimalPart ? formattedInteger + '.' + decimalPart : formattedInteger;
+        });
+        field.addEventListener('blur', function () {
+            normalizeDecimalField(field);
+        });
+    });
+
     // Handle Enter key trên mã số thuế
-    maSoThueInput.addEventListener('keypress', function(e) {
+    maSoThueInput.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             performLookup();
         }
     });
 
-    document.getElementById('btn_lookup_mst').addEventListener('click', function() {
+    btnLookupMst.addEventListener('click', function() {
         performLookup();
     });
 
+    document.querySelector('form').addEventListener('submit', function () {
+        numberFields.forEach(function (field) {
+            field.value = stripNumberChars(field.value);
+        });
+        decimalFields.forEach(function (field) {
+            const normalized = stripDecimalChars(field.value);
+            field.value = normalized;
+        });
+    });
+
     function performLookup() {
+        if (isLookupLoading) {
+            return;
+        }
+
         const maSoThue = maSoThueInput.value.trim();
         
         if (!maSoThue) {
@@ -217,7 +317,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         // Hiện spinner
+    isLookupLoading = true;
         lookupSpinner.style.display = 'inline';
+    btnLookupMst.disabled = true;
         lookupStatus.style.display = 'none';
 
         // Gọi API
@@ -233,22 +335,29 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(data => {
                 // Auto-populate form
-                document.querySelector('input[name="ten_kh"]').value = data.ten_kh || document.querySelector('input[name="ten_kh"]').value;
-                document.querySelector('input[name="so_dien_thoai"]').value = data.so_dien_thoai || document.querySelector('input[name="so_dien_thoai"]').value;
-                document.querySelector('input[name="dia_chi"]').value = data.dia_chi || document.querySelector('input[name="dia_chi"]').value;
-                document.querySelector('input[name="email"]').value = data.email || document.querySelector('input[name="email"]').value;
-                document.querySelector('select[name="loai_kh"]').value = data.loai_kh || document.querySelector('select[name="loai_kh"]').value;
-                document.querySelector('input[name="han_muc_cong_no"]').value = data.han_muc_cong_no;
-                document.querySelector('input[name="so_ngay_no_max"]').value = data.so_ngay_no_max;
-                document.querySelector('input[name="chiet_khau_mac_dinh"]').value = data.chiet_khau_mac_dinh;
-                document.querySelector('textarea[name="ghi_chu"]').value = data.ghi_chu || '';
+                tenKhInput.value = data.ten_kh || tenKhInput.value;
+                soDienThoaiInput.value = data.so_dien_thoai || soDienThoaiInput.value;
+                diaChiField.value = data.dia_chi || diaChiField.value;
+                emailInput.value = data.email || emailInput.value;
+                loaiKhField.value = data.loai_kh || loaiKhField.value;
+                hanMucInput.value = formatIntegerDots(data.han_muc_cong_no);
+                soNgayNoInput.value = formatIntegerDots(data.so_ngay_no_max);
+                chietKhauInput.value = formatDecimalDots(data.chiet_khau_mac_dinh);
+                ghiChuInput.value = data.ghi_chu || '';
                 if (data.nhom_kh_id) {
-                    document.querySelector('select[name="nhom_kh"]').value = data.nhom_kh_id;
+                    nhomKhField.value = data.nhom_kh_id;
                 }
+                if (data.ma_so_thue) {
+                    maSoThueInput.value = data.ma_so_thue;
+                }
+
+                updateMaSoThueRequired();
+                updateDiaChiRequired();
 
                 // Hiện thông báo thành công
                 lookupStatus.style.display = 'block';
-                lookupStatus.innerHTML = `<span class="text-success">✓ Đã tải thông tin: ${data.ten_kh}</span>`;
+                const sourceLabel = data.lookup_source === 'tax-api' ? 'nguồn MST thuế' : 'dữ liệu nội bộ';
+                lookupStatus.innerHTML = `<span class="text-success">✓ Đã tải thông tin: ${data.ten_kh} (${sourceLabel})</span>`;
                 setTimeout(() => {
                     lookupStatus.style.display = 'none';
                 }, 3000);
@@ -262,7 +371,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 5000);
             })
             .finally(() => {
+                isLookupLoading = false;
                 lookupSpinner.style.display = 'none';
+                btnLookupMst.disabled = false;
             });
     }
 });

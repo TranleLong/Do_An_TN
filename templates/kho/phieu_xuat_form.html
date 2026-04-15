@@ -124,23 +124,41 @@
         text-align: right;
     }
     #chiTietTable {
-        min-width: 1040px;
+        min-width: 1280px;
     }
     #chiTietTable th,
     #chiTietTable td {
         white-space: nowrap;
         vertical-align: middle;
+        padding: .95rem .75rem;
     }
-    #chiTietTable select[name="hang_id[]"] {
-        min-width: 280px;
+    #chiTietTable thead th {
+        font-size: 11px;
+        font-weight: 700;
     }
-    #chiTietTable input[name="so_luong[]"] {
+    #chiTietTable tbody td {
+        font-size: 13px;
+    }
+    #chiTietTable input,
+    #chiTietTable select,
+    #chiTietTable .form-control {
         min-width: 110px;
+        padding: .55rem .65rem;
+        font-size: 13px;
     }
-    #chiTietTable input[name="tk_no[]"],
-    #chiTietTable input[name="tk_co[]"] {
-        min-width: 130px;
+    #chiTietTable .lookup-wrap > .lookup-input {
+        padding-right: 42px;
     }
+    #chiTietTable .lookup-wrap > .lookup-btn {
+        right: 8px;
+    }
+    #chiTietTable th:nth-child(1), #chiTietTable td:nth-child(1) { min-width: 250px; }
+    #chiTietTable th:nth-child(2), #chiTietTable td:nth-child(2) { min-width: 230px; }
+    #chiTietTable th:nth-child(3), #chiTietTable td:nth-child(3) { min-width: 110px; }
+    #chiTietTable th:nth-child(4), #chiTietTable td:nth-child(4) { min-width: 130px; }
+    #chiTietTable th:nth-child(5), #chiTietTable td:nth-child(5) { min-width: 170px; }
+    #chiTietTable th:nth-child(6), #chiTietTable td:nth-child(6) { min-width: 170px; }
+    #chiTietTable th:nth-child(7), #chiTietTable td:nth-child(7) { min-width: 70px; }
 </style>
 {% endblock %}
 
@@ -199,7 +217,7 @@
                 <select name="trang_thai" class="form-control" style="font-weight:600;">
                     <option value="1" selected>1 - Lập phiếu</option>
                     <option value="2">2 - Sổ kho</option>
-                    <option value="3">3 - Sổ cái</option>
+                    <option value="3">3 - Chuyển sổ cái</option>
                 </select>
             </div>
         </div>
@@ -210,10 +228,12 @@
             <table class="table" id="chiTietTable">
                 <thead>
                     <tr>
-                        <th style="width: 42%">Mặt hàng</th>
-                        <th style="width: 14%" class="text-right">Số lượng xuất</th>
-                        <th style="width: 17%" class="text-center">TK Nợ</th>
-                        <th style="width: 17%" class="text-center">TK Có</th>
+                        <th style="width: 14%">Mã hàng</th>
+                        <th style="width: 20%">Tên hàng</th>
+                        <th style="width: 8%">ĐVT</th>
+                        <th style="width: 12%" class="text-right">Số lượng xuất</th>
+                        <th style="width: 18%" class="text-center">TK Nợ</th>
+                        <th style="width: 18%" class="text-center">TK Có</th>
                         <th style="width: 10%" class="text-center">Thao tác</th>
                     </tr>
                 </thead>
@@ -221,15 +241,18 @@
                     <tr class="item-row">
                         <td>
                             <div class="lookup-wrap">
-                                <select name="hang_id[]" class="form-control hang-select lookup-input" required>
+                                <input type="text" class="form-control hang-display lookup-input" placeholder="Nhập mã hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
+                                <select name="hang_id[]" class="form-control hang-select" style="display:none;" required>
                                     <option value="">-- Chọn hàng hóa --</option>
                                     {% for h in hang_list %}
-                                    <option value="{{ h.pk }}">{{ h.ma_hang }} - {{ h.ten_hang }}{% if h.don_vi_tinh %} ({{ h.don_vi_tinh }}){% endif %}</option>
+                                    <option value="{{ h.pk }}" data-ma="{{ h.ma_hang }}" data-ten="{{ h.ten_hang }}" data-dvt="{{ h.don_vi_tinh.ten|default:'' }}">{{ h.ma_hang }} - {{ h.ten_hang }}{% if h.don_vi_tinh %} ({{ h.don_vi_tinh }}){% endif %}</option>
                                     {% endfor %}
                                 </select>
                                 <button type="button" class="lookup-btn btn-search-hang" title="Tra cứu vật tư"><i class="fas fa-search"></i></button>
                             </div>
                         </td>
+                        <td><input type="text" class="form-control hang-ten-display" readonly></td>
+                        <td><input type="text" class="form-control hang-dvt-display text-center" readonly></td>
                         <td>
                             <input type="number" name="so_luong[]" class="form-control text-right" min="1" step="1" required>
                         </td>
@@ -252,7 +275,7 @@
                 </tbody>
                 <tfoot>
                     <tr>
-                        <td colspan="5">
+                        <td colspan="7">
                             <button type="button" class="btn btn-secondary btn-sm" id="btnAddRow"><i class="fas fa-plus"></i> Thêm dòng</button>
                         </td>
                     </tr>
@@ -324,15 +347,18 @@
     <tr class="item-row">
         <td>
             <div class="lookup-wrap">
-                <select name="hang_id[]" class="form-control hang-select lookup-input" required>
+                <input type="text" class="form-control hang-display lookup-input" placeholder="Nhập mã hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
+                <select name="hang_id[]" class="form-control hang-select" style="display:none;" required>
                     <option value="">-- Chọn hàng hóa --</option>
                     {% for h in hang_list %}
-                    <option value="{{ h.pk }}">{{ h.ma_hang }} - {{ h.ten_hang }}{% if h.don_vi_tinh %} ({{ h.don_vi_tinh }}){% endif %}</option>
+                    <option value="{{ h.pk }}" data-ma="{{ h.ma_hang }}" data-ten="{{ h.ten_hang }}" data-dvt="{{ h.don_vi_tinh.ten|default:'' }}">{{ h.ma_hang }} - {{ h.ten_hang }}{% if h.don_vi_tinh %} ({{ h.don_vi_tinh }}){% endif %}</option>
                     {% endfor %}
                 </select>
                 <button type="button" class="lookup-btn btn-search-hang" title="Tra cứu vật tư"><i class="fas fa-search"></i></button>
             </div>
         </td>
+        <td><input type="text" class="form-control hang-ten-display" readonly></td>
+        <td><input type="text" class="form-control hang-dvt-display text-center" readonly></td>
         <td>
             <input type="number" name="so_luong[]" class="form-control text-right" min="1" step="1" required>
         </td>
@@ -371,9 +397,55 @@
 
     function fillXuatRow(row, item) {
         row.find('select[name="hang_id[]"]').val(String(item.hang_id || ''));
+        bindHangDisplayByRow(row);
         row.find('input[name="so_luong[]"]').val(Math.round(item.so_luong || 0));
         row.find('input[name="tk_no[]"]').val(item.tk_no || '');
         row.find('input[name="tk_co[]"]').val(item.tk_co || '');
+    }
+
+    function bindHangDisplayByRow(row) {
+        const opt = row.find('.hang-select option:selected');
+        if (opt.val()) {
+            row.find('.hang-display').val(String(opt.data('ma') || ''));
+            row.find('.hang-ten-display').val(String(opt.data('ten') || ''));
+            row.find('.hang-dvt-display').val(String(opt.data('dvt') || ''));
+        } else {
+            row.find('.hang-display').val('');
+            row.find('.hang-ten-display').val('');
+            row.find('.hang-dvt-display').val('');
+        }
+    }
+
+    function syncHangDisplayToSelectByRow(row) {
+        const input = row.find('.hang-display');
+        const select = row.find('.hang-select');
+        const keyword = String(input.val() || '').trim().toLowerCase();
+
+        if (!keyword) {
+            select.val('').trigger('change');
+            return false;
+        }
+
+        let matchedValue = '';
+        select.find('option').each(function() {
+            const opt = $(this);
+            const optVal = String(opt.val() || '');
+            if (!optVal) return;
+            const ma = String(opt.data('ma') || '').toLowerCase();
+            const ten = String(opt.data('ten') || '').toLowerCase();
+            const text = String(opt.text() || '').toLowerCase();
+            if (keyword === ma || keyword === ten || keyword === text) {
+                matchedValue = optVal;
+                return false;
+            }
+        });
+
+        if (matchedValue) {
+            select.val(matchedValue).trigger('change');
+            return true;
+        }
+
+        return false;
     }
 
     function applyXuatCopyData() {
@@ -451,7 +523,7 @@
             url: '{% url "hang_hoa_lookup_api" %}',
             method: 'GET',
             dataType: 'json',
-            data: { q: q, page: page, page_size: hangPageSize },
+            data: { q: q, page: page, page_size: hangPageSize, only_available: 1, kho_id: $('select[name="kho"]').val() },
             success: function(resp) {
                 const results = resp.results || [];
                 hangCurrentPage = resp.page || 1;
@@ -574,6 +646,14 @@
             hangModalInstance.hide();
         }
         currentHangSelectElement = null;
+    });
+
+    $(document).on('change blur', '.hang-display', function() {
+        syncHangDisplayToSelectByRow($(this).closest('tr'));
+    });
+
+    $(document).on('change', '.hang-select', function() {
+        bindHangDisplayByRow($(this).closest('tr'));
     });
 
     applyXuatCopyData();

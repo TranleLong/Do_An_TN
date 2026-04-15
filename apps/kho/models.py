@@ -5,7 +5,7 @@ import datetime
 from django.contrib.auth.models import User
 from django.db import models
 
-from apps.danh_muc.models import HangHoa, Kho, NhaCungCap, ViTriKho
+from apps.danh_muc.models import HangHoa, Kho, NhaCungCap, NhomHang, ViTriKho
 
 
 class TonKho(models.Model):
@@ -224,12 +224,23 @@ class PhieuXuat_CT(models.Model):
 
 class KiemKe(models.Model):
     TRANG_THAI = [
-        ('1', '1 - Lập phiếu'),
-        ('2', '2 - Nhập kho'),
-        ('3', '3 - Sổ cái'),
+        ('1', '1 - Chờ kiểm kê'),
+        ('2', '2 - Chờ điều chỉnh'),
+        ('3', '3 - Hoàn thành'),
     ]
+    ma_phieu = models.CharField(max_length=30, unique=True, blank=True, verbose_name='Mã phiếu kiểm kê')
     ngay_kiem_ke = models.DateField(default=datetime.date.today, verbose_name='Ngày kiểm kê')
     kho = models.ForeignKey(Kho, on_delete=models.PROTECT, verbose_name='Kho')
+    nhom_hang = models.ForeignKey(NhomHang, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Loại hàng hóa kiểm kê')
+    khu_vuc = models.CharField(max_length=120, blank=True, verbose_name='Khu vực kiểm kê')
+    vi_tri_hang_loi = models.ForeignKey(
+        ViTriKho,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='kiem_ke_hang_loi',
+        verbose_name='Vị trí hàng lỗi',
+    )
     nguoi_kiem = models.CharField(max_length=100, blank=True, verbose_name='Người kiểm kê')
     trang_thai = models.CharField(max_length=20, choices=TRANG_THAI, default='1')
     ghi_chu = models.TextField(blank=True)
@@ -241,15 +252,22 @@ class KiemKe(models.Model):
         ordering = ['-ngay_kiem_ke']
 
     def __str__(self):
-        return f"Kiểm kê {self.kho.ten_kho} - {self.ngay_kiem_ke}"
+        return f"{self.ma_phieu or 'KK'} - {self.kho.ten_kho} - {self.ngay_kiem_ke}"
 
 
 class KiemKe_CT(models.Model):
+    TINH_TRANG = [
+        ('tot_100', 'Tốt 100%'),
+        ('hu_hong', 'Hư hỏng'),
+        ('thieu_hang', 'Thiếu hàng'),
+    ]
     kiem_ke = models.ForeignKey(KiemKe, on_delete=models.CASCADE, related_name='chi_tiet')
     hang_hoa = models.ForeignKey(HangHoa, on_delete=models.PROTECT, verbose_name='Hàng hóa')
     so_luong_so_sach = models.IntegerField(verbose_name='SL sổ sách')
     so_luong_thuc_te = models.IntegerField(verbose_name='SL thực tế')
+    so_luong_loi = models.IntegerField(default=0, verbose_name='SL hàng lỗi')
     chenh_lech = models.IntegerField(default=0, verbose_name='Chênh lệch')
+    tinh_trang = models.CharField(max_length=20, choices=TINH_TRANG, default='tot_100', verbose_name='Tình trạng')
     ly_do = models.CharField(max_length=200, blank=True, verbose_name='Lý do chênh lệch')
 
     class Meta:
@@ -258,3 +276,40 @@ class KiemKe_CT(models.Model):
     def save(self, *args, **kwargs):
         self.chenh_lech = self.so_luong_thuc_te - self.so_luong_so_sach
         super().save(*args, **kwargs)
+
+
+class PhieuDieuChinhKiemKe(models.Model):
+    TRANG_THAI = [
+        ('1', '1 - Chờ duyệt'),
+        ('2', '2 - Đã duyệt'),
+    ]
+
+    so_phieu = models.CharField(max_length=30, unique=True, verbose_name='Mã phiếu điều chỉnh')
+    kiem_ke = models.OneToOneField(KiemKe, on_delete=models.PROTECT, related_name='phieu_dieu_chinh')
+    ngay_dieu_chinh = models.DateField(default=datetime.date.today, verbose_name='Ngày điều chỉnh')
+    kho = models.ForeignKey(Kho, on_delete=models.PROTECT, verbose_name='Kho')
+    nguoi_lap = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Người lập')
+    ly_do = models.CharField(max_length=255, verbose_name='Lý do điều chỉnh')
+    trang_thai = models.CharField(max_length=20, choices=TRANG_THAI, default='1', verbose_name='Trạng thái')
+    ngay_tao = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'kho_phieudieuchinh_kiemke'
+        verbose_name = 'Phiếu điều chỉnh kiểm kê'
+        ordering = ['-ngay_dieu_chinh', '-id']
+
+    def __str__(self):
+        return self.so_phieu
+
+
+class PhieuDieuChinhKiemKe_CT(models.Model):
+    phieu = models.ForeignKey(PhieuDieuChinhKiemKe, on_delete=models.CASCADE, related_name='chi_tiet')
+    hang_hoa = models.ForeignKey(HangHoa, on_delete=models.PROTECT, verbose_name='Hàng hóa')
+    so_luong_he_thong = models.IntegerField(verbose_name='SL hệ thống')
+    so_luong_thuc_te = models.IntegerField(verbose_name='SL thực tế')
+    chenh_lech = models.IntegerField(verbose_name='Chênh lệch')
+    ly_do = models.CharField(max_length=255, blank=True, verbose_name='Lý do điều chỉnh')
+
+    class Meta:
+        db_table = 'kho_phieudieuchinh_kiemke_ct'
+        verbose_name = 'Chi tiết phiếu điều chỉnh kiểm kê'

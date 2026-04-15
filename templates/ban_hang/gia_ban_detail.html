@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block content %}
 <div class="card">
@@ -83,8 +84,8 @@
                         <td>{{ ct.hang_hoa.ma_hang }}</td>
                         <td>{{ ct.hang_hoa.ten_hang }}</td>
                         <td>{{ ct.hang_hoa.don_vi_tinh.ten|default:'-' }}</td>
-                        <td class="text-right">{{ ct.gia_von|floatformat:0|intcomma }}</td>
-                        <td class="text-right fw-semibold">{{ ct.gia_ban_chuan|floatformat:0|intcomma }}</td>
+                        <td class="text-right">{{ ct.gia_von|floatformat:0|vnd }}</td>
+                        <td class="text-right fw-semibold">{{ ct.gia_ban_chuan|floatformat:0|vnd }}</td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="6" class="text-center text-muted">Không có chi tiết mặt hàng.</td></tr>

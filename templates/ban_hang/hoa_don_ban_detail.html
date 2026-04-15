@@ -1,5 +1,22 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
+
+{% block extra_css %}
+<style>
+    .hoa-don-detail-table-wrap {
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+    .hoa-don-detail-table {
+        min-width: 1450px;
+        width: 100%;
+    }
+    .money-value {
+        white-space: nowrap;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="card">
@@ -26,8 +43,8 @@
             <div class="col-md-12"><strong>Diễn giải:</strong> {{ hoa_don.dien_giai|default:'-' }}</div>
         </div>
 
-        <div class="table-responsive">
-            <table class="table">
+        <div class="hoa-don-detail-table-wrap">
+            <table class="table hoa-don-detail-table">
                 <thead>
                     <tr>
                         <th>STT</th>
@@ -52,15 +69,15 @@
                         <td>{{ ct.hang_hoa.ma_hang }}</td>
                         <td>{{ ct.hang_hoa.ten_hang }}</td>
                         <td>{{ ct.kho.ma_kho }}</td>
-                        <td class="text-end">{{ ct.so_luong|floatformat:0|intcomma }}</td>
-                        <td class="text-end">{{ ct.gia_ban|intcomma }}</td>
-                        <td class="text-end">{{ ct.ty_le_chiet_khau }}</td>
-                        <td class="text-end">{{ ct.thue_suat }}</td>
+                        <td class="text-end money-value">{{ ct.so_luong|floatformat:0|vnd }}</td>
+                        <td class="text-end money-value">{{ ct.gia_ban|vnd }}</td>
+                        <td class="text-end">{{ ct.ty_le_chiet_khau|floatformat:2 }}</td>
+                        <td class="text-end">{{ ct.thue_suat|floatformat:2 }}</td>
                         <td>{{ ct.tk_doanh_thu|default:'-' }}</td>
                         <td>{{ ct.tk_gia_von|default:'-' }}</td>
-                        <td class="text-end">{{ ct.tien_hang|intcomma }}</td>
-                        <td class="text-end">{{ ct.tien_thue|intcomma }}</td>
-                        <td class="text-end fw-semibold">{{ ct.thanh_tien|intcomma }}</td>
+                        <td class="text-end money-value">{{ ct.tien_hang|vnd }}</td>
+                        <td class="text-end money-value">{{ ct.tien_thue|vnd }}</td>
+                        <td class="text-end fw-semibold money-value">{{ ct.thanh_tien|vnd }}</td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="13" class="text-center text-muted">Không có dữ liệu chi tiết.</td></tr>
@@ -71,13 +88,40 @@
 
         <div class="d-flex justify-content-end mt-3">
             <div style="width: 380px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
-                <div class="d-flex justify-content-between mb-2"><span>Tổng số lượng:</span><strong>{{ hoa_don.tong_so_luong|floatformat:0|intcomma }}</strong></div>
-                <div class="d-flex justify-content-between mb-2"><span>Tổng chiết khấu:</span><strong>{{ hoa_don.tong_chiet_khau|intcomma }}</strong></div>
-                <div class="d-flex justify-content-between mb-2"><span>Tiền hàng:</span><strong>{{ hoa_don.tien_hang|intcomma }}</strong></div>
-                <div class="d-flex justify-content-between mb-2"><span>Tổng tiền thuế:</span><strong>{{ hoa_don.tong_tien_thue|intcomma }}</strong></div>
-                <div class="d-flex justify-content-between fs-5"><strong>Tổng cộng:</strong><strong>{{ hoa_don.tong_cong|intcomma }}</strong></div>
+                <div class="d-flex justify-content-between mb-2"><span>Tổng số lượng:</span><strong class="money-value">{{ hoa_don.tong_so_luong|floatformat:0|vnd }}</strong></div>
+                <div class="d-flex justify-content-between mb-2"><span>Tổng chiết khấu:</span><strong class="money-value">{{ hoa_don.tong_chiet_khau|vnd }}</strong></div>
+                <div class="d-flex justify-content-between mb-2"><span>Tiền hàng:</span><strong class="money-value">{{ hoa_don.tien_hang|vnd }}</strong></div>
+                <div class="d-flex justify-content-between mb-2"><span>Tổng tiền thuế:</span><strong class="money-value">{{ hoa_don.tong_tien_thue|vnd }}</strong></div>
+                <div class="d-flex justify-content-between fs-5"><strong>Tổng cộng:</strong><strong class="money-value">{{ hoa_don.tong_cong|vnd }}</strong></div>
             </div>
         </div>
     </div>
 </div>
+<script>
+    (function() {
+        function formatDotNumber(value) {
+            var raw = String(value == null ? '' : value).trim();
+            if (!raw) {
+                return '0';
+            }
+            raw = raw.replace(/\s+/g, '');
+            if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(raw)) {
+                raw = raw.replace(/\./g, '').replace(',', '.');
+            } else if (raw.indexOf(',') >= 0 && raw.indexOf('.') >= 0) {
+                raw = raw.replace(/,/g, '');
+            } else if (raw.indexOf(',') >= 0) {
+                raw = raw.replace(/,/g, '.');
+            }
+            var number = Number(raw);
+            if (Number.isNaN(number)) {
+                return value;
+            }
+            return Math.round(number).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        document.querySelectorAll('.money-value').forEach(function(el) {
+            el.textContent = formatDotNumber(el.textContent);
+        });
+    })();
+</script>
 {% endblock %}

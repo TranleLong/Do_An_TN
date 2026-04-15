@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block content %}
 <div class="card">
@@ -39,7 +40,7 @@
                 <table class="table table-sm" style="background: transparent;">
                     <tr><th style="width: 150px; border:none; padding: 0.5rem 0;">Khách hàng:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.khach_hang.ten_kh|default:"-" }}</td></tr>
                     <tr><th style="border:none; padding: 0.5rem 0;">Mã khách:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.khach_hang.ma_kh|default:"-" }}</td></tr>
-                    <tr><th style="border:none; padding: 0.5rem 0;">Số tiền:</th><td style="border:none; padding: 0.5rem 0; color: var(--danger); font-weight: bold; font-size: 1.1em;">{{ phieu.tong_thu|floatformat:0|intcomma }} đ</td></tr>
+                    <tr><th style="border:none; padding: 0.5rem 0;">Số tiền:</th><td style="border:none; padding: 0.5rem 0; color: var(--danger); font-weight: bold; font-size: 1.1em;">{{ phieu.tong_thu|floatformat:0|vnd }} đ</td></tr>
                     <tr><th style="border:none; padding: 0.5rem 0;">Người tạo:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.nguoi_tao.username|default:"-" }}</td></tr>
                     <tr><th style="border:none; padding: 0.5rem 0;">Ghi chú:</th><td style="border:none; padding: 0.5rem 0;">{{ ghi_chu_hien_thi|default:"-" }}</td></tr>
                 </table>

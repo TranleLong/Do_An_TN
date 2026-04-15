@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block content %}
 <div class="card">
@@ -66,11 +67,11 @@
                         <td><strong>{{ ct.hang_hoa.ma_hang }}</strong></td>
                         <td>{{ ct.hang_hoa.ten_hang }}</td>
                         <td class="text-center">{{ ct.hang_hoa.don_vi_tinh.ten|default:"-" }}</td>
-                        <td class="text-right fw-semibold">{{ ct.so_luong|floatformat:0|intcomma }}</td>
-                        <td class="text-right">{{ ct.don_gia|floatformat:0|intcomma }} đ</td>
+                        <td class="text-right fw-semibold">{{ ct.so_luong|floatformat:0|vnd }}</td>
+                        <td class="text-right">{{ ct.don_gia|vnd }} đ</td>
                         <td class="text-right">{{ ct.chiet_khau }}%</td>
                         <td class="text-right">{{ ct.thue_vat }}%</td>
-                        <td class="text-right fw-bold text-success">{{ ct.thanh_tien|floatformat:0|intcomma }} đ</td>
+                        <td class="text-right fw-bold text-success">{{ ct.thanh_tien|vnd }} đ</td>
                     </tr>
                     {% empty %}
                     <tr><td colspan="9" class="text-center text-muted">Không có chi tiết mặt hàng.</td></tr>
@@ -83,29 +84,29 @@
             <div style="width: 380px; background: rgba(0,0,0,0.04); padding: 1.5rem; border-radius: var(--radius-md);">
                 <div class="d-flex justify-content-between mb-2">
                     <span class="text-muted">Tổng tiền hàng:</span>
-                    <strong>{{ don.tong_tien_hang|floatformat:0|intcomma }} đ</strong>
+                    <strong>{{ don.tong_tien_hang|vnd }} đ</strong>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
                     <span class="text-muted">Tổng thuế VAT:</span>
-                    <strong>{{ don.tong_thue|floatformat:0|intcomma }} đ</strong>
+                    <strong>{{ don.tong_thue|vnd }} đ</strong>
                 </div>
                 <div class="d-flex justify-content-between mb-3 pb-3 border-bottom">
                     <span class="text-muted">Chiết khấu tổng đơn:</span>
-                    <strong>{{ don.chiet_khau_dh|floatformat:0|intcomma }} đ</strong>
+                    <strong>{{ don.chiet_khau_dh|vnd }} đ</strong>
                 </div>
                 <div class="d-flex justify-content-between" style="font-size: 1.25rem;">
                     <span class="fw-bold text-warning">Tổng thanh toán:</span>
-                    <strong class="text-warning">{{ don.tong_thanh_toan|floatformat:0|intcomma }} đ</strong>
+                    <strong class="text-warning">{{ don.tong_thanh_toan|vnd }} đ</strong>
                 </div>
                 
                 {% if don.trang_thai == '3' %}
                 <div class="d-flex justify-content-between mt-3 mb-2">
                     <span class="text-muted">Đã thu (Phiếu thu):</span>
-                    <strong class="text-success">{{ don.da_thu|floatformat:0|intcomma }} đ</strong>
+                    <strong class="text-success">{{ don.da_thu|vnd }} đ</strong>
                 </div>
                 <div class="d-flex justify-content-between">
                     <span class="text-muted">Còn nợ:</span>
-                    <strong class="text-danger">{{ don.con_no|floatformat:0|intcomma }} đ</strong>
+                    <strong class="text-danger">{{ don.con_no|vnd }} đ</strong>
                 </div>
                 
                 {% if don.con_no > 0 %}

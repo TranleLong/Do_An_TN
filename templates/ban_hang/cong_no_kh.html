@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block extra_css %}
 <style>
@@ -38,6 +39,71 @@
     .table td, .table th {
         vertical-align: middle;
     }
+    .lookup-wrap {
+        position: relative;
+    }
+    .lookup-input {
+        padding-right: 40px;
+    }
+    .lookup-btn {
+        position: absolute;
+        right: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 28px;
+        height: 28px;
+        border: 0;
+        background: transparent;
+        color: #6b7d94;
+        border-radius: 50%;
+        line-height: 28px;
+        padding: 0;
+    }
+    .lookup-btn:hover {
+        background: #eaf2fd;
+        color: #1d5ea8;
+    }
+    #khLookupModal .modal-dialog {
+        max-width: 880px;
+    }
+    #khLookupModal .modal-content {
+        border: 1px solid #7aa1cf;
+        border-radius: 8px;
+        box-shadow: 0 20px 45px rgba(22, 44, 75, 0.28);
+    }
+    #khLookupModal .modal-header {
+        background: linear-gradient(180deg, #f7fbff 0%, #e9f3ff 100%);
+        border-bottom: 1px solid #c7dcf3;
+    }
+    .kh-head,
+    .kh-row {
+        display: grid;
+        grid-template-columns: 160px 1fr 160px;
+        gap: 10px;
+    }
+    .kh-head {
+        background: #eef5fb;
+        color: #1f4d83;
+        border-bottom: 1px solid #cfdeef;
+        padding: 8px 12px;
+        font-weight: 700;
+    }
+    .kh-row {
+        width: 100%;
+        padding: 10px 12px;
+        border: 0;
+        border-bottom: 1px solid #e9eef5;
+        background: #fff;
+        cursor: pointer;
+        text-align: left;
+    }
+    .kh-row:hover {
+        background: #f2f8ff;
+    }
+    .kh-row-code {
+        font-weight: 700;
+        color: #0d4b86;
+    }
 </style>
 {% endblock %}
 
@@ -54,24 +120,20 @@
         <form method="get" class="row g-2">
             <div class="col-md-2">
                 <label class="form-label">Mã khách hàng</label>
-                <input type="text" name="ma_kh" value="{{ filters.ma_kh }}" class="form-control" placeholder="VD: KH001">
+                <div class="lookup-wrap">
+                    <input type="text" id="maKhInput" name="ma_kh" value="{{ filters.ma_kh }}" class="form-control lookup-input" placeholder="VD: KH00001" autocomplete="off">
+                    <button type="button" class="lookup-btn" id="btnOpenKhLookup" title="Tra cứu khách hàng">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
             </div>
             <div class="col-md-3">
                 <label class="form-label">Tên khách hàng</label>
-                <input type="text" name="ten_kh" value="{{ filters.ten_kh }}" class="form-control" placeholder="Nhập tên khách hàng">
+                <input type="text" id="tenKhInput" name="ten_kh" value="{{ filters.ten_kh }}" class="form-control" placeholder="Nhập tên khách hàng">
             </div>
             <div class="col-md-2">
                 <label class="form-label">Số điện thoại</label>
-                <input type="text" name="so_dien_thoai" value="{{ filters.so_dien_thoai }}" class="form-control" placeholder="090...">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Loại khách</label>
-                <select name="loai_kh" class="form-control">
-                    <option value="">-- Tất cả --</option>
-                    <option value="1" {% if filters.loai_kh == '1' %}selected{% endif %}>Cá nhân</option>
-                    <option value="2" {% if filters.loai_kh == '2' %}selected{% endif %}>Doanh nghiệp</option>
-                    <option value="3" {% if filters.loai_kh == '3' %}selected{% endif %}>Khác</option>
-                </select>
+                <input type="text" id="soDienThoaiInput" name="so_dien_thoai" value="{{ filters.so_dien_thoai }}" class="form-control" placeholder="090...">
             </div>
             <div class="col-md-2">
                 <label class="form-label">Trạng thái</label>
@@ -119,10 +181,10 @@
                     <td>{{ item.ma_kh }}</td>
                     <td>{{ item.ten_kh }}</td>
                     <td>{{ item.so_dien_thoai|default:'-' }}</td>
-                    <td class="text-end">{{ item.tong_gia_tri_hoa_don|floatformat:0|intcomma }} đ</td>
-                    <td class="text-end text-success">{{ item.tong_da_thanh_toan|floatformat:0|intcomma }} đ</td>
+                    <td class="text-end">{{ item.tong_gia_tri_hoa_don|floatformat:0|vnd }} đ</td>
+                    <td class="text-end text-success">{{ item.tong_da_thanh_toan|floatformat:0|vnd }} đ</td>
                     <td class="text-end fw-semibold {% if bat_canh_bao_qua_han and item.trang_thai == 'qua_han' %}text-danger{% elif item.trang_thai == 'con_no' %}text-primary{% else %}text-success{% endif %}">
-                        {{ item.cong_no_hien_tai|floatformat:0|intcomma }} đ
+                        {{ item.cong_no_hien_tai|floatformat:0|vnd }} đ
                     </td>
                     <td>
                         {% if item.han_thanh_toan %}
@@ -176,7 +238,7 @@
     {% if selected_khach_hang_id and thu_theo_kh_bo_sung > 0 %}
     <div class="card-body pb-0">
         <div class="alert alert-info mb-3">
-            Khách hàng có thêm khoản thu không gắn hóa đơn: <strong>{{ thu_theo_kh_bo_sung|floatformat:0|intcomma }} đ</strong>.
+            Khách hàng có thêm khoản thu không gắn hóa đơn: <strong>{{ thu_theo_kh_bo_sung|floatformat:0|vnd }} đ</strong>.
             Khoản này đã được tính vào "Tổng đã thanh toán" ở danh sách tổng hợp công nợ.
         </div>
     </div>
@@ -200,10 +262,10 @@
                 <tr class="{% if bat_canh_bao_qua_han and ct.trang_thai == 'qua_han' %}row-overdue{% endif %}">
                     <td>{{ ct.ma_hoa_don }}</td>
                     <td>{{ ct.ngay_hoa_don|date:'d/m/Y' }}</td>
-                    <td class="text-end">{{ ct.tong_tien|floatformat:0|intcomma }} đ</td>
-                    <td class="text-end text-success">{{ ct.da_thanh_toan|floatformat:0|intcomma }} đ</td>
+                    <td class="text-end">{{ ct.tong_tien|floatformat:0|vnd }} đ</td>
+                    <td class="text-end text-success">{{ ct.da_thanh_toan|floatformat:0|vnd }} đ</td>
                     <td class="text-end fw-semibold {% if bat_canh_bao_qua_han and ct.trang_thai == 'qua_han' %}text-danger{% elif ct.trang_thai == 'con_no' %}text-primary{% else %}text-success{% endif %}">
-                        {{ ct.con_no|floatformat:0|intcomma }} đ
+                        {{ ct.con_no|floatformat:0|vnd }} đ
                     </td>
                     <td>{% if ct.han_thanh_toan %}{{ ct.han_thanh_toan|date:'d/m/Y' }}{% else %}-{% endif %}</td>
                     <td class="text-end {% if bat_canh_bao_qua_han and ct.so_ngay_qua_han > 0 %}text-danger fw-semibold{% endif %}">
@@ -229,9 +291,9 @@
             <tfoot>
                 <tr>
                     <th colspan="2" class="text-end">Tổng</th>
-                    <th class="text-end">{{ tong_chi_tiet.tong_tien|floatformat:0|intcomma }} đ</th>
-                    <th class="text-end">{{ tong_chi_tiet.da_thanh_toan|floatformat:0|intcomma }} đ</th>
-                    <th class="text-end">{{ tong_chi_tiet.con_no|floatformat:0|intcomma }} đ</th>
+                    <th class="text-end">{{ tong_chi_tiet.tong_tien|floatformat:0|vnd }} đ</th>
+                    <th class="text-end">{{ tong_chi_tiet.da_thanh_toan|floatformat:0|vnd }} đ</th>
+                    <th class="text-end">{{ tong_chi_tiet.con_no|floatformat:0|vnd }} đ</th>
                     <th colspan="3"></th>
                 </tr>
             </tfoot>
@@ -266,4 +328,178 @@
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="khLookupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Danh mục khách hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="p-2 border-bottom">
+                    <input type="text" class="form-control" id="khModalSearch" placeholder="Gõ mã hoặc tên khách hàng...">
+                </div>
+                <div class="kh-head">
+                    <div>Mã khách</div>
+                    <div>Tên khách hàng</div>
+                    <div>Số điện thoại</div>
+                </div>
+                <div id="khModalList"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function () {
+        const maKhInput = document.getElementById('maKhInput');
+        const tenKhInput = document.getElementById('tenKhInput');
+        const soDienThoaiInput = document.getElementById('soDienThoaiInput');
+
+        const btnOpenKhLookup = document.getElementById('btnOpenKhLookup');
+        const modalEl = document.getElementById('khLookupModal');
+        const modalSearch = document.getElementById('khModalSearch');
+        const modalList = document.getElementById('khModalList');
+        const bsModal = modalEl ? new bootstrap.Modal(modalEl) : null;
+
+        const lookupUrl = "{% url 'khach_hang_lookup' %}";
+        let lookupItems = [];
+
+        function normalize(text) {
+            return (text || '')
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .replace(/đ/g, 'd')
+                .replace(/Đ/g, 'd')
+                .trim();
+        }
+
+        function fillCustomer(item) {
+            if (!item) {
+                return;
+            }
+            maKhInput.value = item.ma_kh || '';
+            if (tenKhInput) {
+                tenKhInput.value = item.ten_kh || '';
+            }
+            if (soDienThoaiInput) {
+                soDienThoaiInput.value = item.so_dien_thoai || '';
+            }
+        }
+
+        function renderList(items) {
+            if (!modalList) {
+                return;
+            }
+            if (!items.length) {
+                modalList.innerHTML = '<div class="text-center text-muted py-3">Không tìm thấy khách hàng phù hợp.</div>';
+                return;
+            }
+            modalList.innerHTML = items.map(function (item) {
+                return '<button type="button" class="kh-row" data-id="' + item.id + '">' +
+                    '<div class="kh-row-code">' + (item.ma_kh || '') + '</div>' +
+                    '<div>' + (item.ten_kh || '') + '</div>' +
+                    '<div>' + (item.so_dien_thoai || '-') + '</div>' +
+                '</button>';
+            }).join('');
+        }
+
+        async function fetchCustomers(keyword) {
+            const query = encodeURIComponent(keyword || '');
+            const response = await fetch(lookupUrl + '?q=' + query, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Lookup request failed');
+            }
+            const payload = await response.json();
+            lookupItems = (payload && payload.results) ? payload.results : [];
+            renderList(lookupItems);
+            return lookupItems;
+        }
+
+        async function lookupAndFillByCode(code) {
+            const keyword = (code || '').trim();
+            if (!keyword) {
+                return;
+            }
+            const items = await fetchCustomers(keyword);
+            const key = normalize(keyword);
+            const exact = items.find(function (item) {
+                return normalize(item.ma_kh) === key;
+            });
+            fillCustomer(exact || items[0] || null);
+        }
+
+        let timer = null;
+        if (modalSearch) {
+            modalSearch.addEventListener('input', function () {
+                window.clearTimeout(timer);
+                timer = window.setTimeout(function () {
+                    fetchCustomers(modalSearch.value).catch(function () {
+                        renderList([]);
+                    });
+                }, 180);
+            });
+        }
+
+        if (btnOpenKhLookup && bsModal) {
+            btnOpenKhLookup.addEventListener('click', function () {
+                if (modalSearch) {
+                    modalSearch.value = maKhInput ? maKhInput.value : '';
+                }
+                fetchCustomers(modalSearch ? modalSearch.value : '').catch(function () {
+                    renderList([]);
+                });
+                bsModal.show();
+                window.setTimeout(function () {
+                    if (modalSearch) {
+                        modalSearch.focus();
+                    }
+                }, 100);
+            });
+        }
+
+        if (modalList) {
+            modalList.addEventListener('click', function (event) {
+                const row = event.target.closest('.kh-row');
+                if (!row) {
+                    return;
+                }
+                const id = row.dataset.id;
+                const picked = lookupItems.find(function (item) {
+                    return String(item.id) === String(id);
+                });
+                fillCustomer(picked || null);
+                if (bsModal) {
+                    bsModal.hide();
+                }
+            });
+        }
+
+        if (maKhInput) {
+            maKhInput.addEventListener('keydown', function (event) {
+                if (event.key !== 'Enter') {
+                    return;
+                }
+                event.preventDefault();
+                lookupAndFillByCode(maKhInput.value).catch(function () {
+                    // Keep current typed value if lookup fails.
+                });
+            });
+
+            maKhInput.addEventListener('blur', function () {
+                lookupAndFillByCode(maKhInput.value).catch(function () {
+                    // Keep current typed value if lookup fails.
+                });
+            });
+        }
+    })();
+</script>
 {% endblock %}

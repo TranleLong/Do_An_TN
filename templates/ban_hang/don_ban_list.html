@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block content %}
 <div class="card">
@@ -55,7 +56,7 @@
                         <td><a href="{% url 'don_ban_detail' item.pk %}"><strong>{{ item.so_don }}</strong></a></td>
                         <td>{{ item.khach_hang.ma_kh|default:"-" }}</td>
                         <td>{{ item.ten_kh }}</td>
-                        <td class="text-right fw-semibold">{{ item.tong_tien_hang|intcomma }}</td>
+                        <td class="text-right fw-semibold">{{ item.tong_tien_hang|vnd }}</td>
                         <td>{{ item.ma_ngoai_te }}</td>
                         <td>{{ item.ghi_chu|default:"-"|truncatechars:40 }}</td>
                         <td>

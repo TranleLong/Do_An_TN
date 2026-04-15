@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card-title mb-0"><i class="fas fa-file-invoice text-danger"></i> Phiếu điều chỉnh {{ phieu.so_phieu }}</div>
+        <a href="{% url 'kiem_ke_dieu_chinh_list' %}" class="btn btn-outline-secondary btn-sm">Danh sách điều chỉnh</a>
+    </div>
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-3"><small class="text-muted">Phiếu kiểm kê</small><div>{{ phieu.kiem_ke.ma_phieu }}</div></div>
+            <div class="col-md-3"><small class="text-muted">Kho</small><div>{{ phieu.kho.ma_kho }} - {{ phieu.kho.ten_kho }}</div></div>
+            <div class="col-md-3"><small class="text-muted">Ngày điều chỉnh</small><div>{{ phieu.ngay_dieu_chinh|date:'d/m/Y' }}</div></div>
+            <div class="col-md-3"><small class="text-muted">Trạng thái</small><div>{% if phieu.trang_thai == '1' %}<span class="badge badge-warning">Chờ duyệt</span>{% else %}<span class="badge badge-success">Đã duyệt</span>{% endif %}</div></div>
+        </div>
+
+        <div class="mb-3">
+            <small class="text-muted">Lý do điều chỉnh</small>
+            <div>{{ phieu.ly_do|default:'-' }}</div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>Mã hàng</th>
+                        <th>Tên hàng</th>
+                        <th class="text-end">SL hệ thống</th>
+                        <th class="text-end">SL thực tế</th>
+                        <th class="text-end">Chênh lệch</th>
+                        <th>Lý do</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ct in chi_tiet %}
+                    <tr>
+                        <td>{{ ct.hang_hoa.ma_hang }}</td>
+                        <td>{{ ct.hang_hoa.ten_hang }}</td>
+                        <td class="text-end">{{ ct.so_luong_he_thong|floatformat:0|intcomma }}</td>
+                        <td class="text-end">{{ ct.so_luong_thuc_te|floatformat:0|intcomma }}</td>
+                        <td class="text-end">{% if ct.chenh_lech > 0 %}<span class="text-success">+{{ ct.chenh_lech|floatformat:0|intcomma }}</span>{% else %}<span class="text-danger">{{ ct.chenh_lech|floatformat:0|intcomma }}</span>{% endif %}</td>
+                        <td>{{ ct.ly_do|default:'-' }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="6" class="text-center text-muted py-3">Không có dòng điều chỉnh</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if phieu.trang_thai == '1' %}
+        <form method="post" class="mt-3 text-end">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="approve">
+            <button type="submit" class="btn btn-success" onclick="return confirm('Duyệt phiếu điều chỉnh và cập nhật tồn kho?')">Duyệt phiếu điều chỉnh</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

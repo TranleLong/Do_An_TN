@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block extra_css %}
 <style>
@@ -192,7 +193,7 @@
                     {{ block.kho.ma_kho }} - {{ block.kho.ten_kho }}
                 </div>
                 <div class="text-muted" style="font-size: 0.85rem;">
-                    Tổng vị trí thiết kế: {{ block.total_slot_count }} | Vị trí đang có hàng: {{ block.occupied_count }} | Đang hiển thị: {{ block.displayed_count }} | Tổng số lượng: {{ block.tong_so_luong|intcomma }}
+                    Tổng vị trí thiết kế: {{ block.total_slot_count|vnd }} | Vị trí đang có hàng: {{ block.occupied_count|vnd }} | Đang hiển thị: {{ block.displayed_count|vnd }} | Tổng số lượng: {{ block.tong_so_luong|vnd }}
                 </div>
             </div>
             <div class="card-body">
@@ -215,7 +216,7 @@
                                                     {% for lv in ke.levels %}
                                                     <div class="level-chip {% if not lv.ton %}empty{% endif %} {% if lv.vi_tri_id %}clickable js-vi-tri-chip{% endif %}" {% if lv.vi_tri_id %}data-vi-tri-id="{{ lv.vi_tri_id }}" data-ma-vi-tri="{{ lv.ma_vi_tri }}"{% endif %}>
                                                         {% if lv.ton %}
-                                                        T{{ lv.tang }} • {{ lv.ton.hang_hoa.ma_hang }} ({{ lv.ton.so_luong|intcomma }})
+                                                        T{{ lv.tang }} • {{ lv.ton.hang_hoa.ma_hang }} ({{ lv.ton.so_luong|vnd }})
                                                         {% else %}
                                                         T{{ lv.tang }} • Trống
                                                         {% endif %}

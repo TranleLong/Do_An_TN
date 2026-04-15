@@ -7,6 +7,7 @@ urlpatterns = [
     path('hang-hoa/them/', views.hang_hoa_form, name='hang_hoa_them'),
     path('hang-hoa/<int:pk>/sua/', views.hang_hoa_form, name='hang_hoa_sua'),
     path('hang-hoa/<int:pk>/xoa/', views.hang_hoa_xoa, name='hang_hoa_xoa'),
+    path('hang-hoa/xoa-nhieu/', views.hang_hoa_xoa_nhieu, name='hang_hoa_xoa_nhieu'),
     path('hang-hoa/api/tra-cuu/', views.hang_hoa_api, name='hang_hoa_api'),
     path('hang-hoa/api/lookup/', views.hang_hoa_lookup_api, name='hang_hoa_lookup_api'),
     path('kho/', views.kho_list, name='kho_list'),

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block content %}
 <div class="row" style="display: flex; gap: 30px;">
@@ -28,9 +29,9 @@
                                 <strong>{{ kh.ma_kh }}</strong> - {{ kh.ten_kh }}
                                 <div style="font-size: 11px; color: var(--text-muted);">SĐT: {{ kh.so_dien_thoai }}</div>
                             </td>
-                            <td class="text-right text-muted">{{ kh.tong_mua|default:0|floatformat:0|intcomma }} đ</td>
-                            <td class="text-right text-success">{{ kh.tong_da_tra|default:0|floatformat:0|intcomma }} đ</td>
-                            <td class="text-right fw-bold text-warning">{{ kh.get_cong_no|floatformat:0|intcomma }} đ</td>
+                            <td class="text-right text-muted">{{ kh.tong_mua|default:0|floatformat:0|vnd }} đ</td>
+                            <td class="text-right text-success">{{ kh.tong_da_tra|default:0|floatformat:0|vnd }} đ</td>
+                            <td class="text-right fw-bold text-warning">{{ kh.get_cong_no|floatformat:0|vnd }} đ</td>
                         </tr>
                         {% empty %}
                         <tr><td colspan="4" class="text-center py-4 text-muted">Không có khách hàng nào đang nợ.</td></tr>
@@ -66,9 +67,9 @@
                                 <strong>{{ ncc.ma_ncc }}</strong> - {{ ncc.ten_ncc }}
                                 <div style="font-size: 11px; color: var(--text-muted);">SĐT: {{ ncc.so_dien_thoai }}</div>
                             </td>
-                            <td class="text-right text-muted">{{ ncc.tong_nhap|default:0|floatformat:0|intcomma }} đ</td>
-                            <td class="text-right text-success">{{ ncc.tong_da_tra|default:0|floatformat:0|intcomma }} đ</td>
-                            <td class="text-right fw-bold text-danger">{{ ncc.get_cong_no|floatformat:0|intcomma }} đ</td>
+                            <td class="text-right text-muted">{{ ncc.tong_nhap|default:0|floatformat:0|vnd }} đ</td>
+                            <td class="text-right text-success">{{ ncc.tong_da_tra|default:0|floatformat:0|vnd }} đ</td>
+                            <td class="text-right fw-bold text-danger">{{ ncc.get_cong_no|floatformat:0|vnd }} đ</td>
                         </tr>
                         {% empty %}
                         <tr><td colspan="4" class="text-center py-4 text-muted">Không nợ thẻ nhà cung cấp nào.</td></tr>

@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load money_filters %}
 
 {% block content %}
 <div class="card bg-white shadow-sm border-0 rounded-4">
@@ -63,7 +64,7 @@
                         </td>
                         <td>{{ item.kho.ten_kho }}</td>
                         <td>{{ item.nguoi_tao.username }}</td>
-                        <td class="text-end text-danger fw-bold">{{ item.tong_gia_von|intcomma }} đ</td>
+                        <td class="text-end text-danger fw-bold">{{ item.tong_gia_von|vnd }} đ</td>
                         <td class="text-center">
                             {% if item.trang_thai == '1' %}
                                 <span class="badge bg-warning text-dark"><i class="fas fa-edit me-1"></i>1 - Lập phiếu</span>

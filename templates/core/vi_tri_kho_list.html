@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="card" style="margin-bottom:16px;">
+<div class="card">
     <div class="card-header">
         <div class="card-title"><i class="fas fa-map-marker-alt text-info"></i> Danh mục vị trí kho</div>
         <div style="display:flex; gap:8px;">
@@ -10,48 +10,56 @@
             </a>
             {% if kho_id %}
             <a href="{% url 'so_do_kho' %}?kho_id={{ kho_id }}" class="btn btn-sm btn-light">
-                <i class="fas fa-filter"></i> Sơ đồ theo kho đang lọc
+                <i class="fas fa-map"></i> Sơ đồ theo kho đã lọc
             </a>
             {% endif %}
         </div>
     </div>
+
     <div class="px-3 pt-3">
         <div class="erp-toolbar" role="toolbar" aria-label="Thanh thao tác vị trí kho">
-            <button type="button" class="erp-toolbar-btn disabled" title="Thêm mới"><i class="fas fa-plus"></i></button>
-            <button type="button" class="erp-toolbar-btn disabled" title="Sửa"><i class="fas fa-pen-to-square"></i></button>
-            <button type="button" class="erp-toolbar-btn disabled" title="Xóa"><i class="fas fa-trash"></i></button>
+            <a href="{% url 'so_do_kho' %}{% if kho_id %}?kho_id={{ kho_id }}{% endif %}" class="erp-toolbar-btn" title="Sơ đồ kho" aria-label="Sơ đồ kho"><i class="fas fa-plus"></i></a>
+            <button type="button" class="erp-toolbar-btn" id="btnViTriEdit" title="Mở chi tiết vị trí" aria-label="Mở chi tiết vị trí"><i class="fas fa-pen-to-square"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnViTriClearSelect" title="Bỏ chọn" aria-label="Bỏ chọn"><i class="fas fa-trash"></i></button>
             <span class="erp-toolbar-sep"></span>
-            <button type="button" class="erp-toolbar-btn" title="Tìm" onclick="document.querySelector('input[name=\'q\']')?.focus()"><i class="fas fa-magnifying-glass"></i></button>
-            <button type="button" class="erp-toolbar-btn" onclick="window.location.reload()" title="Làm mới"><i class="fas fa-rotate-right"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnViTriCopy" title="Chép dòng đã chọn" aria-label="Chép dòng đã chọn"><i class="fas fa-copy"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnViTriExport" title="Xuất CSV" aria-label="Xuất CSV"><i class="fas fa-file-export"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnViTriTemplate" title="Tải mẫu CSV" aria-label="Tải mẫu CSV"><i class="fas fa-file-arrow-down"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnViTriImport" title="Nạp file CSV" aria-label="Nạp file CSV"><i class="fas fa-file-import"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnViTriSearch" title="Tìm" aria-label="Tìm"><i class="fas fa-magnifying-glass"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnViTriView" title="Xem chi tiết" aria-label="Xem chi tiết"><i class="fas fa-eye"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnViTriPrint" title="In danh sách" aria-label="In danh sách"><i class="fas fa-print"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnViTriFilter" title="Lọc" aria-label="Lọc"><i class="fas fa-filter"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnViTriRefresh" title="Làm mới" aria-label="Làm mới"><i class="fas fa-rotate-right"></i></button>
         </div>
     </div>
-    <div class="card-body">
-        <form method="get" class="form-row align-items-center">
-            <div class="col col-5">
-                <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Tìm mã vị trí, mô tả, mã kho...">
-            </div>
-            <div class="col col-3">
-                <select name="kho_id" class="form-control">
-                    <option value="">-- Tất cả kho --</option>
-                    {% for kho in kho_list %}
-                    <option value="{{ kho.pk }}" {% if kho_id == kho.pk|stringformat:'s' %}selected{% endif %}>{{ kho.ma_kho }} - {{ kho.ten_kho }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col col-2">
-                <button type="submit" class="btn btn-secondary"><i class="fas fa-search"></i> Lọc</button>
-                <a href="{% url 'vi_tri_kho_list' %}" class="btn btn-sm btn-light">Xóa lọc</a>
-            </div>
-        </form>
-    </div>
-</div>
 
-<div class="card" data-no-auto-toolbar>
     <div class="card-body" data-no-auto-paginate>
+        <div class="mb-3" id="viTriFilterBox" style="display:none; max-width:560px;">
+            <form method="get" class="row g-2 align-items-end">
+                <div class="col-md-7">
+                    <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Tìm mã vị trí, mô tả, mã kho...">
+                </div>
+                <div class="col-md-5">
+                    <select name="kho_id" class="form-control">
+                        <option value="">-- Tất cả kho --</option>
+                        {% for kho in kho_list %}
+                        <option value="{{ kho.pk }}" {% if kho_id == kho.pk|stringformat:'s' %}selected{% endif %}>{{ kho.ma_kho }} - {{ kho.ten_kho }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 d-flex gap-2">
+                    <button type="submit" class="btn btn-secondary"><i class="fas fa-search"></i> Lọc</button>
+                    <a href="{% url 'vi_tri_kho_list' %}" class="btn btn-sm btn-light">Xóa lọc</a>
+                </div>
+            </form>
+        </div>
+
         <div class="table-responsive">
             <table class="table">
                 <thead>
                     <tr>
+                        <th style="width:42px;">Chọn</th>
                         <th>Kho</th>
                         <th>Mã vị trí</th>
                         <th>Bên</th>
@@ -64,8 +72,11 @@
                 <tbody>
                     {% for row in items_display %}
                     <tr>
+                        <td class="text-center">
+                            <input type="checkbox" name="selected_vi_tri" class="erp-row-select" value="{{ row.obj.pk }}" data-detail-url="{% url 'chi_tiet_vi_tri' row.obj.pk %}">
+                        </td>
                         <td>{{ row.obj.kho.ma_kho }} - {{ row.obj.kho.ten_kho }}</td>
-                        <td><strong>{{ row.obj.ma_vi_tri }}</strong></td>
+                        <td><a href="{% url 'chi_tiet_vi_tri' row.obj.pk %}" target="_blank"><strong>{{ row.obj.ma_vi_tri }}</strong></a></td>
                         <td>{{ row.side }}</td>
                         <td>{{ row.day|default:'-' }}</td>
                         <td>{{ row.ke|default:'-' }}</td>
@@ -73,7 +84,7 @@
                         <td>{{ row.obj.mo_ta|default:'-' }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="7" class="text-center text-muted">Chưa có dữ liệu vị trí kho.</td></tr>
+                    <tr><td colspan="8" class="text-center text-muted">Chưa có dữ liệu vị trí kho.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -96,4 +107,173 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+    (function () {
+        const getSelected = function () {
+            return Array.from(document.querySelectorAll('input[name="selected_vi_tri"]:checked'));
+        };
+        const getSelectedOne = function () {
+            const selected = getSelected();
+            if (selected.length !== 1) {
+                alert('Vui lòng chọn đúng 1 vị trí.');
+                return null;
+            }
+            return selected[0];
+        };
+
+        const btnEdit = document.getElementById('btnViTriEdit');
+        const btnView = document.getElementById('btnViTriView');
+        const btnClear = document.getElementById('btnViTriClearSelect');
+        const btnSearch = document.getElementById('btnViTriSearch');
+        const btnFilter = document.getElementById('btnViTriFilter');
+        const btnPrint = document.getElementById('btnViTriPrint');
+        const btnRefresh = document.getElementById('btnViTriRefresh');
+        const btnCopy = document.getElementById('btnViTriCopy');
+        const btnExport = document.getElementById('btnViTriExport');
+        const btnTemplate = document.getElementById('btnViTriTemplate');
+        const btnImport = document.getElementById('btnViTriImport');
+        const filterBox = document.getElementById('viTriFilterBox');
+
+        const toggleFilter = function () {
+            if (!filterBox) {
+                return;
+            }
+            filterBox.style.display = filterBox.style.display === 'none' ? '' : 'none';
+        };
+
+        if (btnEdit) {
+            btnEdit.addEventListener('click', function () {
+                const selected = getSelectedOne();
+                if (selected) {
+                    window.open(selected.dataset.detailUrl, '_blank');
+                }
+            });
+        }
+
+        if (btnView) {
+            btnView.addEventListener('click', function () {
+                const selected = getSelectedOne();
+                if (selected) {
+                    window.open(selected.dataset.detailUrl, '_blank');
+                }
+            });
+        }
+
+        if (btnClear) {
+            btnClear.addEventListener('click', function () {
+                getSelected().forEach(function (item) { item.checked = false; });
+            });
+        }
+
+        if (btnSearch) {
+            btnSearch.addEventListener('click', toggleFilter);
+        }
+
+        if (btnFilter) {
+            btnFilter.addEventListener('click', toggleFilter);
+        }
+
+        if (btnPrint) {
+            btnPrint.addEventListener('click', function () {
+                window.print();
+            });
+        }
+
+        if (btnRefresh) {
+            btnRefresh.addEventListener('click', function () {
+                window.location.reload();
+            });
+        }
+
+        if (btnCopy) {
+            btnCopy.addEventListener('click', function () {
+                const selected = getSelected();
+                if (!selected.length) {
+                    alert('Vui lòng chọn ít nhất 1 vị trí để chép.');
+                    return;
+                }
+                const lines = selected.map(function (input) {
+                    const row = input.closest('tr');
+                    return row ? row.innerText.replace(/\s+/g, ' ').trim() : input.value;
+                });
+                navigator.clipboard.writeText(lines.join('\n')).then(function () {
+                    alert('Đã chép ' + lines.length + ' dòng vào clipboard.');
+                }).catch(function () {
+                    alert('Không thể chép dữ liệu, vui lòng thử lại.');
+                });
+            });
+        }
+
+        function csvEscape(value) {
+            const text = String(value == null ? '' : value);
+            if (/[",\n]/.test(text)) {
+                return '"' + text.replace(/"/g, '""') + '"';
+            }
+            return text;
+        }
+
+        function downloadCsv(fileName, includeBody) {
+            const table = document.querySelector('.table-responsive table');
+            if (!table) {
+                alert('Không tìm thấy bảng dữ liệu để xuất.');
+                return;
+            }
+            const lines = [];
+            const headers = Array.from(table.querySelectorAll('thead th')).map(function (th) {
+                return csvEscape(th.textContent.trim());
+            });
+            if (headers.length) {
+                lines.push(headers.join(','));
+            }
+            if (includeBody) {
+                Array.from(table.querySelectorAll('tbody tr')).forEach(function (row) {
+                    const cells = Array.from(row.querySelectorAll('td'));
+                    if (!cells.length || row.querySelector('td[colspan]')) {
+                        return;
+                    }
+                    lines.push(cells.map(function (td) {
+                        return csvEscape(td.textContent.replace(/\s+/g, ' ').trim());
+                    }).join(','));
+                });
+            }
+            const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        if (btnExport) {
+            btnExport.addEventListener('click', function () {
+                downloadCsv('vi-tri-kho-export.csv', true);
+            });
+        }
+
+        if (btnTemplate) {
+            btnTemplate.addEventListener('click', function () {
+                downloadCsv('vi-tri-kho-template.csv', false);
+            });
+        }
+
+        if (btnImport) {
+            btnImport.addEventListener('click', function () {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.csv,.xlsx,.xls';
+                input.addEventListener('change', function () {
+                    const file = input.files && input.files[0];
+                    if (file) {
+                        alert('Đã chọn tệp: ' + file.name + '. Vui lòng dùng màn hình nhập kho để nạp dữ liệu nghiệp vụ.');
+                    }
+                });
+                input.click();
+            });
+        }
+    })();
+</script>
 {% endblock %}
