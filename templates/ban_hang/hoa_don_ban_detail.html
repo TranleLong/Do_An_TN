@@ -24,7 +24,11 @@
         <div class="card-title"><i class="fas fa-file-invoice-dollar text-primary"></i> Chi tiết hóa đơn: {{ hoa_don.so_hoa_don }}</div>
         <div class="d-flex gap-2">
             <a href="{% url 'hoa_don_ban_in' hoa_don.pk %}" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="fas fa-print"></i> In</a>
+            {% if hoa_don_trong_ky %}
             <a href="{% url 'phieu_doi_tra_them' %}?hoa_don_goc={{ hoa_don.pk }}" class="btn btn-outline-warning btn-sm"><i class="fas fa-rotate-left"></i> Đổi trả</a>
+            {% else %}
+            <button type="button" class="btn btn-outline-warning btn-sm" id="btnHoaDonDoiTra"><i class="fas fa-rotate-left"></i> Đổi trả</button>
+            {% endif %}
             <a href="{% url 'hoa_don_ban_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
         </div>
     </div>
@@ -99,6 +103,8 @@
 </div>
 <script>
     (function() {
+        const hoaDonTrongKy = {{ hoa_don_trong_ky|yesno:'true,false' }};
+
         function formatDotNumber(value) {
             var raw = String(value == null ? '' : value).trim();
             if (!raw) {
@@ -122,6 +128,17 @@
         document.querySelectorAll('.money-value').forEach(function(el) {
             el.textContent = formatDotNumber(el.textContent);
         });
+
+        const btnDoiTra = document.getElementById('btnHoaDonDoiTra');
+        if (btnDoiTra) {
+            btnDoiTra.addEventListener('click', function() {
+                if (!hoaDonTrongKy) {
+                    window.erpShowNotice('Chứng từ đang ngoài kỳ kế toán, không thể thực hiện thao tác này.', 'Thông báo');
+                    return;
+                }
+                window.location.href = '{% url 'phieu_doi_tra_them' %}?hoa_don_goc={{ hoa_don.pk }}';
+            });
+        }
     })();
 </script>
 {% endblock %}

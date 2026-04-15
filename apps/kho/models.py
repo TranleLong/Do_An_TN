@@ -6,6 +6,7 @@ from django.contrib.auth.models import User
 from django.db import models
 
 from apps.danh_muc.models import HangHoa, Kho, NhaCungCap, NhomHang, ViTriKho
+from apps.so_cai.periods import AccountingPeriodLockMixin
 
 
 class TonKho(models.Model):
@@ -62,7 +63,10 @@ class TonKhoViTri(models.Model):
         return f"{self.hang_hoa.ma_hang} | {self.vi_tri.ma_vi_tri} | SL: {self.so_luong}"
 
 
-class PhieuNhap(models.Model):
+class PhieuNhap(AccountingPeriodLockMixin, models.Model):
+    accounting_period_date_field = 'ngay_hach_toan'
+    accounting_period_label = 'phiếu nhập kho'
+
     LOAI_NHAP = [
         ('1', 'Mua nhà cung cấp'),
         ('2', 'Khách hàng trả hàng'),
@@ -110,8 +114,20 @@ class PhieuNhap(models.Model):
         return tong
 
     def xac_nhan_nhap_kho(self):
+        """
+        BR12.x.5: Kiểm tra không có chênh lệch kiểm kê chưa xử lý trước khi nhập kho.
+        """
         if self.trang_thai != '1':
             return False
+        
+        # BR12.x.5: Kiểm tra hàng hóa có chênh lệch kiểm kê chưa xử lý
+        hang_ids = list(self.chi_tiet.values_list('hang_hoa_id', flat=True))
+        if hang_ids:
+            # Import tại đây để tránh circular import
+            from apps.kho.views import _check_kiem_ke_diff
+            conflicted = _check_kiem_ke_diff(self.kho_id, hang_ids)
+            if conflicted:
+                return False  # Không cho xác nhận nếu có chênh lệch chưa xử lý
 
         for ct in self.chi_tiet.all():
             ton_kho, _ = TonKho.objects.get_or_create(
@@ -167,7 +183,10 @@ class PhieuNhap_CT(models.Model):
         super().save(*args, **kwargs)
 
 
-class PhieuXuat(models.Model):
+class PhieuXuat(AccountingPeriodLockMixin, models.Model):
+    accounting_period_date_field = 'ngay_hach_toan'
+    accounting_period_label = 'phiếu xuất kho'
+
     LOAI_XUAT = [
         ('ban_hang', 'Xuất bán hàng'),
         ('tra_ncc', 'Trả nhà cung cấp'),
@@ -222,7 +241,10 @@ class PhieuXuat_CT(models.Model):
         verbose_name = 'Chi tiết phiếu xuất'
 
 
-class KiemKe(models.Model):
+class KiemKe(AccountingPeriodLockMixin, models.Model):
+    accounting_period_date_field = 'ngay_kiem_ke'
+    accounting_period_label = 'phiếu kiểm kê'
+
     TRANG_THAI = [
         ('1', '1 - Chờ kiểm kê'),
         ('2', '2 - Chờ điều chỉnh'),
@@ -278,7 +300,10 @@ class KiemKe_CT(models.Model):
         super().save(*args, **kwargs)
 
 
-class PhieuDieuChinhKiemKe(models.Model):
+class PhieuDieuChinhKiemKe(AccountingPeriodLockMixin, models.Model):
+    accounting_period_date_field = 'ngay_dieu_chinh'
+    accounting_period_label = 'phiếu điều chỉnh kiểm kê'
+
     TRANG_THAI = [
         ('1', '1 - Chờ duyệt'),
         ('2', '2 - Đã duyệt'),

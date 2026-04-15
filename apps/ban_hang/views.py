@@ -18,6 +18,12 @@ from openpyxl.utils import get_column_letter
 from apps.danh_muc.models import (HangHoa, KhachHang, Kho, NhomHang,
                                   TaiKhoanKeToan)
 from apps.kho.models import TonKho
+from apps.so_cai.periods import (AccountingPeriodError,
+                                 ensure_accounting_period_open,
+                                 ensure_accounting_period_open_for_dates,
+                                 get_current_accounting_period,
+                                 guard_accounting_period_error)
+from apps.so_cai.services import LedgerPostingError, post_to_ledger
 
 from .models import (CongNoCanhBaoConfig, DonBan, DonBan_CT, HoaDonBan,
                      HoaDonBan_CT, PhieuGiaBan, PhieuGiaBan_CT,
@@ -236,6 +242,8 @@ def _build_hoa_don_context(request, hoa_don=None):
     else:
         kh_values = {'ten_kh': '', 'so_dien_thoai': '', 'dia_chi': '', 'mst': ''}
 
+    current_period = get_current_accounting_period()
+
     nv_qs = KhachHang.objects.filter(trang_thai=True, la_nhan_vien=True)
     if hoa_don and hoa_don.ma_nv_ban_hang:
         nv_qs = KhachHang.objects.filter(
@@ -267,6 +275,7 @@ def _build_hoa_don_context(request, hoa_don=None):
         'hang_list': hang_qs.order_by('ma_hang'),
         'so_hoa_don_default': hoa_don.so_hoa_don if hoa_don else _gen_so_hoa_don(),
         'today': date.today(),
+        'current_period': current_period,
         **kh_values,
     }
 
@@ -284,6 +293,8 @@ def _save_hoa_don_from_request(request, hoa_don=None):
     ngay_chung_tu = _parse_date(data.get('ngay_chung_tu') or data.get('ngay_hach_toan') or data.get('ngay_lap'))
     hoa_don.ngay_lap = ngay_lap
     hoa_don.ngay_hach_toan = ngay_chung_tu
+    ensure_accounting_period_open_for_dates([hoa_don.ngay_lap, hoa_don.ngay_hach_toan], 'hóa đơn bán hàng')
+
     hoa_don.ma_ngoai_te = data.get('ma_ngoai_te', 'VND')
     hoa_don.ty_gia = _normalize_decimal(data.get('ty_gia'), 4, Decimal('1'))
     hoa_don.khach_hang = kh
@@ -1946,9 +1957,13 @@ def phieu_doi_tra_sua(request, pk):
 def phieu_doi_tra_xoa(request, pk):
     phieu = get_object_or_404(PhieuTraHang, pk=pk)
     if request.method == 'POST':
-        if str(phieu.trang_thai or '').strip() == '2' or phieu.da_cap_nhat_kho_cong_no or _phieu_doi_tra_is_linked(phieu):
-            messages.error(request, 'Phiếu đổi trả đã được xử lý, không được phép xóa')
+        if _phieu_doi_tra_is_linked(phieu):
+            messages.error(request, 'Phiếu đổi trả đã có tham chiếu, không được phép xóa')
             return redirect('phieu_doi_tra_list')
+
+        if phieu.da_cap_nhat_kho_cong_no:
+            _rollback_inventory_and_cong_no_for_doi_tra(phieu)
+
         so_phieu = phieu.so_phieu
         phieu.delete()
         messages.success(request, f'Đã xóa phiếu đổi trả {so_phieu}')
@@ -1970,9 +1985,13 @@ def phieu_doi_tra_xoa_nhieu(request):
     blocked_codes = []
 
     for item in items:
-        if str(item.trang_thai or '').strip() == '2' or item.da_cap_nhat_kho_cong_no or _phieu_doi_tra_is_linked(item):
+        if _phieu_doi_tra_is_linked(item):
             blocked_codes.append(item.so_phieu)
             continue
+
+        if item.da_cap_nhat_kho_cong_no:
+            _rollback_inventory_and_cong_no_for_doi_tra(item)
+
         item.delete()
         deleted += 1
 
@@ -1984,7 +2003,7 @@ def phieu_doi_tra_xoa_nhieu(request):
         suffix = '...' if len(blocked_codes) > 5 else ''
         messages.error(
             request,
-            f'Không thể xóa {len(blocked_codes)} phiếu đã xử lý/hoàn tất: {preview}{suffix}',
+            f'Không thể xóa {len(blocked_codes)} phiếu đã có tham chiếu: {preview}{suffix}',
         )
 
     if not deleted and not blocked_codes:
@@ -2610,8 +2629,10 @@ def phieu_thu_chuyen_so_cai(request, pk):
 
 def hoa_don_ban_list(request):
     items = _hoa_don_ban_filtered_queryset(request)[:100]
+    current_period = get_current_accounting_period()
     context = {
         'items': items,
+        'current_period': current_period,
         'q': request.GET.get('q', '').strip(),
         'ma_giao_dich_filter': request.GET.get('ma_giao_dich', '').strip(),
         'trang_thai_filter': request.GET.get('trang_thai', '').strip(),
@@ -2808,13 +2829,20 @@ def hoa_don_ban_import_excel(request):
 def hoa_don_ban_detail(request, pk):
     hoa_don = get_object_or_404(HoaDonBan.objects.select_related('khach_hang', 'don_ban'), pk=pk)
     chi_tiet = hoa_don.chi_tiet.select_related('hang_hoa', 'kho')
+    current_period = get_current_accounting_period()
+    hoa_don_trong_ky = bool(
+        current_period
+        and hoa_don.ngay_lap
+        and current_period.tu_ngay <= hoa_don.ngay_lap <= current_period.den_ngay
+    )
     return render(request, 'ban_hang/hoa_don_ban_detail.html', {
-        'hoa_don': hoa_don,
-        'chi_tiet': chi_tiet,
         'page_title': f'Hóa đơn {hoa_don.so_hoa_don}',
         'active_menu': 'hoa_don_ban',
+        'hoa_don': hoa_don,
+        'chi_tiet': chi_tiet,
+        'current_period': current_period,
+        'hoa_don_trong_ky': hoa_don_trong_ky,
     })
-
 
 def hoa_don_ban_copy(request, pk):
     source = get_object_or_404(HoaDonBan.objects.select_related('khach_hang', 'don_ban'), pk=pk)
@@ -2862,6 +2890,7 @@ def hoa_don_ban_sua(request, pk):
     hoa_don = get_object_or_404(HoaDonBan, pk=pk)
     if request.method == 'POST':
         try:
+            ensure_accounting_period_open_for_dates([hoa_don.ngay_lap, hoa_don.ngay_hach_toan], 'hóa đơn bán hàng')
             with transaction.atomic():
                 _save_hoa_don_from_request(request, hoa_don)
         except (ValueError, InvalidOperation) as exc:
@@ -2881,6 +2910,7 @@ def hoa_don_ban_xoa(request, pk):
     if request.method == 'POST':
         don_lien_ket = hoa_don.don_ban
         try:
+            ensure_accounting_period_open_for_dates([hoa_don.ngay_lap, hoa_don.ngay_hach_toan], 'hóa đơn bán hàng')
             with transaction.atomic():
                 if str(hoa_don.trang_thai or '').strip() in ('2', '3'):
                     _restore_ton_kho_from_hoa_don(hoa_don)
@@ -2946,13 +2976,17 @@ def hoa_don_ban_chuyen_so_cai(request, pk):
         try:
             with transaction.atomic():
                 if str(hoa_don.trang_thai or '').strip() in ('2', '3'):
-                    messages.info(request, f'Hóa đơn {hoa_don.so_hoa_don} đã ở trạng thái chuyển sổ cái.')
+                    post_to_ledger('hoa_don_ban', hoa_don.id, user=request.user)
+                    messages.info(request, f'Hóa đơn {hoa_don.so_hoa_don} đã ở trạng thái chuyển sổ cái và đã được ghi sổ.')
                     return redirect('hoa_don_ban_detail', pk=pk)
                 hoa_don.trang_thai = '2'
                 hoa_don.save(update_fields=['trang_thai'])
                 _apply_ton_kho_for_hoa_don(hoa_don)
                 _sync_cong_no_from_hoa_don(hoa_don)
+                post_to_ledger('hoa_don_ban', hoa_don.id, user=request.user)
             messages.success(request, f'Đã chuyển sổ cái hóa đơn {hoa_don.so_hoa_don}')
+        except LedgerPostingError as exc:
+            messages.error(request, str(exc))
         except ValueError as exc:
             messages.error(request, str(exc))
     return redirect('hoa_don_ban_detail', pk=pk)
@@ -3259,7 +3293,6 @@ def gia_ban_xoa(request, pk):
     if request.method == 'POST':
         phieu.delete()
         messages.success(request, 'Đã xóa phiếu giá bán')
-    return redirect('gia_ban_list')
 
 
 def _get_active_phieu_gia_for_hang(hang):
@@ -3332,3 +3365,26 @@ def gia_ban_hang_hoa_api(request):
         'chiet_khau_phan_tram': float(chiet_khau or 0),
         'gia_ban_nguon': 'phieu_gia_ban' if phieu_gia else 'bien_do_nhom',
     })
+
+
+_period_guard_fallbacks = {
+    'don_ban_them': 'don_ban_list',
+    'don_ban_sua': 'don_ban_detail',
+    'don_ban_xoa': 'don_ban_list',
+    'don_ban_xoa_nhieu': 'don_ban_list',
+    'phieu_thu_them': 'phieu_thu_list',
+    'phieu_thu_sua': 'phieu_thu_list',
+    'phieu_thu_xoa': 'phieu_thu_list',
+    'phieu_thu_xoa_nhieu': 'phieu_thu_list',
+    'phieu_doi_tra_them': 'phieu_doi_tra_list',
+    'phieu_doi_tra_sua': 'phieu_doi_tra_list',
+    'hoa_don_ban_them': 'hoa_don_ban_list',
+    'hoa_don_ban_sua': 'hoa_don_ban_detail',
+    'hoa_don_ban_xoa': 'hoa_don_ban_list',
+    'hoa_don_ban_xoa_nhieu': 'hoa_don_ban_list',
+}
+
+for _view_name, _fallback in _period_guard_fallbacks.items():
+    if _view_name in globals():
+        globals()[_view_name] = guard_accounting_period_error(_fallback)(globals()[_view_name])
+

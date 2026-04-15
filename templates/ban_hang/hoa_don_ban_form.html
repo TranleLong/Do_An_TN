@@ -67,6 +67,9 @@
         border-radius: 10px;
         padding: 14px;
     }
+    .period-alert {
+        display: none;
+    }
     #hoaDonChiTietTable {
         min-width: 1900px;
     }
@@ -122,8 +125,11 @@
 
     <form method="post" id="hoaDonForm" class="card-body">
         {% csrf_token %}
+        <div id="periodAlert" class="alert alert-danger period-alert mb-3"></div>
         <input type="hidden" name="don_ban" id="don_ban" value="{{ hoa_don.don_ban_id|default:'' }}">
         <input type="hidden" id="hoa_don_id" value="{{ hoa_don.pk|default:'' }}">
+        <input type="hidden" id="current_period_start" value="{{ current_period.tu_ngay|date:'Y-m-d'|default:'' }}">
+        <input type="hidden" id="current_period_end" value="{{ current_period.den_ngay|date:'Y-m-d'|default:'' }}">
 
         <div class="row g-3">
             <div class="col-md-3">
@@ -142,8 +148,8 @@
                 <input type="date" name="ngay_lap" class="form-control" value="{{ hoa_don.ngay_lap|default:today|date:'Y-m-d' }}" required>
             </div>
             <div class="col-md-3">
-                <label class="form-label">Ngày chứng từ (lên sổ cái) <span class="text-danger">*</span></label>
-                <input type="date" name="ngay_chung_tu" class="form-control" value="{{ hoa_don.ngay_hach_toan|default:today|date:'Y-m-d' }}" required>
+                <label class="form-label">Ngày hạch toán <span class="text-danger">*</span></label>
+                <input type="date" name="ngay_hach_toan" class="form-control" value="{{ hoa_don.ngay_hach_toan|default:today|date:'Y-m-d' }}" required>
                 <small class="text-muted">Ngày này dùng để ghi nhận Sổ cái kế toán.</small>
             </div>
 
@@ -483,6 +489,62 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
+    }
+
+    function getCurrentPeriodRange() {
+        const start = String($('#current_period_start').val() || '').trim();
+        const end = String($('#current_period_end').val() || '').trim();
+        if (!start || !end) {
+            return null;
+        }
+        return { start: start, end: end };
+    }
+
+    function showPeriodAlert(message) {
+        window.erpShowNotice(message, 'Thông báo');
+    }
+
+    function clearPeriodAlert() {
+        return;
+    }
+
+    function parseDateValue(value) {
+        const raw = String(value || '').trim();
+        if (!raw) {
+            return null;
+        }
+        const parts = raw.split('-');
+        if (parts.length !== 3) {
+            return null;
+        }
+        return { year: parts[0], month: parts[1], day: parts[2], raw: raw };
+    }
+
+    function isDateInRange(dateValue, range) {
+        const parsed = parseDateValue(dateValue);
+        if (!parsed || !range) {
+            return true;
+        }
+        return parsed.raw >= range.start && parsed.raw <= range.end;
+    }
+
+    function validateHoaDonPeriod() {
+        const range = getCurrentPeriodRange();
+        if (!range) {
+            clearPeriodAlert();
+            return true;
+        }
+
+        const ngayLap = $('#hoaDonForm [name="ngay_lap"]').val();
+        const ngayHachToan = $('#hoaDonForm [name="ngay_hach_toan"]').val();
+
+        if (!isDateInRange(ngayLap, range) || !isDateInRange(ngayHachToan, range)) {
+            showPeriodAlert('Chứng từ đang ngoài kỳ kế toán, không thể thực hiện thao tác này.');
+            return false;
+        }
+
+        clearPeriodAlert();
+        return true;
     }
 
     function updateKhDisplay() {
@@ -1035,11 +1097,19 @@
         }
     }).trigger('change');
 
+    $(document).on('change blur input', '#hoaDonForm [name="ngay_lap"], #hoaDonForm [name="ngay_hach_toan"]', function() {
+        validateHoaDonPeriod();
+    });
+
     $('#hoaDonForm').on('submit', function() {
         const tkNo = String($('#tk_no').val() || '').trim();
         if (!tkNo) {
             alert('Vui lòng nhập TK nợ');
             $('#tk_no').focus();
+            return false;
+        }
+        if (!validateHoaDonPeriod()) {
+            $('#hoaDonForm [name="ngay_hach_toan"]').focus();
             return false;
         }
         return true;
@@ -1048,6 +1118,7 @@
     $(document).ready(function() {
         syncFromSelectedCustomer();
         updateNvDisplay();
+        validateHoaDonPeriod();
         $('#chiTietBody .item-row').each(function() {
             const gia = parseMoneyInput($(this).find('.gia-ban').val());
             const ck = parseFloat($(this).find('.ty-le-ck').val()) || 0;

@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card-title"><i class="fas fa-calendar-days text-primary"></i> Kỳ kế toán</div>
+        <div class="d-flex gap-2">
+            <form method="get" class="d-flex gap-2 align-items-center">
+                <label class="fw-semibold mb-0">Năm</label>
+                <input type="number" name="nam" value="{{ year }}" min="2000" max="2100" class="form-control form-control-sm" style="width: 110px;">
+                <button type="submit" class="btn btn-sm btn-outline-primary">Xem</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <div class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                Một năm có 12 kỳ theo tháng. Chỉ kỳ đang sử dụng mới được áp logic khóa/mở; nếu chưa chọn kỳ nào thì hệ thống tạm theo ngày chứng từ.
+            </div>
+            <form method="post" class="m-0">
+                {% csrf_token %}
+                <input type="hidden" name="nam" value="{{ year }}">
+                <input type="hidden" name="action" value="generate">
+                <button type="submit" class="btn btn-primary btn-sm">Tạo đủ 12 kỳ cho năm {{ year }}</button>
+            </form>
+        </div>
+
+        <div class="row g-3 mb-3">
+            <div class="col-md-4">
+                <div class="border rounded-3 p-3 bg-light">
+                    <div class="text-uppercase small text-muted fw-bold">Tổng kỳ</div>
+                    <div class="fs-3 fw-bold">{{ periods|length }}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded-3 p-3 bg-light">
+                    <div class="text-uppercase small text-muted fw-bold">Kỳ đã tạo</div>
+                    <div class="fs-3 fw-bold">{{ existing_count }}</div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="border rounded-3 p-3 bg-light">
+                    <div class="text-uppercase small text-muted fw-bold">Trạng thái</div>
+                    {% if current_period %}
+                        <div class="fs-6 fw-bold text-primary">Đang dùng {{ current_period }}</div>
+                    {% else %}
+                        <div class="fs-6 fw-bold text-muted">Chưa chọn kỳ đang dùng</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Kỳ</th>
+                        <th>Tên kỳ</th>
+                        <th>Từ ngày</th>
+                        <th>Đến ngày</th>
+                        <th>Trạng thái</th>
+                        <th>Khóa lúc</th>
+                        <th>Khóa bởi</th>
+                        <th>Ghi chú</th>
+                        <th class="text-center">Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for period in periods %}
+                    <tr>
+                        <td class="fw-bold">{{ period.ky_so|default:period.ky_so }}</td>
+                        <td>{{ period.ten_ky }}</td>
+                        <td>{{ period.tu_ngay|date:'d/m/Y' }}</td>
+                        <td>{{ period.den_ngay|date:'d/m/Y' }}</td>
+                        <td>
+                            {% if period.is_current %}
+                            <span class="badge bg-primary me-1">Đang dùng</span>
+                            {% endif %}
+                            {% if period.trang_thai == 'locked' %}
+                            <span class="badge bg-danger">Đã khóa</span>
+                            {% else %}
+                            <span class="badge bg-success">Đang mở</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ period.khoa_luc|default:'-' }}</td>
+                        <td>
+                            {% if period.khoa_boi %}
+                                {{ period.khoa_boi.username }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ period.ghi_chu|default:'-' }}</td>
+                        <td class="text-center">
+                            {% if period.id %}
+                                {% if not period.is_current %}
+                                <form method="post" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="nam" value="{{ year }}">
+                                    <input type="hidden" name="action" value="set_current">
+                                    <input type="hidden" name="ky_id" value="{{ period.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary">Dùng kỳ này</button>
+                                </form>
+                                {% else %}
+                                <span class="text-primary small fw-semibold me-2">Đang dùng</span>
+                                {% endif %}
+                                {% if period.trang_thai == 'locked' %}
+                                <form method="post" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="nam" value="{{ year }}">
+                                    <input type="hidden" name="action" value="unlock">
+                                    <input type="hidden" name="ky_id" value="{{ period.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Mở khóa</button>
+                                </form>
+                                {% else %}
+                                <form method="post" class="d-inline">
+                                    {% csrf_token %}
+                                    <input type="hidden" name="nam" value="{{ year }}">
+                                    <input type="hidden" name="action" value="lock">
+                                    <input type="hidden" name="ky_id" value="{{ period.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Khóa kỳ</button>
+                                </form>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted small">Chưa tạo</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

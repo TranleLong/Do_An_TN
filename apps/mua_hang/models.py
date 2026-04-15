@@ -4,9 +4,13 @@ from django.contrib.auth.models import User
 from django.db import models
 
 from apps.danh_muc.models import HangHoa, Kho, NhaCungCap
+from apps.so_cai.periods import AccountingPeriodLockMixin
 
 
-class DonMua(models.Model):
+class DonMua(AccountingPeriodLockMixin, models.Model):
+    accounting_period_date_field = 'ngay_dat'
+    accounting_period_label = 'đơn mua hàng'
+
     TRANG_THAI = [
         ('1', '1 - Lập phiếu'),
         ('2', '2 - Nhập kho'),
@@ -70,7 +74,10 @@ class DonMua_CT(models.Model):
         super().save(*args, **kwargs)
 
 
-class HoaDonMuaVao(models.Model):
+class HoaDonMuaVao(AccountingPeriodLockMixin, models.Model):
+    accounting_period_date_field = 'ngay_hd'
+    accounting_period_label = 'hóa đơn mua vào'
+
     TRANG_THAI = [
         ('chua_tt', 'Chưa thanh toán'),
         ('tt_1_phan', 'TT một phần'),
@@ -105,7 +112,10 @@ class HoaDonMuaVao(models.Model):
         return f"{self.so_hoa_don} - {self.nha_cung_cap.ten_ncc}"
 
 
-class PhieuChi(models.Model):
+class PhieuChi(AccountingPeriodLockMixin, models.Model):
+    accounting_period_date_field = 'ngay_chi'
+    accounting_period_label = 'phiếu chi'
+
     HINH_THUC = [
         ('tien_mat', 'Tiền mặt'),
         ('chuyen_khoan', 'Chuyển khoản'),

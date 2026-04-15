@@ -28,6 +28,7 @@
                         <th>Tên hàng</th>
                         <th class="text-end">SL hệ thống</th>
                         <th class="text-end">SL thực tế</th>
+                        <th class="text-end">SL hàng lỗi</th>
                         <th class="text-end">Chênh lệch</th>
                         <th>Lý do</th>
                     </tr>
@@ -39,11 +40,12 @@
                         <td>{{ ct.hang_hoa.ten_hang }}</td>
                         <td class="text-end">{{ ct.so_luong_he_thong|floatformat:0|intcomma }}</td>
                         <td class="text-end">{{ ct.so_luong_thuc_te|floatformat:0|intcomma }}</td>
+                        <td class="text-end">{{ ct.so_luong_loi|default:0|floatformat:0|intcomma }}</td>
                         <td class="text-end">{% if ct.chenh_lech > 0 %}<span class="text-success">+{{ ct.chenh_lech|floatformat:0|intcomma }}</span>{% else %}<span class="text-danger">{{ ct.chenh_lech|floatformat:0|intcomma }}</span>{% endif %}</td>
                         <td>{{ ct.ly_do|default:'-' }}</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="6" class="text-center text-muted py-3">Không có dòng điều chỉnh</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-3">Không có dòng điều chỉnh</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

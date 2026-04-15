@@ -173,21 +173,17 @@
         </form>
     </div>
 </div>
-                    <th colspan="3" class="text-end">Tổng</th>
+
 <div class="report-shell">
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th class="text-right-num">{{ tong_gia_tri|floatformat:0|vnd }}</th>
-        tháng {{ thang_hien_tai|slice:'5:7' }}/{{ thang_hien_tai|slice:'0:4' }}
-    </div>
+    <div class="report-title">Tổng hợp nhập xuất tồn - Tháng {{ thang_hien_tai|slice:'5:7' }}/{{ thang_hien_tai|slice:'0:4' }}</div>
+    <div class="report-subtitle">Kho: {{ kho_da_chon|default:'Tất cả kho' }}{% if q %} | Vật tư: {{ q }}{% endif %}</div>
     <div class="table-responsive">
         <table class="table table-bordered table-hover report-table">
             <thead>
                 <tr>
-                    <th rowspan="2" class="align-middle text-center">Mã vật tư</th>
-                    <th rowspan="2" class="align-middle text-center">Tên vật tư</th>
-                    <th rowspan="2" class="align-middle text-center">ĐVT</th>
+                    <th class="text-center">Mã vật tư</th>
+                    <th class="text-center">Tên vật tư</th>
+                    <th class="text-center">ĐVT</th>
                     <th class="text-right-num">SL đầu kỳ</th>
                     <th class="text-right-num">SL nhập</th>
                     <th class="text-right-num">SL xuất</th>
@@ -213,6 +209,18 @@
                 </tr>
                 {% endfor %}
             </tbody>
+            {% if data %}
+            <tfoot>
+                <tr style="background: #f5f7fa; font-weight: 700;">
+                    <td colspan="3" class="text-end">Tổng cộng</td>
+                    <td class="text-right-num">{{ total_sl_dau_ky|intcomma }}</td>
+                    <td class="text-right-num">{{ total_sl_nhap|intcomma }}</td>
+                    <td class="text-right-num">{{ total_sl_xuat|intcomma }}</td>
+                    <td class="text-right-num">{{ total_sl_cuoi_ky|intcomma }}</td>
+                    <td class="text-right-num">{{ total_gt_cuoi_ky|floatformat:0|vnd }}</td>
+                </tr>
+            </tfoot>
+            {% endif %}
         </table>
     </div>
 </div>
@@ -229,7 +237,7 @@
                     <label class="form-label">Tìm nhanh</label>
                     <input type="text" id="lookupSearch" class="form-control" placeholder="Nhập mã hoặc tên..." autocomplete="off">
                 </div>
-                <div id="lookupResults" style="max-height: 320px; overflow-y: auto; border: 1px solid #c9d9eb; border-radius: 6px; overflow: hidden;">
+                <div id="lookupResults" style="max-height: 320px; overflow-y: auto; border: 1px solid #c9d9eb; border-radius: 6px;">
                     <div class="text-muted" style="padding: 1rem; text-align: center;">Chọn kính lúp để tra cứu.</div>
                 </div>
                 <div class="d-flex justify-content-between align-items-center mt-2">

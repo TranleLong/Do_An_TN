@@ -2,6 +2,8 @@ from django.contrib import messages
 from django.db.models.deletion import ProtectedError
 from django.http import HttpResponseRedirect, JsonResponse
 
+from apps.so_cai.periods import AccountingPeriodError
+
 
 class ProtectedErrorMiddleware:
     """Convert uncaught ProtectedError into user-friendly responses."""
@@ -35,4 +37,24 @@ class ProtectedErrorMiddleware:
 
             messages.error(request, message)
             target = request.META.get('HTTP_REFERER') or '/'
+            return HttpResponseRedirect(target)
+
+
+class AccountingPeriodErrorMiddleware:
+    """Convert uncaught AccountingPeriodError into a normal user-facing response."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        try:
+            return self.get_response(request)
+        except AccountingPeriodError as exc:
+            message = str(exc)
+
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'error': message}, status=409)
+
+            messages.add_message(request, messages.ERROR, message, extra_tags='period-lock')
+            target = request.META.get('HTTP_REFERER') or request.META.get('PATH_INFO') or '/'
             return HttpResponseRedirect(target)

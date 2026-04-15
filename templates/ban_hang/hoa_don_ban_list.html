@@ -51,7 +51,7 @@
                 <tbody>
                     {% for item in items %}
                     <tr>
-                        <td class="text-center"><input type="checkbox" name="selected_hd" class="erp-row-select" value="{{ item.pk }}" data-detail-url="{% url 'hoa_don_ban_detail' item.pk %}" data-print-url="{% url 'hoa_don_ban_in' item.pk %}" data-edit-url="{% url 'hoa_don_ban_sua' item.pk %}" data-delete-url="{% url 'hoa_don_ban_xoa' item.pk %}" data-copy-url="{% url 'hoa_don_ban_copy' item.pk %}" data-trang-thai="{{ item.trang_thai }}"></td>
+                        <td class="text-center"><input type="checkbox" name="selected_hd" class="erp-row-select" value="{{ item.pk }}" data-detail-url="{% url 'hoa_don_ban_detail' item.pk %}" data-print-url="{% url 'hoa_don_ban_in' item.pk %}" data-edit-url="{% url 'hoa_don_ban_sua' item.pk %}" data-delete-url="{% url 'hoa_don_ban_xoa' item.pk %}" data-copy-url="{% url 'hoa_don_ban_copy' item.pk %}" data-trang-thai="{{ item.trang_thai }}" data-ngay-lap="{{ item.ngay_lap|date:'Y-m-d' }}" data-ngay-hach-toan="{{ item.ngay_hach_toan|date:'Y-m-d' }}" data-so-hd="{{ item.so_hoa_don }}"></td>
                         <td>{{ item.ngay_lap|date:"d/m/Y" }}</td>
                         <td><a href="{% url 'hoa_don_ban_detail' item.pk %}"><strong>{{ item.so_hoa_don }}</strong></a></td>
                         <td>{{ item.khach_hang.ma_kh }}</td>
@@ -225,10 +225,45 @@
         return selected.length === 1 ? selected[0] : null;
     }
 
-    document.getElementById('btnHdEdit').addEventListener('click', function() {
+    function showPeriodGuard(message) {
+        window.erpShowNotice(message, 'Thông báo');
+    }
+
+    function getCurrentPeriodRange() {
+        const start = String('{{ current_period.tu_ngay|date:"Y-m-d"|default_if_none:"" }}').trim();
+        const end = String('{{ current_period.den_ngay|date:"Y-m-d"|default_if_none:"" }}').trim();
+        if (!start || !end) {
+            return null;
+        }
+        return { start: start, end: end };
+    }
+
+    function isWithinCurrentPeriod(dateValue, range) {
+        if (!range || !dateValue) {
+            return true;
+        }
+        return dateValue >= range.start && dateValue <= range.end;
+    }
+
+    function getSelectedHdOrWarn(actionLabel) {
         const selected = getSingleSelectedHd();
         if (!selected) {
-            alert('Vui lòng chọn đúng 1 hóa đơn để sửa.');
+            showPeriodGuard('Vui lòng chọn đúng 1 hóa đơn để ' + actionLabel + '.');
+            return null;
+        }
+        const range = getCurrentPeriodRange();
+        const ngayLap = String(selected.dataset.ngayLap || '');
+        const ngayHachToan = String(selected.dataset.ngayHachToan || '');
+        if (!isWithinCurrentPeriod(ngayLap, range) || !isWithinCurrentPeriod(ngayHachToan, range)) {
+            showPeriodGuard('Chứng từ đang ngoài kỳ kế toán, không thể thực hiện thao tác này.');
+            return null;
+        }
+        return selected;
+    }
+
+    document.getElementById('btnHdEdit').addEventListener('click', function() {
+        const selected = getSelectedHdOrWarn('sửa');
+        if (!selected) {
             return;
         }
         window.location.href = selected.dataset.editUrl;
@@ -237,7 +272,15 @@
     document.getElementById('btnHdDelete').addEventListener('click', function() {
         const selected = getSelectedHdInputs();
         if (!selected.length) {
-            alert('Vui lòng chọn ít nhất 1 hóa đơn để xóa.');
+            showPeriodGuard('Vui lòng chọn ít nhất 1 hóa đơn để xóa.');
+            return;
+        }
+        const range = getCurrentPeriodRange();
+        const blocked = selected.find(function(input) {
+            return !isWithinCurrentPeriod(String(input.dataset.ngayLap || ''), range) || !isWithinCurrentPeriod(String(input.dataset.ngayHachToan || ''), range);
+        });
+        if (blocked) {
+            showPeriodGuard('Chứng từ đang ngoài kỳ kế toán, không thể thực hiện thao tác này.');
             return;
         }
         if (!confirm('Bạn chắc chắn muốn xóa các hóa đơn đã chọn?')) return;
@@ -256,7 +299,7 @@
     document.getElementById('btnHdCopy').addEventListener('click', function() {
         const selected = getSingleSelectedHd();
         if (!selected) {
-            alert('Vui lòng chọn đúng 1 hóa đơn để chép dữ liệu.');
+            showPeriodGuard('Vui lòng chọn đúng 1 hóa đơn để chép dữ liệu.');
             return;
         }
         const form = document.getElementById('formHdCopy');
@@ -267,7 +310,7 @@
     document.getElementById('btnHdView').addEventListener('click', function() {
         const selected = getSingleSelectedHd();
         if (!selected) {
-            alert('Vui lòng chọn đúng 1 hóa đơn để xem.');
+            showPeriodGuard('Vui lòng chọn đúng 1 hóa đơn để xem.');
             return;
         }
         window.location.href = selected.dataset.detailUrl;

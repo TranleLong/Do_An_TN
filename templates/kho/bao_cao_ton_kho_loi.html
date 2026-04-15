@@ -1,0 +1,352 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load money_filters %}
+
+{% block extra_css %}
+<style>
+    .lookup-wrap {
+        position: relative;
+    }
+    .lookup-input {
+        padding-right: 42px;
+        background: #fff;
+        cursor: pointer;
+    }
+    .lookup-btn {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        border: 0;
+        background: transparent;
+        color: #6b7d94;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+    }
+    .lookup-btn:hover {
+        background: #eaf2fd;
+        color: #1d5ea8;
+    }
+    #lookupModal .modal-dialog {
+        max-width: 860px;
+    }
+    #lookupModal .modal-content {
+        border: 1px solid #7aa1cf;
+        border-radius: 8px;
+        box-shadow: 0 20px 45px rgba(22, 44, 75, 0.28);
+    }
+    #lookupModal .modal-header {
+        background: linear-gradient(180deg, #f7fbff 0%, #e9f3ff 100%);
+        border-bottom: 1px solid #c7dcf3;
+    }
+    .lookup-head,
+    .lookup-row {
+        display: grid;
+        gap: 10px;
+        padding: 9px 12px;
+    }
+    .lookup-head {
+        background: #eef5fb;
+        color: #1f4d83;
+        border-bottom: 1px solid #cfdeef;
+        font-weight: 700;
+    }
+    .lookup-row {
+        width: 100%;
+        border: 0;
+        border-bottom: 1px solid #e9eef5;
+        background: #fff;
+        cursor: pointer;
+        text-align: left;
+    }
+    .lookup-row:hover {
+        background: #f2f8ff;
+    }
+    .lookup-row-code {
+        font-weight: 700;
+        color: #0d4b86;
+    }
+    .lookup-row-name {
+        color: #30465f;
+    }
+    .lookup-row-dvt {
+        color: #6b7d94;
+        text-align: right;
+    }
+    .lookup-grid-kho {
+        grid-template-columns: 160px 1fr;
+    }
+    .lookup-grid-hang {
+        grid-template-columns: 150px 1fr 120px;
+    }
+    .report-shell {
+        border: 1px solid #c4d1df;
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    .report-title {
+        background: #fef3f0;
+        border-bottom: 1px solid #ecc7c7;
+        padding: 8px 12px;
+        font-weight: 700;
+        color: #d94549;
+    }
+    .report-subtitle {
+        background: #fffde9;
+        border-bottom: 1px solid #efe7b4;
+        padding: 6px 12px;
+        color: #4f4f4f;
+    }
+    .report-table {
+        font-size: 14px;
+        margin-bottom: 0;
+        min-width: 800px;
+    }
+    .report-table thead th {
+        background: #f5f7fa;
+        border-color: #d5dee8;
+        color: #3d4f61;
+        white-space: nowrap;
+        vertical-align: middle;
+        padding: 8px 10px;
+    }
+    .report-table td {
+        border-color: #e1e7ef;
+        vertical-align: middle;
+        padding: 8px 10px;
+        white-space: nowrap;
+    }
+    .text-right-num {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+    }
+    .lookup-display[readonly] {
+        background: #fff;
+        cursor: pointer;
+    }
+    @media print {
+        .sidebar, .header, .btn, .lookup-btn, form { display: none !important; }
+        .main-wrapper { margin: 0; padding: 0; }
+        .card, .report-shell { box-shadow: none; border: none; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap">
+        <div class="card-title mb-0"><i class="fas fa-exclamation-circle text-danger"></i> Báo cáo tồn kho hàng lỗi</div>
+        <button class="btn btn-sm btn-secondary" onclick="window.print()"><i class="fas fa-print"></i> In báo cáo</button>
+    </div>
+
+    <div class="card-body">
+        <form method="get" class="row g-3 align-items-end">
+            <div class="col-lg-4">
+                <label class="form-label">Kho</label>
+                <div class="lookup-wrap">
+                    <input type="text" id="khoDisplay" class="form-control lookup-input lookup-display" value="{{ kho_da_chon|default:'Tất cả kho' }}" readonly placeholder="Bấm kính lúp để chọn kho">
+                    <input type="hidden" name="kho" id="khoValue" value="{{ kho_filter }}">
+                    <button type="button" class="lookup-btn" data-lookup-target="kho" title="Tra cứu kho"><i class="fas fa-search"></i></button>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <label class="form-label">Hàng hóa</label>
+                <div class="lookup-wrap">
+                    <input type="text" id="hangDisplay" name="q" class="form-control lookup-input lookup-display" value="{{ q }}" readonly placeholder="Bấm kính lúp để chọn hàng hóa">
+                    <button type="button" class="lookup-btn" data-lookup-target="hang" title="Tra cứu hàng hóa"><i class="fas fa-search"></i></button>
+                </div>
+            </div>
+            <div class="col-lg-3 d-flex gap-2 justify-content-lg-end">
+                <a href="{% url 'bao_cao_ton_kho_loi' %}" class="btn btn-light border flex-fill">Bỏ lọc</a>
+                <button type="submit" class="btn btn-primary flex-fill"><i class="fas fa-filter"></i> Lọc</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="report-shell">
+    <div class="report-title">Hàng lỗi chưa xử lý</div>
+    <div class="report-subtitle">
+        Kho: {{ kho_da_chon|default:'Tất cả kho' }}, hàng hóa: {{ q|default:'Tất cả' }}
+    </div>
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover report-table">
+            <thead>
+                <tr>
+                    <th>Mã hàng</th>
+                    <th>Tên hàng</th>
+                    <th>ĐVT</th>
+                    <th>Mã kho</th>
+                    <th class="text-right-num">Số lượng lỗi</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td><strong>{{ row.ma_hang }}</strong></td>
+                    <td>{{ row.ten_hang }}</td>
+                    <td class="text-center">{{ row.dvt }}</td>
+                    <td>{{ row.ma_kho }}</td>
+                    <td class="text-right-num fw-semibold text-danger">{{ row.so_luong_loi|intcomma }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" class="text-center py-4 text-muted">Không có hàng lỗi.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <th colspan="4" class="text-end">Tổng</th>
+                    <th class="text-right-num text-danger fw-bold">{{ tong_so_luong_loi|intcomma }}</th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="lookupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="lookupModalTitle">Tra cứu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Tìm nhanh</label>
+                    <input type="text" id="lookupSearch" class="form-control" placeholder="Nhập mã hoặc tên..." autocomplete="off">
+                </div>
+                <div id="lookupResults" style="max-height: 320px; overflow-y: auto; border: 1px solid #c9d9eb; border-radius: 6px; overflow: hidden;">
+                    <div class="text-muted" style="padding: 1rem; text-align: center;">Chọn kính lúp để tra cứu.</div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <small id="lookupPaging" class="text-muted"></small>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLookupPrev">Trước</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="btnLookupNext">Tiếp</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Lookup functionality - Kho
+    const khoLookupData = [];
+    const hangLookupData = [];
+    let currentLookupTarget = null;
+    let lookupPage = 0;
+    const lookupPageSize = 10;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Load kho data
+        fetch('/api/danh-muc/kho/')
+            .then(r => r.json())
+            .then(data => {
+                khoLookupData.splice(0, khoLookupData.length, ...data);
+            })
+            .catch(err => console.error('Lỗi tải kho:', err));
+
+        // Load hang data
+        fetch('/api/danh-muc/hang-hoa/')
+            .then(r => r.json())
+            .then(data => {
+                hangLookupData.splice(0, hangLookupData.length, ...data);
+            })
+            .catch(err => console.error('Lỗi tải hàng hóa:', err));
+
+        // Lookup button click handlers
+        document.querySelectorAll('[data-lookup-target]').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                currentLookupTarget = this.dataset.lookupTarget;
+                lookupPage = 0;
+                document.getElementById('lookupModalTitle').textContent = 
+                    currentLookupTarget === 'kho' ? 'Chọn kho' : 'Chọn hàng hóa';
+                document.getElementById('lookupModal').classList.add('show');
+                document.getElementById('lookupModal').style.display = 'block';
+                showLookupResults('');
+            });
+        });
+
+        // Lookup search input
+        document.getElementById('lookupSearch').addEventListener('input', function() {
+            lookupPage = 0;
+            showLookupResults(this.value);
+        });
+
+        // Lookup pagination
+        document.getElementById('btnLookupPrev').addEventListener('click', function() {
+            if (lookupPage > 0) lookupPage--;
+            showLookupResults(document.getElementById('lookupSearch').value);
+        });
+
+        document.getElementById('btnLookupNext').addEventListener('click', function() {
+            lookupPage++;
+            showLookupResults(document.getElementById('lookupSearch').value);
+        });
+
+        // Modal close
+        document.querySelector('[data-bs-dismiss="modal"]').addEventListener('click', function() {
+            document.getElementById('lookupModal').classList.remove('show');
+            document.getElementById('lookupModal').style.display = 'none';
+        });
+    });
+
+    function showLookupResults(q) {
+        const data = currentLookupTarget === 'kho' ? khoLookupData : hangLookupData;
+        const filtered = data.filter(item => {
+            const ma = (item.ma_kho || item.ma_hang || '').toLowerCase();
+            const ten = (item.ten_kho || item.ten_hang || '').toLowerCase();
+            const qs = q.toLowerCase();
+            return ma.includes(qs) || ten.includes(qs);
+        });
+
+        const start = lookupPage * lookupPageSize;
+        const end = start + lookupPageSize;
+        const page = filtered.slice(start, end);
+
+        const resultsDiv = document.getElementById('lookupResults');
+        resultsDiv.innerHTML = '';
+
+        if (!page.length) {
+            resultsDiv.innerHTML = '<div class="text-muted" style="padding: 1rem; text-align: center;">Không tìm thấy kết quả.</div>';
+        } else {
+            const gridClass = currentLookupTarget === 'kho' ? 'lookup-grid-kho' : 'lookup-grid-hang';
+            page.forEach(item => {
+                const row = document.createElement('button');
+                row.type = 'button';
+                row.className = 'lookup-row ' + gridClass;
+                const ma = currentLookupTarget === 'kho' ? item.ma_kho : item.ma_hang;
+                const ten = currentLookupTarget === 'kho' ? item.ten_kho : item.ten_hang;
+                const dvt = item.ten_dvt || '';
+                row.innerHTML = `<div class="lookup-row-code">${ma}</div><div class="lookup-row-name">${ten}</div>${dvt ? `<div class="lookup-row-dvt">${dvt}</div>` : ''}`;
+                row.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    selectLookup(item);
+                });
+                resultsDiv.appendChild(row);
+            });
+        }
+
+        document.getElementById('lookupPaging').textContent = `${start + 1}-${Math.min(end, filtered.length)} của ${filtered.length}`;
+    }
+
+    function selectLookup(item) {
+        if (currentLookupTarget === 'kho') {
+            document.getElementById('khoDisplay').value = item.ma_kho;
+            document.getElementById('khoValue').value = item.id;
+        } else {
+            document.getElementById('hangDisplay').value = item.ma_hang;
+            document.getElementById('lookupSearch').value = item.ma_hang;
+        }
+        document.getElementById('lookupModal').classList.remove('show');
+        document.getElementById('lookupModal').style.display = 'none';
+    }
+</script>
+{% endblock %}

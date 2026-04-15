@@ -28,6 +28,47 @@
         place-items: center;
         text-align: center;
     }
+    .returns-zone.clickable {
+        cursor: pointer;
+    }
+    .returns-zone.clickable:hover {
+        border-color: #f59e0b;
+        background: #fff7ed;
+    }
+    .returns-code {
+        margin-top: 10px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px dashed #f97316;
+        background: #fff7ed;
+        color: #9a3412;
+        font-size: 0.86rem;
+        font-weight: 800;
+        letter-spacing: 0.02em;
+    }
+    .returns-code-note {
+        margin-top: 6px;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #6b7280;
+    }
+    .returns-stock {
+        margin-top: 8px;
+        border-top: 1px dashed #fbbf24;
+        padding-top: 8px;
+        width: 100%;
+    }
+    .returns-stock-item {
+        display: block;
+        border: 1px solid #fed7aa;
+        background: #fff7ed;
+        color: #9a3412;
+        border-radius: 6px;
+        padding: 4px 6px;
+        margin-bottom: 4px;
+        font-size: 0.72rem;
+        font-weight: 700;
+    }
     .rack-areas {
         display: block;
         min-width: 0;
@@ -113,15 +154,6 @@
         grid-template-columns: 1fr 1fr;
         gap: 10px;
     }
-    .dock-box {
-        border: 1px solid #fed7aa;
-        background: #fff7ed;
-        border-radius: 8px;
-        padding: 8px;
-        text-align: center;
-        font-size: 0.78rem;
-        color: #9a3412;
-    }
     .slot-modal {
         position: fixed;
         inset: 0;
@@ -193,14 +225,37 @@
                     {{ block.kho.ma_kho }} - {{ block.kho.ten_kho }}
                 </div>
                 <div class="text-muted" style="font-size: 0.85rem;">
-                    Tổng vị trí thiết kế: {{ block.total_slot_count|vnd }} | Vị trí đang có hàng: {{ block.occupied_count|vnd }} | Đang hiển thị: {{ block.displayed_count|vnd }} | Tổng số lượng: {{ block.tong_so_luong|vnd }}
+                    Tổng vị trí thiết kế: {{ block.total_slot_count|vnd }} | Vị trí đang có hàng: {{ block.occupied_count|vnd }} | Đang hiển thị: {{ block.displayed_count|vnd }} | Tồn thường: {{ block.tong_so_luong_thuong|vnd }} | Tồn lỗi: {{ block.tong_so_luong_loi|vnd }} | Tổng tồn: {{ block.tong_so_luong|vnd }}
                 </div>
             </div>
             <div class="card-body">
                 {% if block.display_side_blocks %}
                 <div class="warehouse-floor">
                     <div class="floor-top">
-                        <div class="returns-zone">Hàng trả về &amp;<br>Xử lý lại</div>
+                        <div class="returns-zone {% if block.vi_tri_hang_loi %}clickable js-vi-tri-chip{% endif %}" {% if block.vi_tri_hang_loi %}data-vi-tri-id="{{ block.vi_tri_hang_loi.id }}" data-ma-vi-tri="{{ block.vi_tri_hang_loi.ma_vi_tri }}"{% endif %}>
+                            <div>
+                                <div>Hàng trả về &amp;<br>Xử lý lại</div>
+                                {% if block.vi_tri_hang_loi %}
+                                <div class="returns-code">{{ block.vi_tri_hang_loi.ma_vi_tri }}</div>
+                                <div class="returns-code-note">
+                                    {% if block.vi_tri_hang_loi_created %}
+                                    Đã tự thêm mã vị trí hàng lỗi
+                                    {% else %}
+                                    Mã vị trí hàng lỗi đang dùng
+                                    {% endif %}
+                                </div>
+                                <div class="returns-code-note">Sức chứa tối đa: {{ block.vi_tri_hang_loi.suc_chua_toi_da|vnd }}</div>
+                                <div class="returns-code-note">Tổng SL hàng lỗi đang chứa: {{ block.returns_total_qty|vnd }}</div>
+                                <div class="returns-stock">
+                                    {% for row in block.returns_ton_rows %}
+                                    <span class="returns-stock-item">{{ row.hang_hoa.ma_hang }} • {{ row.so_luong|vnd }}</span>
+                                    {% empty %}
+                                    <span class="returns-code-note">Chưa có hàng lỗi trong vị trí này</span>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
 
                         <div class="rack-areas">
                             <div class="rack-zone">
@@ -236,10 +291,6 @@
                     </div>
 
                     <div class="floor-bottom">
-                        <div class="dock-row">
-                            <div class="dock-box"><i class="fas fa-truck-loading"></i> Nhập hàng</div>
-                            <div class="dock-box"><i class="fas fa-dolly"></i> Xuất hàng</div>
-                        </div>
                         <div class="text-muted" style="font-size:0.78rem; align-self:center; text-align:right;">
                             {% if hien_thi == 'co_hang' %}
                             Chỉ hiển thị kệ/tầng đang có hàng
@@ -249,18 +300,6 @@
                         </div>
                     </div>
                 </div>
-
-                {% if block.non_standard %}
-                <div class="alert alert-warning" style="margin-bottom: 10px;">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    Có {{ block.non_standard|length }} mã vị trí không theo chuẩn SIDE-Dxx-Kxx-Txx.
-                </div>
-                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
-                    {% for vt in block.non_standard %}
-                    <span class="badge" style="background:#fff7ed; color:#9a3412; border:1px solid #fed7aa;">{{ vt.ma_vi_tri }}</span>
-                    {% endfor %}
-                </div>
-                {% endif %}
                 {% else %}
                 <div class="text-muted" style="margin-bottom: 12px;">Kho này chưa có vị trí hiển thị. Bạn tạo sơ đồ vị trí rồi nhập/xuất để phát sinh dữ liệu.</div>
                 {% endif %}

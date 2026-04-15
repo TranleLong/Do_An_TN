@@ -45,6 +45,7 @@ urlpatterns = [
     path('kiem-ke/<int:pk>/in/', views.kiem_ke_in, name='kiem_ke_in'),
     path('kiem-ke/dieu-chinh/', views.kiem_ke_dieu_chinh_list, name='kiem_ke_dieu_chinh_list'),
     path('kiem-ke/dieu-chinh/<int:pk>/', views.kiem_ke_dieu_chinh_detail, name='kiem_ke_dieu_chinh_detail'),
+    path('kiem-ke/dieu-chinh/<int:pk>/xoa/', views.kiem_ke_dieu_chinh_xoa, name='kiem_ke_dieu_chinh_xoa'),
 
     # ─── Kế toán kho
     path('ke-toan/tinh-gia-xuat/', views.tinh_gia_xuat, name='tinh_gia_xuat'),
@@ -55,5 +56,6 @@ urlpatterns = [
     path('bao-cao/so-chi-tiet-hang-hoa/', views.bao_cao_ton_kho, name='so_chi_tiet_hang_hoa'),
     path('bao-cao/ton-kho-hien-tai/', views.bao_cao_ton_hien_tai, name='bao_cao_ton_hien_tai'),
     path('bao-cao/ton-kho/', views.bao_cao_ton_kho, name='bao_cao_ton_kho'),
+    path('bao-cao/ton-kho-loi/', views.bao_cao_ton_kho_loi, name='bao_cao_ton_kho_loi'),
 ]
 

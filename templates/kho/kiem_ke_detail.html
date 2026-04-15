@@ -2,6 +2,32 @@
 {% load humanize %}
 {% load money_filters %}
 
+{% block extra_css %}
+<style>
+    .kiemke-row-normal td {
+        background: #f8fafc;
+    }
+    .kiemke-row-defect td {
+        background: #fff7ed;
+    }
+    .line-tag {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+    .line-tag.normal {
+        background: #e2e8f0;
+        color: #334155;
+    }
+    .line-tag.defect {
+        background: #ffedd5;
+        color: #9a3412;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card mb-3">
     <div class="card-header d-flex justify-content-between align-items-center">
@@ -43,6 +69,19 @@
 
         <form method="post" class="mb-3">
             {% csrf_token %}
+            {% if kk.trang_thai != '3' %}
+            <div class="row g-2 mb-3">
+                <div class="col-md-6">
+                    <label class="form-label mb-1">Vị trí hàng lỗi (áp dụng cho dòng hàng lỗi)</label>
+                    <select name="vi_tri_hang_loi" class="form-control form-control-sm">
+                        <option value="">-- Chọn vị trí hàng lỗi --</option>
+                        {% for vt in vi_tri_hang_loi_list %}
+                        <option value="{{ vt.pk }}" {% if kk.vi_tri_hang_loi_id == vt.pk %}selected{% endif %}>{{ vt.ma_vi_tri }}{% if vt.mo_ta %} - {{ vt.mo_ta }}{% endif %}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            {% endif %}
             <div class="table-responsive">
                 <table class="table table-sm align-middle">
                     <thead>
@@ -50,10 +89,11 @@
                             <th>Mã hàng</th>
                             <th>Tên hàng</th>
                             <th>ĐVT</th>
+                            <th>Loại dòng</th>
                             <th class="text-end">SL hệ thống</th>
+                            <th class="text-end">SL thực tế</th>
                             <th class="text-end">SL hàng lỗi</th>
                             <th class="text-end">SL tốt</th>
-                            <th class="text-end">SL thực tế</th>
                             <th class="text-end">Chênh lệch</th>
                             <th>Tình trạng</th>
                             <th>Lý do chênh lệch</th>
@@ -61,29 +101,30 @@
                     </thead>
                     <tbody>
                         {% for ct in chi_tiet %}
-                        <tr>
-                            <td>{{ ct.hang_hoa.ma_hang }}</td>
-                            <td>{{ ct.hang_hoa.ten_hang }}</td>
-                            <td>{{ ct.hang_hoa.don_vi_tinh.ten_dvt|default:'-' }}</td>
-                            <td class="text-end">{{ ct.so_luong_so_sach|floatformat:0|intcomma }}</td>
-                            <td class="text-end">
-                                <input type="number" name="sl_loi[]" min="0" step="1" class="form-control form-control-sm text-end" value="{{ ct.so_luong_loi|default:0|floatformat:0 }}" style="max-width:120px; margin-left:auto;" {% if kk.trang_thai == '3' %}readonly{% endif %}>
-                            </td>
-                            <td class="text-end fw-semibold text-warning">
-                                {{ ct.so_luong_tot|default:0|floatformat:0|intcomma }}
-                            </td>
-                            <td class="text-end">
+                        <tr class="kiemke-row-normal">
+                            <td rowspan="2">
+                                {{ ct.hang_hoa.ma_hang }}
                                 <input type="hidden" name="ct_id[]" value="{{ ct.pk }}">
+                            </td>
+                            <td rowspan="2">{{ ct.hang_hoa.ten_hang }}</td>
+                            <td rowspan="2">{{ ct.hang_hoa.don_vi_tinh.ten_dvt|default:'-' }}</td>
+                            <td><span class="line-tag normal">Hàng bình thường</span></td>
+                            <td class="text-end" rowspan="2">{{ ct.so_luong_so_sach|floatformat:0|intcomma }}</td>
+                            <td class="text-end">
                                 {% if kk.trang_thai != '3' %}
                                 <input type="number" name="sl_thuc_te[]" min="0" step="1" class="form-control form-control-sm text-end" value="{{ ct.so_luong_thuc_te|default:0|floatformat:0 }}" style="max-width:130px; margin-left:auto;">
                                 {% else %}
                                 {{ ct.so_luong_thuc_te|floatformat:0|intcomma }}
                                 {% endif %}
                             </td>
-                            <td class="text-end">
+                            <td class="text-end text-muted">-</td>
+                            <td class="text-end fw-semibold text-success">
+                                {{ ct.so_luong_tot|default:0|floatformat:0|intcomma }}
+                            </td>
+                            <td class="text-end" rowspan="2">
                                 {% if ct.chenh_lech > 0 %}<span class="text-success">+{{ ct.chenh_lech|floatformat:0|intcomma }}</span>{% elif ct.chenh_lech < 0 %}<span class="text-danger">{{ ct.chenh_lech|floatformat:0|intcomma }}</span>{% else %}<span class="text-muted">0</span>{% endif %}
                             </td>
-                            <td>
+                            <td rowspan="2">
                                 {% if kk.trang_thai != '3' %}
                                 <select name="tinh_trang[]" class="form-control form-control-sm">
                                     <option value="tot_100" {% if ct.tinh_trang == 'tot_100' %}selected{% endif %}>Tốt 100%</option>
@@ -94,7 +135,7 @@
                                 {{ ct.get_tinh_trang_display }}
                                 {% endif %}
                             </td>
-                            <td>
+                            <td rowspan="2">
                                 {% if kk.trang_thai != '3' %}
                                 <input type="text" name="ly_do[]" class="form-control form-control-sm" value="{{ ct.ly_do|default:'' }}" placeholder="Nhập lý do nếu có chênh lệch">
                                 {% else %}
@@ -102,8 +143,20 @@
                                 {% endif %}
                             </td>
                         </tr>
+                        <tr class="kiemke-row-defect">
+                            <td><span class="line-tag defect">Hàng lỗi</span></td>
+                            <td class="text-end text-muted">-</td>
+                            <td class="text-end">
+                                {% if kk.trang_thai != '3' %}
+                                <input type="number" name="sl_loi[]" min="0" step="1" class="form-control form-control-sm text-end" value="{{ ct.so_luong_loi|default:0|floatformat:0 }}" style="max-width:120px; margin-left:auto;">
+                                {% else %}
+                                {{ ct.so_luong_loi|default:0|floatformat:0|intcomma }}
+                                {% endif %}
+                            </td>
+                            <td class="text-end fw-semibold text-danger">{{ ct.so_luong_loi|default:0|floatformat:0|intcomma }}</td>
+                        </tr>
                         {% empty %}
-                        <tr><td colspan="8" class="text-center text-muted py-3">Không có chi tiết kiểm kê</td></tr>
+                        <tr><td colspan="11" class="text-center text-muted py-3">Không có chi tiết kiểm kê</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

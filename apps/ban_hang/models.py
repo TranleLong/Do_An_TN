@@ -5,9 +5,13 @@ from django.contrib.auth.models import User
 from django.db import models
 
 from apps.danh_muc.models import HangHoa, KhachHang, Kho, NhomHang
+from apps.so_cai.periods import AccountingPeriodLockMixin
 
 
-class DonBan(models.Model):
+class DonBan(AccountingPeriodLockMixin, models.Model):
+    accounting_period_date_field = 'ngay_chung_tu'
+    accounting_period_label = 'đơn bán hàng'
+
     LOAI_BAN = [
         ('ban_le', 'Bán lẻ'),
         ('ban_buon', 'Bán buôn'),
@@ -120,7 +124,10 @@ class DonBan_CT(models.Model):
         super().save(*args, **kwargs)
 
 
-class PhieuThu(models.Model):
+class PhieuThu(AccountingPeriodLockMixin, models.Model):
+    accounting_period_date_field = 'ngay_thu'
+    accounting_period_label = 'phiếu thu'
+
     HINH_THUC = [
         ('tien_mat', 'Tiền mặt'),
         ('chuyen_khoan', 'Chuyển khoản'),
@@ -167,7 +174,10 @@ class CongNoCanhBaoConfig(models.Model):
         return f"{self.user.username} - {'Bật' if self.bat_canh_bao_qua_han else 'Tắt'}"
 
 
-class PhieuTraHang(models.Model):
+class PhieuTraHang(AccountingPeriodLockMixin, models.Model):
+    accounting_period_date_field = 'ngay_hach_toan'
+    accounting_period_label = 'phiếu đổi trả'
+
     HINH_THUC_XU_LY = [
         ('doi_hang', 'Đổi hàng'),
         ('tra_hang', 'Trả hàng'),
@@ -303,7 +313,10 @@ class PhieuGiaBanChietKhau(models.Model):
         return f"{self.phieu.ma_phieu}: {self.tu_so_luong}-{self.den_so_luong}"
 
 
-class HoaDonBan(models.Model):
+class HoaDonBan(AccountingPeriodLockMixin, models.Model):
+    accounting_period_date_field = 'ngay_hach_toan'
+    accounting_period_label = 'hóa đơn bán hàng'
+
     MA_GIAO_DICH = [
         ('1', '1 - Hóa đơn kiêm phiếu xuất bán'),
         ('2', '2 - Hóa đơn'),

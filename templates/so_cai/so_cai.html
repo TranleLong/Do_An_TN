@@ -11,39 +11,48 @@
 
     <div class="card-body">
         <form method="get" class="form-row mb-3 align-items-end p-3" style="background: rgba(0,0,0,0.04); border-radius: var(--radius-sm);">
-            <div class="col col-3 form-group mb-0">
+            <div class="col col-4 form-group mb-0">
                 <label class="form-label">Tai khoan</label>
-                <select name="tai_khoan" class="form-control">
-                    <option value="">-- Chon tai khoan --</option>
-                    {% for acc in accounts %}
-                    <option value="{{ acc.ma_tk }}" {% if account_code == acc.ma_tk %}selected{% endif %}>{{ acc.ma_tk }} - {{ acc.ten_tk }}</option>
-                    {% endfor %}
-                </select>
+                <div class="lookup-wrap">
+                    <input type="text" class="form-control lookup-input js-account-display" value="{{ account_label }}" placeholder="Bấm kính lúp để chọn tài khoản" readonly>
+                    <input type="hidden" name="tai_khoan" class="js-account-code" value="{{ account_code }}">
+                    <button type="button" class="lookup-btn" id="btnLookupAccount" title="Tra cứu tài khoản kế toán"><i class="fas fa-magnifying-glass"></i></button>
+                </div>
             </div>
-            <div class="col col-2 form-group mb-0">
+            <div class="col col-3 form-group mb-0">
                 <label class="form-label">Tu ngay</label>
                 <input type="date" name="tu_ngay" class="form-control" value="{{ from_date|date:'Y-m-d' }}">
             </div>
-            <div class="col col-2 form-group mb-0">
+            <div class="col col-3 form-group mb-0">
                 <label class="form-label">Den ngay</label>
                 <input type="date" name="den_ngay" class="form-control" value="{{ to_date|date:'Y-m-d' }}">
-            </div>
-            <div class="col col-2 form-group mb-0">
-                <label class="form-label">Loai chung tu</label>
-                <select name="loai_ct" class="form-control">
-                    {% for val, label in doc_type_choices %}
-                    <option value="{{ val }}" {% if document_type == val %}selected{% endif %}>{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col col-3 form-group mb-0">
-                <label class="form-label">So chung tu</label>
-                <input type="text" name="so_ct" class="form-control" value="{{ document_number }}" placeholder="Nhap so chung tu...">
             </div>
             <div class="col col-2 form-group mb-0 mt-2">
                 <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter"></i> Loc</button>
             </div>
         </form>
+
+        <div class="modal fade" id="modalLookupAccount" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Tra cứu tài khoản kế toán</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="text" id="accountLookupSearch" class="form-control mb-3" placeholder="Nhập mã hoặc tên tài khoản..." autocomplete="off">
+                        <div id="accountLookupResults" class="lookup-results"></div>
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <small id="accountLookupPaging" class="text-muted"></small>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="accountLookupPrev">Trước</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="accountLookupNext">Tiếp</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <form method="post" action="{% url 'so_cai_post_document' %}" class="form-row mb-4 align-items-end p-3" style="background: #eef6ff; border: 1px solid #d9e9ff; border-radius: var(--radius-sm);">
             {% csrf_token %}
@@ -134,6 +143,43 @@
 </div>
 
 <style>
+    .lookup-wrap { position: relative; }
+    .lookup-input { padding-right: 40px; }
+    .lookup-btn {
+        position: absolute;
+        right: 6px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 28px;
+        height: 28px;
+        border: 0;
+        border-radius: 7px;
+        background: transparent;
+        color: #1e5ca8;
+    }
+    .lookup-btn:hover { background: #eaf2ff; }
+    .lookup-results {
+        border: 1px solid #d7e1ee;
+        border-radius: 8px;
+        overflow: hidden;
+        max-height: 320px;
+        overflow-y: auto;
+    }
+    .lookup-row {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 140px 1fr;
+        gap: 10px;
+        padding: 10px 12px;
+        border: 0;
+        border-bottom: 1px solid #eef3f8;
+        background: #fff;
+        text-align: left;
+    }
+    .lookup-row:hover { background: #f6f9ff; }
+    .lookup-row:last-child { border-bottom: 0; }
+    .lookup-row-code { font-weight: 700; color: #0d5cab; }
+    .lookup-row-name { color: #16385b; }
     .table-bordered th, .table-bordered td { border: 1px solid rgba(0,0,0,0.05); }
     @media print {
         body { background: white; color: black; }
@@ -142,4 +188,95 @@
         .card { box-shadow: none; border: none; }
     }
 </style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let accountLookupModal = null;
+    let accountLookupPage = 1;
+    let accountLookupTotalPages = 1;
+    const accountLookupPageSize = 10;
+
+    function escapeHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function loadAccountLookup(page) {
+        const q = $('#accountLookupSearch').val().trim();
+        $.ajax({
+            url: '{% url "tai_khoan_api_lookup" %}',
+            method: 'GET',
+            dataType: 'json',
+            data: { q: q, page: page, page_size: accountLookupPageSize },
+            success: function(resp) {
+                const results = resp.results || [];
+                accountLookupPage = resp.page || 1;
+                accountLookupTotalPages = resp.total_pages || 1;
+
+                if (!results.length) {
+                    $('#accountLookupResults').html('<div class="p-3 text-center text-muted">Không tìm thấy tài khoản phù hợp.</div>');
+                } else {
+                    let html = '';
+                    results.forEach(function(item) {
+                        html += `
+                            <button type="button" class="lookup-row js-select-account" data-ma-tk="${escapeHtml(item.ma_tk)}" data-ten-tk="${escapeHtml(item.ten_tk)}">
+                                <div class="lookup-row-code">${escapeHtml(item.ma_tk)}</div>
+                                <div class="lookup-row-name">${escapeHtml(item.ten_tk)}</div>
+                            </button>
+                        `;
+                    });
+                    $('#accountLookupResults').html(html);
+                }
+
+                $('#accountLookupPaging').text(`Trang ${accountLookupPage}/${accountLookupTotalPages} - ${resp.total || 0} tài khoản`);
+                $('#accountLookupPrev').prop('disabled', accountLookupPage <= 1);
+                $('#accountLookupNext').prop('disabled', accountLookupPage >= accountLookupTotalPages);
+            },
+            error: function() {
+                $('#accountLookupResults').html('<div class="p-3 text-center text-danger">Lỗi tải dữ liệu tài khoản.</div>');
+            }
+        });
+    }
+
+    $('#btnLookupAccount').on('click', function() {
+        if (!accountLookupModal) {
+            accountLookupModal = new bootstrap.Modal(document.getElementById('modalLookupAccount'));
+        }
+        $('#accountLookupSearch').val('');
+        loadAccountLookup(1);
+        accountLookupModal.show();
+        setTimeout(() => $('#accountLookupSearch').focus(), 200);
+    });
+
+    $('#accountLookupSearch').on('input', function() {
+        loadAccountLookup(1);
+    });
+
+    $('#accountLookupPrev').on('click', function() {
+        if (accountLookupPage > 1) {
+            loadAccountLookup(accountLookupPage - 1);
+        }
+    });
+
+    $('#accountLookupNext').on('click', function() {
+        if (accountLookupPage < accountLookupTotalPages) {
+            loadAccountLookup(accountLookupPage + 1);
+        }
+    });
+
+    $(document).on('click', '.js-select-account', function() {
+        const maTk = String($(this).data('ma-tk') || '');
+        const tenTk = String($(this).data('ten-tk') || '');
+        $('.js-account-code').val(maTk);
+        $('.js-account-display').val(maTk ? `${maTk} - ${tenTk}` : '');
+        if (accountLookupModal) {
+            accountLookupModal.hide();
+        }
+    });
+</script>
 {% endblock %}

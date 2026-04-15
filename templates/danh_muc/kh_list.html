@@ -47,12 +47,14 @@
                             <div style="font-size: 11px; color: var(--text-muted);">{{ item.dia_chi|default:"Chưa có địa chỉ" }}</div>
                         </td>
                         <td>
-                            {% if item.la_khach_hang and item.la_nha_cung_cap %}
-                            <span class="badge badge-warning">KH + NCC</span>
-                            {% elif item.la_nha_cung_cap %}
-                            <span class="badge badge-info">Nhà cung cấp</span>
-                            {% else %}
+                            {% if item.la_khach_hang %}
                             <span class="badge badge-success">Khách hàng</span>
+                            {% endif %}
+                            {% if item.la_nha_cung_cap %}
+                            <span class="badge badge-info">Nhà cung cấp</span>
+                            {% endif %}
+                            {% if item.la_nhan_vien or not item.la_khach_hang and not item.la_nha_cung_cap and not item.la_nhan_vien %}
+                            <span class="badge badge-warning">Nhân viên</span>
                             {% endif %}
                         </td>
                         <td>

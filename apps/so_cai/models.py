@@ -2,10 +2,91 @@ from decimal import Decimal
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Sum
 
 from apps.danh_muc.models import KhachHang, Kho, NhaCungCap, TaiKhoanKeToan
+
+
+class KyKeToan(models.Model):
+    TRANG_THAI_CHOICES = [
+        ('open', 'Đang mở'),
+        ('locked', 'Đã khóa'),
+    ]
+
+    nam = models.PositiveIntegerField(verbose_name='Năm tài chính')
+    ky_so = models.PositiveSmallIntegerField(verbose_name='Kỳ số')
+    ten_ky = models.CharField(max_length=50, verbose_name='Tên kỳ')
+    tu_ngay = models.DateField(verbose_name='Từ ngày')
+    den_ngay = models.DateField(verbose_name='Đến ngày')
+    trang_thai = models.CharField(max_length=20, choices=TRANG_THAI_CHOICES, default='open', verbose_name='Trạng thái')
+    is_current = models.BooleanField(default=False, verbose_name='Đang sử dụng')
+    ghi_chu = models.CharField(max_length=255, blank=True, verbose_name='Ghi chú')
+    khoa_luc = models.DateTimeField(null=True, blank=True, verbose_name='Khóa lúc')
+    khoa_boi = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='ky_ke_toan_khoa_boi', verbose_name='Khóa bởi')
+    nguoi_tao = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='ky_ke_toan_tao', verbose_name='Người tạo')
+    ngay_tao = models.DateTimeField(auto_now_add=True)
+    ngay_cap_nhat = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'so_cai_ky_ke_toan'
+        verbose_name = 'Kỳ kế toán'
+        verbose_name_plural = 'Kỳ kế toán'
+        ordering = ['-nam', 'ky_so']
+        unique_together = ['nam', 'ky_so']
+
+    def __str__(self):
+        return f'Kỳ {self.ky_so:02d}/{self.nam}'
+
+    @property
+    def da_khoa(self):
+        return self.trang_thai == 'locked'
+
+    @classmethod
+    def dat_ky_hien_tai(cls, ky_id):
+        with transaction.atomic():
+            ky = cls.objects.select_for_update().get(pk=ky_id)
+            cls.objects.filter(is_current=True).exclude(pk=ky.pk).update(is_current=False)
+            if not ky.is_current:
+                ky.is_current = True
+                ky.save(update_fields=['is_current', 'ngay_cap_nhat'])
+            return ky
+
+    @classmethod
+    def tao_12_ky_cho_nam(cls, nam, nguoi_tao=None):
+        from datetime import date as _date
+        from datetime import timedelta as _timedelta
+
+        def _cuoi_thang(ngay):
+            next_month = (ngay.replace(day=28) + _timedelta(days=4)).replace(day=1)
+            return next_month - _timedelta(days=1)
+
+        created = []
+        current_year = _date.today().year
+        current_month = _date.today().month
+        for ky_so in range(1, 13):
+            tu_ngay = _date(nam, ky_so, 1)
+            den_ngay = _cuoi_thang(tu_ngay)
+            should_be_current = nam == current_year and ky_so == current_month
+            obj, _ = cls.objects.get_or_create(
+                nam=nam,
+                ky_so=ky_so,
+                defaults={
+                    'ten_ky': f'Kỳ {ky_so:02d}/{nam}',
+                    'tu_ngay': tu_ngay,
+                    'den_ngay': den_ngay,
+                    'trang_thai': 'open',
+                    'is_current': should_be_current,
+                    'nguoi_tao': nguoi_tao,
+                },
+            )
+            if should_be_current and not obj.is_current:
+                cls.dat_ky_hien_tai(obj.id)
+            created.append(obj)
+        return created
+
+
+from apps.so_cai.periods import AccountingPeriodLockMixin
 
 
 class JournalEntry(models.Model):
@@ -120,4 +201,5 @@ class JournalEntryLine(models.Model):
             raise ValidationError('Mot dong but toan khong duoc co dong thoi No va Co.')
 
     def __str__(self):
+        return f"{self.journal_entry.entry_number} - {self.account.ma_tk}"
         return f"{self.journal_entry.entry_number} - {self.account.ma_tk}"

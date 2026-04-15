@@ -6,8 +6,6 @@ import importlib.util
 import os
 from pathlib import Path
 
-import dj_database_url
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-erp-tien-huong-auto-parts-2026-secret-key')
@@ -29,7 +27,7 @@ INSTALLED_APPS = [
     'apps.kho',
     'apps.ban_hang',
     'apps.mua_hang',
-    'apps.so_cai',
+    'apps.so_cai.apps.SoCaiConfig',
 ]
 
 MIDDLEWARE = [
@@ -39,6 +37,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'erp_tien_huong.middleware.AccountingPeriodErrorMiddleware',
     'erp_tien_huong.middleware.ProtectedErrorMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -69,11 +68,10 @@ TEMPLATES = [
 WSGI_APPLICATION = 'erp_tien_huong.wsgi.application'
 
 DATABASES = {
-    'default': dj_database_url.config(
-        default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
-        conn_max_age=600,
-        ssl_require=False,
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
 
 AUTH_PASSWORD_VALIDATORS = [

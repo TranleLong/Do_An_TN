@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.mua_hang.models import PhieuChi
+from apps.so_cai.periods import guard_accounting_period_error
 
 
 @login_required
@@ -243,3 +244,15 @@ def phieu_chi_chuyen_so_cai(request, pk):
         else:
             messages.error(request, 'Chỉ phiếu chi ở bước 1 mới chuyển được Sổ cái')
     return redirect('phieu_chi_list')
+
+
+_period_guard_fallbacks = {
+    'phieu_chi_them': 'phieu_chi_list',
+    'phieu_chi_sua': 'phieu_chi_list',
+    'phieu_chi_xoa': 'phieu_chi_list',
+    'phieu_chi_xoa_nhieu': 'phieu_chi_list',
+}
+
+for _view_name, _fallback in _period_guard_fallbacks.items():
+    if _view_name in globals():
+        globals()[_view_name] = guard_accounting_period_error(_fallback)(globals()[_view_name])

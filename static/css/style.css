@@ -325,6 +325,7 @@ a {
 .badge-warning { background-color: #fef3c7; color: #b45309; }
 .badge-danger { background-color: #fee2e2; color: #b91c1c; }
 .badge-info { background-color: #dbeafe; color: #1d4ed8; }
+.badge-primary { background-color: #dbeafe; color: #1e40af; }
 
 /* KPIS */
 .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem; }

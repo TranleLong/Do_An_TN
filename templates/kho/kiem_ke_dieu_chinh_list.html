@@ -57,6 +57,10 @@
                         </td>
                         <td class="text-center">
                             <a href="{% url 'kiem_ke_dieu_chinh_detail' item.pk %}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
+                            <form method="post" action="{% url 'kiem_ke_dieu_chinh_xoa' item.pk %}" class="d-inline ms-1" onsubmit="return confirm('Xóa phiếu điều chỉnh {{ item.so_phieu }}?');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
+                            </form>
                         </td>
                     </tr>
                     {% empty %}

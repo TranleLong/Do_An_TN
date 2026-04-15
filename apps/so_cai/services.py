@@ -13,6 +13,7 @@ from django.utils import timezone
 from apps.ban_hang.models import HoaDonBan, PhieuThu, PhieuTraHang
 from apps.danh_muc.models import TaiKhoanKeToan
 from apps.kho.models import KiemKe, PhieuNhap, PhieuXuat, TonKho
+from apps.so_cai.periods import ensure_accounting_period_open
 
 from .models import JournalEntry, JournalEntryLine
 
@@ -99,8 +100,8 @@ def _compact_lines(lines: list[dict]) -> list[dict]:
 
 def _invoice_payload(doc_id: int) -> LedgerPayload:
     hoa_don = HoaDonBan.objects.prefetch_related('chi_tiet').select_related('khach_hang').get(pk=doc_id)
-    if str(hoa_don.trang_thai or '').strip() != '3':
-        raise LedgerPostingError('Hoa don chua o trang thai da ghi so (3 - Chuyen so cai).')
+    if str(hoa_don.trang_thai or '').strip() not in ('2', '3'):
+        raise LedgerPostingError('Hoa don chua o trang thai da ghi so (2 - Chuyen so cai).')
 
     tong_truoc_thue = _as_decimal(hoa_don.tien_hang)
     tong_thue = _as_decimal(hoa_don.tong_tien_thue)
@@ -187,8 +188,8 @@ def _invoice_payload(doc_id: int) -> LedgerPayload:
 
 def _receipt_payload(doc_id: int) -> LedgerPayload:
     phieu = PhieuThu.objects.select_related('khach_hang').get(pk=doc_id)
-    if str(phieu.trang_thai or '').strip() != '3':
-        raise LedgerPostingError('Phieu thu chua o trang thai da ghi so (3 - So cai).')
+    if str(phieu.trang_thai or '').strip() not in ('2', '3'):
+        raise LedgerPostingError('Phieu thu chua o trang thai da ghi so (2 - Chuyen so cai).')
 
     tk_no = '111' if phieu.hinh_thuc_thu == 'tien_mat' else '112'
     so_tien = _as_decimal(phieu.tong_thu)
@@ -226,8 +227,8 @@ def _receipt_payload(doc_id: int) -> LedgerPayload:
 
 def _phieu_nhap_payload(doc_id: int) -> LedgerPayload:
     phieu = PhieuNhap.objects.prefetch_related('chi_tiet').select_related('nha_cung_cap', 'kho').get(pk=doc_id)
-    if str(phieu.trang_thai or '').strip() != '3':
-        raise LedgerPostingError('Phieu nhap chua o trang thai da ghi so (3 - So cai).')
+    if str(phieu.trang_thai or '').strip() not in ('2', '3'):
+        raise LedgerPostingError('Phieu nhap chua o trang thai da ghi so (2 - So kho / 3 - So cai).')
 
     lines: list[dict] = []
     for ct in phieu.chi_tiet.all():
@@ -271,8 +272,8 @@ def _phieu_nhap_payload(doc_id: int) -> LedgerPayload:
 
 def _phieu_xuat_payload(doc_id: int) -> LedgerPayload:
     phieu = PhieuXuat.objects.prefetch_related('chi_tiet').select_related('kho').get(pk=doc_id)
-    if str(phieu.trang_thai or '').strip() != '3':
-        raise LedgerPostingError('Phieu xuat chua o trang thai da ghi so (3 - So cai).')
+    if str(phieu.trang_thai or '').strip() not in ('2', '3'):
+        raise LedgerPostingError('Phieu xuat chua o trang thai da ghi so (2 - So kho / 3 - So cai).')
 
     lines: list[dict] = []
     for ct in phieu.chi_tiet.all():
@@ -312,8 +313,8 @@ def _phieu_xuat_payload(doc_id: int) -> LedgerPayload:
 
 def _kiem_ke_payload(doc_id: int) -> LedgerPayload:
     phieu = KiemKe.objects.prefetch_related('chi_tiet').select_related('kho').get(pk=doc_id)
-    if str(phieu.trang_thai or '').strip() != '3':
-        raise LedgerPostingError('Phieu dieu chinh kho chua o trang thai da ghi so (3 - So cai).')
+    if str(phieu.trang_thai or '').strip() not in ('2', '3'):
+        raise LedgerPostingError('Phieu dieu chinh kho chua o trang thai da ghi so (2 - Chờ điều chỉnh / 3 - Hoàn thành).')
 
     lines: list[dict] = []
     for ct in phieu.chi_tiet.all():
@@ -434,6 +435,7 @@ def post_to_ledger(document_type: str, document_id: int, user=None) -> JournalEn
     payload = PAYLOAD_BUILDERS[document_type](document_id)
     payload.lines = _compact_lines(payload.lines)
     _validate_balanced(payload.lines)
+    ensure_accounting_period_open(payload.posting_date, 'ghi sổ chứng từ')
 
     entry = JournalEntry.objects.create(
         entry_number=_next_entry_number(),
@@ -477,6 +479,8 @@ def reverse_entry(entry_id: int, user=None, reason: str = '') -> JournalEntry:
         raise LedgerPostingError('Chi duoc dao but toan da ghi so.')
     if original.reversed_entry_id:
         raise LedgerPostingError('Chung tu nay da duoc dao.')
+
+    ensure_accounting_period_open(timezone.now().date(), 'đảo bút toán')
 
     reverse = JournalEntry.objects.create(
         entry_number=_next_entry_number(),
