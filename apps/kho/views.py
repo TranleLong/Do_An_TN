@@ -452,6 +452,17 @@ def _rollback_phieu_xuat_inventory(phieu):
         )
         ton.so_luong = int(ton.so_luong or 0) + int(ct.so_luong or 0)
         ton.save(update_fields=['so_luong', 'ngay_cap_nhat'])
+        
+        vt = TonKhoViTri.objects.select_for_update().filter(hang_hoa=ct.hang_hoa, kho=phieu.kho).exclude(vi_tri__ma_vi_tri__startswith='HL-').first()
+        if not vt:
+            vi_tri_kho = ViTriKho.objects.filter(kho=phieu.kho, trang_thai='hoat_dong').first()
+            if vi_tri_kho:
+                vt, _ = TonKhoViTri.objects.get_or_create(
+                    hang_hoa=ct.hang_hoa, kho=phieu.kho, vi_tri=vi_tri_kho, defaults={'so_luong': 0}
+                )
+        if vt:
+            vt.so_luong = int(vt.so_luong or 0) + int(ct.so_luong or 0)
+            vt.save(update_fields=['so_luong', 'ngay_cap_nhat'])
 
     phieu.trang_thai = '1'
     phieu.save(update_fields=['trang_thai'])
@@ -482,6 +493,19 @@ def _xac_nhan_phieu_xuat(phieu):
 
         ton.so_luong -= ct.so_luong
         ton.save(update_fields=['so_luong', 'ngay_cap_nhat'])
+        
+        con_lai = int(ct.so_luong or 0)
+        vt_rows = list(
+            TonKhoViTri.objects.select_for_update().filter(hang_hoa=ct.hang_hoa, kho=phieu.kho, so_luong__gt=0)
+            .exclude(vi_tri__ma_vi_tri__startswith='HL-')
+            .order_by('-so_luong', 'id')
+        )
+        for vt in vt_rows:
+            if con_lai <= 0: break
+            tru = min(int(vt.so_luong or 0), con_lai)
+            vt.so_luong = int(vt.so_luong or 0) - tru
+            vt.save(update_fields=['so_luong', 'ngay_cap_nhat'])
+            con_lai -= tru
         tong_gv += ct.tong_gia_von
 
     phieu.tong_gia_von = tong_gv
@@ -1565,26 +1589,17 @@ def phieu_nhap_them(request):
                     messages.error(request, 'Không thể tự động chuyển sang bước 2 - Sổ kho')
                     return redirect('phieu_nhap_detail', pk=phieu.pk)
 
-            if trang_thai_mong_muon == '3':
-                ok = phieu.xac_nhan_nhap_kho()
-                if not ok:
-                    messages.error(request, 'Không thể tự động chuyển sang bước 2 - Sổ kho để chuyển sổ cái')
-                    return redirect('phieu_nhap_detail', pk=phieu.pk)
-            if trang_thai_mong_muon == '2':
-                # BR12.x.5: Kiểm tra chênh lệch kiểm kê trước khi xác nhận nhập
-                hang_ids = list(phieu.chi_tiet.values_list('hang_hoa_id', flat=True))
-                conflicted = _check_kiem_ke_diff(phieu.kho_id, hang_ids)
-                if conflicted:
-                    items_str = ', '.join([f"{c['ma_hang']}" for c in conflicted])
-                    messages.error(request, f'Không thể xác nhận: hàng hóa {items_str} đang có chênh lệch kiểm kê chưa được xử lý. Hãy duyệt phiếu điều chỉnh kiểm kê trước.')
-                    return redirect('phieu_nhap_detail', pk=phieu.pk)
-
-                ok = phieu.xac_nhan_nhap_kho()
-                if ok:
-                    so_dong_phan_bo = _ghi_nhan_phan_bo_vi_tri(phieu)
-                    thong_diep.append(f'Đã tự động chuyển bước 2 - Sổ kho ({so_dong_phan_bo} dòng vị trí)')
-                else:
-                    messages.error(request, 'Không thể tự động chuyển sang bước 2 - Sổ kho')
+                    if trang_thai_mong_muon == '3':
+                        try:
+                            # Tự động ghi bước 2 nếu chưa ghi
+                            if phieu.trang_thai != '2':
+                                phieu.xac_nhan_nhap_kho()
+                            phieu.trang_thai = '3'
+                            phieu.save(update_fields=['trang_thai'])
+                            post_to_ledger('phieu_nhap', phieu.id, user=request.user)
+                            thong_diep.append('Đã tự động chuyển bước 3 - Sổ cái')
+                        except LedgerPostingError as exc:
+                            messages.warning(request, f'Lỗi ghi sổ cái: {str(exc)}')
                     return redirect('phieu_nhap_detail', pk=phieu.pk)
 
             if trang_thai_mong_muon == '3':
@@ -1886,6 +1901,10 @@ def phieu_nhap_chuyen_so_cai(request, pk):
         if phieu.trang_thai == '2':
             phieu.trang_thai = '3'
             phieu.save(update_fields=['trang_thai'])
+            try:
+                post_to_ledger('phieu_nhap', phieu.id, user=request.user)
+            except LedgerPostingError as exc:
+                messages.warning(request, f'Lỗi ghi sổ cái: {str(exc)}')
             messages.success(request, f'Đã chuyển phiếu {phieu.so_phieu} sang bước Sổ cái')
         else:
             messages.error(request, 'Chỉ có thể chuyển Sổ cái sau khi đã ghi Sổ kho (bước 2)')
@@ -2208,6 +2227,10 @@ def phieu_xuat_chuyen_so_cai(request, pk):
         if phieu.trang_thai == '2':
             phieu.trang_thai = '3'
             phieu.save(update_fields=['trang_thai'])
+            try:
+                post_to_ledger('phieu_xuat', phieu.id, user=request.user)
+            except LedgerPostingError as exc:
+                messages.warning(request, f'Lỗi ghi sổ cái: {str(exc)}')
             messages.success(request, f'Đã chuyển phiếu {phieu.so_phieu} sang bước Sổ cái')
         else:
             messages.error(request, 'Chỉ có thể chuyển Sổ cái sau khi đã ghi Sổ kho (bước 2)')
@@ -2737,7 +2760,34 @@ def kiem_ke_them(request):
         messages.success(request, 'Lập phiếu kiểm kê thành công. Phiếu đang ở trạng thái Chờ kiểm kê.')
         return redirect('kiem_ke_detail', pk=kk.pk)
 
-    return render(request, 'kho/kiem_ke_form.html', _kiem_ke_form_context())
+    # Xu ly copy_from: neu co tham so copy_from tren URL, lay du lieu phieu cu de dien vao form
+    copy_from = request.GET.get('copy_from', '').strip()
+    form_data_copy = {}
+    if copy_from and copy_from.isdigit():
+        kk_copy = KiemKe.objects.select_related('kho', 'nhom_hang', 'vi_tri_hang_loi').filter(pk=copy_from).first()
+        if kk_copy:
+            nv_obj = None
+            nguoi_kiem_display = kk_copy.nguoi_kiem or ''
+            # nguoi_kiem luu dang "MA - TEN", parse lai de tim ID
+            if nguoi_kiem_display:
+                code, _name = _split_lookup_text(nguoi_kiem_display)
+                nv_obj = KhachHang.objects.filter(ma_kh=code, la_nhan_vien=True).first()
+            form_data_copy = {
+                'kho': str(kk_copy.kho_id or ''),
+                'kho_display': f'{kk_copy.kho.ma_kho} - {kk_copy.kho.ten_kho}' if kk_copy.kho else '',
+                'khu_vuc': '',  # vi_tri se duoc set lai, don gian lay ma_phieu
+                'khu_vuc_display': kk_copy.khu_vuc or '',
+                'nguoi_kiem': str(nv_obj.pk) if nv_obj else '',
+                'nguoi_kiem_display': nguoi_kiem_display,
+                'nhom_hang': str(kk_copy.nhom_hang_id or ''),
+                'nhom_hang_display': f'{kk_copy.nhom_hang.ma_nhom} - {kk_copy.nhom_hang.ten_nhom}' if kk_copy.nhom_hang else '',
+                'vi_tri_hang_loi': str(kk_copy.vi_tri_hang_loi_id or ''),
+                'vi_tri_hang_loi_display': kk_copy.vi_tri_hang_loi.ma_vi_tri if kk_copy.vi_tri_hang_loi else '',
+                'ghi_chu': kk_copy.ghi_chu or '',
+                'ngay_kiem_ke': date.today().isoformat(),
+            }
+
+    return render(request, 'kho/kiem_ke_form.html', _kiem_ke_form_context(form_data_copy if form_data_copy else None))
 
 
 @login_required
@@ -3120,6 +3170,10 @@ def kiem_ke_dieu_chinh_detail(request, pk):
                             tk_co='711',
                         )
                     pn.tinh_tong()
+                    try:
+                        post_to_ledger('phieu_nhap', pn.id, user=request.user)
+                    except LedgerPostingError:
+                        pass
 
                 if giam_rows:
                     px = PhieuXuat.objects.create(
@@ -3152,12 +3206,20 @@ def kiem_ke_dieu_chinh_detail(request, pk):
                         tong_gia_von += tg_von
                     px.tong_gia_von = tong_gia_von
                     px.save(update_fields=['tong_gia_von'])
+                    try:
+                        post_to_ledger('phieu_xuat', px.id, user=request.user)
+                    except LedgerPostingError:
+                        pass
 
                 phieu.trang_thai = '2'
                 phieu.save(update_fields=['trang_thai'])
 
                 phieu.kiem_ke.trang_thai = '3'
                 phieu.kiem_ke.save(update_fields=['trang_thai'])
+                try:
+                    post_to_ledger('phieu_dieu_chinh_kho', phieu.kiem_ke.id, user=request.user)
+                except LedgerPostingError as exc:
+                    messages.warning(request, f'Lỗi ghi sổ cái điều chỉnh: {str(exc)}')
 
             messages.success(request, 'Đã duyệt phiếu điều chỉnh và cập nhật tồn kho thành công.')
             return redirect('kiem_ke_dieu_chinh_detail', pk=pk)
@@ -3466,8 +3528,8 @@ def bao_cao_ton_kho(request):
             'ma_ct': 'HD',
             'so_ct': i.phieu_xuat.so_phieu,
             'dien_giai': i.phieu_xuat.ghi_chu or '',
-            'ma_nhap_xuat': '',
-            'tk_doi_ung': '',
+            'ma_nhap_xuat': i.tk_co or '156',
+            'tk_doi_ung': i.tk_no or '632',
             'gia': int(i.gia_von or 0),
             'sl_nhap': 0,
             'tien_nhap': 0,

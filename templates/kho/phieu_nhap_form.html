@@ -221,7 +221,7 @@
                 </div>
                 <datalist id="ncc_lookup_list">
                     {% for ncc in ncc_list %}
-                    <option value="{{ ncc.ma_ncc }} - {{ ncc.ten_ncc }}" label="{{ ncc.ten_ncc }}"></option>
+                    <option value="{{ ncc.ma_ncc }}" label="{{ ncc.ten_ncc }}"></option>
                     {% endfor %}
                 </datalist>
                 <small id="nccHint" class="text-muted">Chỉ hiện khách hàng có tích Nhà cung cấp.</small>
@@ -632,11 +632,14 @@
         const normalizedId = String(nccId || '');
         $('#nccSelect').val(normalizedId);
         if (label) {
-            $('#nccDisplay').val(label);
+            // Chỉ lấy phần mã (trước dấu -) nếu có
+            const codePart = label.split(' - ')[0].trim();
+            $('#nccDisplay').val(codePart);
             return;
         }
-        const selectedText = normalizedId ? ($('#nccSelect option:selected').text() || '') : '';
-        $('#nccDisplay').val(selectedText);
+        const selectedOpt = $('#nccSelect option:selected');
+        const code = selectedOpt.val() ? (selectedOpt.text().split(' - ')[0].trim()) : '';
+        $('#nccDisplay').val(code);
     }
 
     function normLookup(str) {

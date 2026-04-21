@@ -146,7 +146,7 @@
         <form method="get" class="form-row align-items-end">
             <div class="col col-3 form-group mb-0">
                 <label class="form-label">Tài khoản</label>
-                <input type="text" value="1311 - Phải thu ngắn hạn khách hàng" class="form-control" readonly>
+                <input type="text" value="131 - Phải thu ngắn hạn khách hàng" class="form-control" readonly>
             </div>
             <div class="col col-2 form-group mb-0">
                 <label class="form-label">Từ ngày</label>
@@ -163,14 +163,14 @@
                         type="text"
                         id="khLookupInput"
                         class="form-control lookup-input lookup-display"
-                        value="{% if khach_hang_duoc_chon %}{{ khach_hang_duoc_chon.ma_kh }} - {{ khach_hang_duoc_chon.ten_kh }}{% endif %}"
+                        value="{% if khach_hang_duoc_chon %}{{ khach_hang_duoc_chon.ma_kh }}{% endif %}"
                         placeholder="Mã hoặc tên khách hàng"
                         autocomplete="off"
                         list="kh_lookup_list"
                     >
                     <datalist id="kh_lookup_list">
                         {% for kh in khach_hang_list %}
-                        <option value="{{ kh.ma_kh }} - {{ kh.ten_kh }}"></option>
+                        <option value="{{ kh.ma_kh }}"></option>
                         {% endfor %}
                     </datalist>
                     <input type="hidden" name="khach_hang" id="khLookupValue" value="{{ selected_khach_hang_id|default:'' }}">
@@ -313,7 +313,7 @@
         }
 
         function customerLabel(c) {
-            return c.ma + " - " + c.ten;
+            return c.ma;
         }
 
         function pickCustomer(c) {

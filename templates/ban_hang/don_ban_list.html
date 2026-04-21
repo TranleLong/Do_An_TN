@@ -63,11 +63,7 @@
                             {% if item.trang_thai == '1' %}
                             <span class="badge badge-warning">1 - Lập chứng từ</span>
                             {% elif item.trang_thai == '2' %}
-                            <span class="badge badge-secondary">2 - Chờ duyệt</span>
-                            {% elif item.trang_thai == '3' %}
-                            <span class="badge badge-success">3 - Duyệt</span>
-                            {% else %}
-                            <span class="badge badge-danger">4 - Treo</span>
+                            <span class="badge badge-danger">2 - Treo</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -102,9 +98,7 @@
                         <select name="trang_thai" class="form-control">
                             <option value="">-- Tất cả --</option>
                             <option value="1" {% if trang_thai_filter == '1' %}selected{% endif %}>1 - Lập chứng từ</option>
-                            <option value="2" {% if trang_thai_filter == '2' %}selected{% endif %}>2 - Chờ duyệt</option>
-                            <option value="3" {% if trang_thai_filter == '3' %}selected{% endif %}>3 - Duyệt</option>
-                            <option value="4" {% if trang_thai_filter == '4' %}selected{% endif %}>4 - Treo</option>
+                            <option value="2" {% if trang_thai_filter == '2' %}selected{% endif %}>2 - Treo</option>
                         </select>
                     </div>
                     <div class="col-md-4">
@@ -164,17 +158,18 @@
             alert('Vui lòng chọn ít nhất 1 đơn hàng để xóa.');
             return;
         }
-        if (!confirm('Bạn chắc chắn muốn xóa các đơn hàng đã chọn?')) return;
-        const form = document.getElementById('formDonDelete');
-        form.querySelectorAll('input[name="ids[]"]').forEach(function(el) { el.remove(); });
-        selected.forEach(function(input) {
-            const hidden = document.createElement('input');
-            hidden.type = 'hidden';
-            hidden.name = 'ids[]';
-            hidden.value = input.value;
-            form.appendChild(hidden);
+        window.erpShowConfirmDialog('Bạn chắc chắn muốn xóa các đơn hàng đã chọn?<br><span style=\"color:#6b7280; font-size:13px;\">Hành động này không thể hoàn tác.</span>', function() {
+            const form = document.getElementById('formDonDelete');
+            form.querySelectorAll('input[name=\"ids[]\"]').forEach(function(el) { el.remove(); });
+            selected.forEach(function(input) {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'ids[]';
+                hidden.value = input.value;
+                form.appendChild(hidden);
+            });
+            form.submit();
         });
-        form.submit();
     });
 
     document.getElementById('btnDonCopy').addEventListener('click', function() {

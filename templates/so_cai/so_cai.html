@@ -54,30 +54,6 @@
             </div>
         </div>
 
-        <form method="post" action="{% url 'so_cai_post_document' %}" class="form-row mb-4 align-items-end p-3" style="background: #eef6ff; border: 1px solid #d9e9ff; border-radius: var(--radius-sm);">
-            {% csrf_token %}
-            <div class="col col-3 form-group mb-0">
-                <label class="form-label">Loai chung tu nguon</label>
-                <select name="document_type" class="form-control" required>
-                    <option value="hoa_don_ban">Hoa don ban hang</option>
-                    <option value="phieu_thu">Phieu thu</option>
-                    <option value="phieu_nhap">Phieu nhap kho</option>
-                    <option value="phieu_xuat">Phieu xuat kho</option>
-                    <option value="phieu_dieu_chinh_kho">Phieu dieu chinh kho</option>
-                    <option value="hang_ban_tra_lai">Hang ban bi tra lai</option>
-                </select>
-            </div>
-            <div class="col col-2 form-group mb-0">
-                <label class="form-label">ID chung tu</label>
-                <input type="number" name="document_id" class="form-control" min="1" required>
-            </div>
-            <div class="col col-4 form-group mb-0">
-                <small class="text-muted">Chi ghi so khi chung tu da o trang thai duyet/so cai. Moi chung tu chi ghi 1 lan.</small>
-            </div>
-            <div class="col col-3 form-group mb-0">
-                <button type="submit" class="btn btn-outline-primary w-100"><i class="fas fa-file-signature"></i> Ghi so tu chung tu</button>
-            </div>
-        </form>
 
         <div class="table-responsive">
             <h5 class="mb-3 mt-2 text-center text-uppercase fw-bold" style="color: var(--accent-color); letter-spacing: 1px;">

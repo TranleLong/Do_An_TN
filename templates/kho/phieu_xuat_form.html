@@ -222,7 +222,13 @@
             </div>
         </div>
 
-        <h5 class="mt-4 mb-3 border-top pt-4">Chi tiết hàng hóa xuất kho</h5>
+        <div class="d-flex align-items-center justify-content-between mt-4 mb-3 border-top pt-4">
+            <h5 class="mb-0">Chi tiết hàng hóa xuất kho</h5>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-outline-info btn-sm" id="btnKeThuaDonBan" style="display:none;"><i class="fas fa-file-import"></i> Kế thừa từ Đơn hàng</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btnAddRow"><i class="fas fa-plus"></i> Thêm dòng</button>
+            </div>
+        </div>
 
         <div class="table-responsive">
             <table class="table" id="chiTietTable">
@@ -273,13 +279,6 @@
                         </td>
                     </tr>
                 </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="7">
-                            <button type="button" class="btn btn-secondary btn-sm" id="btnAddRow"><i class="fas fa-plus"></i> Thêm dòng</button>
-                        </td>
-                    </tr>
-                </tfoot>
             </table>
         </div>
 
@@ -331,6 +330,25 @@
                                 <button type="button" class="btn btn-sm btn-outline-secondary" id="btnHangPrev">Trước</button>
                                 <button type="button" class="btn btn-sm btn-outline-secondary" id="btnHangNext">Tiếp</button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="modalDonBan" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Danh sách Đơn bán hàng</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <input type="text" id="dbSearchInput" class="form-control" placeholder="Tìm theo số đơn, tên khách..." autocomplete="off">
+                        </div>
+                        <div id="dbSearchResults" style="max-height: 400px; overflow-y: auto;">
+                            <div class="text-muted text-center py-3">Đang tải...</div>
                         </div>
                     </div>
                 </div>
@@ -396,11 +414,19 @@
     const hangPageSize = 5;
 
     function fillXuatRow(row, item) {
-        row.find('select[name="hang_id[]"]').val(String(item.hang_id || ''));
+        const hId = String(item.hang_id || item.hang_hoa_id || '');
+        if (hId) {
+            const select = row.find('select[name="hang_id[]"]');
+            if (select.find(`option[value="${hId}"]`).length === 0) {
+                // Thêm option tạm thời nếu không có trong list (do lọc tồn kho 0)
+                select.append(`<option value="${hId}" data-ma="${item.ma_hang || ''}" data-ten="${item.ten_hang || ''}" data-dvt="${item.dvt || ''}">${item.ma_hang || ''} - ${item.ten_hang || ''}</option>`);
+            }
+            select.val(hId);
+        }
         bindHangDisplayByRow(row);
         row.find('input[name="so_luong[]"]').val(Math.round(item.so_luong || 0));
-        row.find('input[name="tk_no[]"]').val(item.tk_no || '');
-        row.find('input[name="tk_co[]"]').val(item.tk_co || '');
+        row.find('input[name="tk_no[]"]').val(item.tk_no || '632');
+        row.find('input[name="tk_co[]"]').val(item.tk_co || '156');
     }
 
     function bindHangDisplayByRow(row) {
@@ -654,6 +680,94 @@
 
     $(document).on('change', '.hang-select', function() {
         bindHangDisplayByRow($(this).closest('tr'));
+    });
+
+    // Kế thừa đơn hàng
+    const dbModal = new bootstrap.Modal(document.getElementById('modalDonBan'));
+    
+    function toggleKeThuaBtn() {
+        const loai = $('select[name="loai_xuat"]').val();
+        if (loai === 'ban_hang') {
+            $('#btnKeThuaDonBan').fadeIn();
+        } else {
+            $('#btnKeThuaDonBan').fadeOut();
+        }
+    }
+    
+    $('select[name="loai_xuat"]').on('change', toggleKeThuaBtn);
+    toggleKeThuaBtn();
+
+    $('#btnKeThuaDonBan').on('click', function() {
+        dbModal.show();
+        loadDonBanList('');
+    });
+
+    $('#dbSearchInput').on('input', function() {
+        loadDonBanList($(this).val());
+    });
+
+    function loadDonBanList(q) {
+        $.get('{% url "don_ban_api_lookup" %}', { q: q }, function(resp) {
+            let html = `
+                <table class="table table-hover table-sm">
+                    <thead>
+                        <tr>
+                            <th>Số đơn</th>
+                            <th>Ngày</th>
+                            <th>Khách hàng</th>
+                            <th class="text-right">Tổng cộng</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            if (!resp.results || resp.results.length === 0) {
+                html += '<tr><td colspan="5" class="text-center">Không tìm thấy đơn hàng</td></tr>';
+            } else {
+                resp.results.forEach(it => {
+                    html += `
+                        <tr>
+                            <td>${it.so_don}</td>
+                            <td>${it.ngay_chung_tu}</td>
+                            <td>${it.ten_kh || it.ma_kh}</td>
+                            <td class="text-right">${new Intl.NumberFormat().format(it.tong_thanh_toan)}</td>
+                            <td class="text-right">
+                                <button type="button" class="btn btn-primary btn-sm btn-select-db" data-id="${it.id}">Chọn</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            }
+            html += '</tbody></table>';
+            $('#dbSearchResults').html(html);
+        });
+    }
+
+    $(document).on('click', '.btn-select-db', function() {
+        const id = $(this).data('id');
+        $.get('{% url "don_ban_api_detail" 0 %}'.replace('0', id), function(resp) {
+            if (resp.rows) {
+                if (resp.ten_kh) {
+                    $('input[name="ghi_chu"]').val(`Xuất hàng cho đơn ${resp.so_don} - ${resp.ten_kh}`);
+                }
+                
+                const $body = $('#chiTietBody');
+                $body.empty();
+                
+                resp.rows.forEach(r => {
+                    const $row = $($('#rowTemplate').html());
+                    $body.append($row);
+                    const appendedRow = $('#chiTietBody .item-row').last();
+                    fillXuatRow(appendedRow, r);
+                });
+                
+                if (resp.kho_id) {
+                    $('select[name="kho"]').val(resp.kho_id);
+                }
+                
+                dbModal.hide();
+            }
+        });
     });
 
     applyXuatCopyData();

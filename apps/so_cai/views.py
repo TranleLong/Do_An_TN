@@ -239,3 +239,58 @@ def trial_balance_api(request):
             for r in report['rows']
         ],
     })
+
+
+@login_required
+def nhat_ky_chung_view(request):
+    from apps.so_cai.models import JournalEntryLine, JournalEntry
+    from django.db.models import Sum
+
+    today = date.today()
+    from_date = _parse_date(request.GET.get('tu_ngay'), today.replace(day=1))
+    to_date = _parse_date(request.GET.get('den_ngay'), today)
+    account_code = (request.GET.get('tai_khoan') or '').strip()
+    document_type = (request.GET.get('loai_chung_tu') or '').strip()
+    document_number = (request.GET.get('so_chung_tu') or '').strip()
+
+    account_label = ''
+    if account_code:
+        selected_account = TaiKhoanKeToan.objects.filter(ma_tk=account_code, trang_thai=True).first()
+        if selected_account:
+            account_label = f"{selected_account.ma_tk} - {selected_account.ten_tk}"
+
+    qs = JournalEntryLine.objects.select_related('journal_entry', 'account', 'customer', 'supplier').filter(
+        journal_entry__posting_date__range=[from_date, to_date]
+    )
+
+    if account_code:
+        qs = qs.filter(account__ma_tk=account_code)
+    if document_type:
+        qs = qs.filter(journal_entry__document_type=document_type)
+    if document_number:
+        qs = qs.filter(journal_entry__document_number__icontains=document_number)
+
+    totals = qs.aggregate(
+        tong_no=Sum('debit_amount'),
+        tong_co=Sum('credit_amount')
+    )
+
+    qs = qs.order_by('journal_entry__posting_date', 'journal_entry__id', 'line_no')
+
+    doc_types = JournalEntry.DOC_TYPE_CHOICES
+
+    return render(request, 'so_cai/nhat_ky_chung.html', {
+        'page_title': 'Sổ nhật ký chung',
+        'active_menu': 'so_nhat_ky_chung',
+        'from_date': from_date,
+        'to_date': to_date,
+        'account_code': account_code,
+        'account_label': account_label,
+        'document_type': document_type,
+        'document_number': document_number,
+        'doc_types': doc_types,
+        'accounts': TaiKhoanKeToan.objects.filter(trang_thai=True).order_by('ma_tk'),
+        'items': qs[:1000],
+        'tong_no': totals['tong_no'] or 0,
+        'tong_co': totals['tong_co'] or 0,
+    })

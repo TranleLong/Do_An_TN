@@ -11,6 +11,8 @@ urlpatterns = [
     path('api/khach-hang/', views.khach_hang_lookup, name='khach_hang_lookup'),
     path('api/khach-hang-lookup/', views.khach_hang_api_lookup, name='khach_hang_api_lookup'),
     path('api/don-ban-lookup/', views.don_ban_api_lookup, name='don_ban_api_lookup'),
+    path('api/hoa-don-ban-lookup/', views.hoa_don_ban_api_lookup, name='hoa_don_ban_api_lookup'),
+    path('api/hoa-don-ban/<int:pk>/', views.hoa_don_ban_api_detail, name='hoa_don_ban_api_detail'),
     path('api/don-ban/<int:pk>/', views.don_ban_api_detail, name='don_ban_api_detail'),
     path('<int:pk>/', views.don_ban_detail, name='don_ban_detail'),
     path('<int:pk>/sua/', views.don_ban_sua, name='don_ban_sua'),
@@ -69,4 +71,12 @@ urlpatterns = [
     path('bao-cao/doanh-thu/api/by-product/', revenue_report_views.revenue_by_product_api, name='revenue_by_product_api'),
     path('bao-cao/doanh-thu/api/by-salesperson/', revenue_report_views.revenue_by_salesperson_api, name='revenue_by_salesperson_api'),
     path('bao-cao/doanh-thu/export-excel/', revenue_report_views.revenue_export_excel, name='revenue_export_excel'),
+
+    # Phiếu giao hàng
+    path('giao-hang/', views.phieu_giao_hang_list, name='phieu_giao_hang_list'),
+    path('giao-hang/them/', views.phieu_giao_hang_them, name='phieu_giao_hang_them'),
+    path('giao-hang/<int:pk>/sua/', views.phieu_giao_hang_sua, name='phieu_giao_hang_sua'),
+    path('giao-hang/<int:pk>/xoa/', views.phieu_giao_hang_xoa, name='phieu_giao_hang_xoa'),
+    path('giao-hang/api/hoa-don/<int:pk>/', views.phieu_giao_hang_api_hoa_don, name='phieu_giao_hang_api_hoa_don'),
 ]
+

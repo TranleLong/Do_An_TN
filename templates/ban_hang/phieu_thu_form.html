@@ -38,7 +38,7 @@
         cursor: default !important;
     }
     #modalKhachHang .modal-dialog,
-    #modalDonBan .modal-dialog,
+    #modalHoaDon .modal-dialog,
     #modalTaiKhoan .modal-dialog {
         max-width: 900px;
     }
@@ -142,7 +142,7 @@
                         </select>
                         <datalist id="kh_lookup_list">
                             {% for kh in kh_list %}
-                            <option value="{{ kh.ma_kh }} - {{ kh.ten_kh }}" label="{{ kh.ten_kh }}"></option>
+                            <option value="{{ kh.ma_kh }}" label="{{ kh.ten_kh }}"></option>
                             {% endfor %}
                         </datalist>
             </div>
@@ -214,30 +214,30 @@
                     <h5 class="mb-0">Chi tiết chứng từ liên kết</h5>
                     <div class="d-flex gap-2">
                         <div class="lookup-box" style="min-width: 380px;">
-                            <input type="text" id="don_display" class="form-control lookup-input lookup-display" list="don_lookup_list" placeholder="Chọn đơn bán liên kết" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-                            <button type="button" class="lookup-icon-btn" id="btnSearchDon" title="Tra cứu đơn bán"><i class="fas fa-search"></i></button>
+                            <input type="text" id="hoa_don_display" class="form-control lookup-input lookup-display" list="hoa_don_lookup_list" placeholder="Chọn hóa đơn liên kết" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                            <button type="button" class="lookup-icon-btn" id="btnSearchHoaDon" title="Tra cứu hóa đơn"><i class="fas fa-search"></i></button>
                         </div>
                     </div>
                 </div>
 
-                <select name="don_ban" id="don_ban" style="display:none;">
+                <select name="hoa_don" id="hoa_don" style="display:none;">
                     <option value="">-- Không liên kết --</option>
-                    {% for don in don_ban_list %}
-                    <option value="{{ don.pk }}"
-                            data-so-don="{{ don.so_don }}"
-                            data-ngay="{{ don.ngay_chung_tu|date:'d/m/Y' }}"
-                            data-con-no="{{ don.con_no|default:0 }}"
-                            data-ma-kh="{{ don.khach_hang.ma_kh|default:'' }}"
-                            data-ten-kh="{{ don.ten_kh|default:'' }}"
-                            data-kh-id="{{ don.khach_hang_id|default:'' }}"
-                            {% if form_values.don_ban|default:'' == don.pk|stringformat:'s' %}selected{% endif %}>
-                        {{ don.so_don }} - {{ don.ten_kh }}
+                    {% for hd in hoa_don_list %}
+                    <option value="{{ hd.pk }}"
+                            data-so-hoa-don="{{ hd.so_hoa_don }}"
+                            data-ngay="{{ hd.ngay_lap|date:'d/m/Y' }}"
+                            data-con-no="{{ hd.con_no|default:0 }}"
+                            data-ma-kh="{{ hd.khach_hang.ma_kh|default:'' }}"
+                            data-ten-kh="{{ hd.ten_kh|default:'' }}"
+                            data-kh-id="{{ hd.khach_hang_id|default:'' }}"
+                            {% if form_values.hoa_don|default:'' == hd.pk|stringformat:'s' %}selected{% endif %}>
+                        {{ hd.so_hoa_don }} - {{ hd.ten_kh }}
                     </option>
                     {% endfor %}
                 </select>
-                <datalist id="don_lookup_list">
-                    {% for don in don_ban_list %}
-                    <option value="{{ don.so_don }} - {{ don.ten_kh }}" label="{{ don.ten_kh }}"></option>
+                <datalist id="hoa_don_lookup_list">
+                    {% for hd in hoa_don_list %}
+                    <option value="{{ hd.so_hoa_don }}" label="{{ hd.ten_kh }}"></option>
                     {% endfor %}
                 </datalist>
 
@@ -245,7 +245,7 @@
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>Số hóa đơn / đơn</th>
+                                <th>Số hóa đơn</th>
                                 <th>Ngày chứng từ</th>
                                 <th class="text-end">Còn nợ</th>
                                 <th class="text-end">Tiền {% if loai_form == 'chi' %}chi{% else %}thu{% endif %}</th>
@@ -255,7 +255,7 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td id="previewSoDon" class="text-muted">Chưa chọn</td>
+                                <td id="previewSoHoaDon" class="text-muted">Chưa chọn</td>
                                 <td id="previewNgay" class="text-muted">--/--/----</td>
                                 <td id="previewConNo" class="text-end">0</td>
                                 <td id="previewTienThu" class="text-end">0</td>
@@ -354,16 +354,16 @@
     </div>
 </div>
 
-<div class="modal fade" id="modalDonBan" tabindex="-1">
+<div class="modal fade" id="modalHoaDon" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Danh mục đơn bán</h5>
+                <h5 class="modal-title">Danh mục hóa đơn bán</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <input type="text" id="donSearchInput" class="form-control mb-2" placeholder="Tìm nhanh số đơn hoặc mã khách...">
-                <div class="lookup-scroll" id="donSearchResults"></div>
+                <input type="text" id="hoaDonSearchInput" class="form-control mb-2" placeholder="Tìm nhanh số hóa đơn hoặc mã khách...">
+                <div class="lookup-scroll" id="hoaDonSearchResults"></div>
             </div>
         </div>
     </div>
@@ -388,7 +388,7 @@
 {% block extra_js %}
 <script>
     let khModal = null;
-    let donModal = null;
+    let hoaDonModal = null;
     let tkModal = null;
     let tkTargetField = 'tk_no';
     const isChiForm = '{{ loai_form|default:"thu" }}' === 'chi';
@@ -441,8 +441,8 @@
             const text = normLookup($opt.text());
             const ma = normLookup($opt.data('ma') || '');
             const ten = normLookup($opt.data('ten') || '');
-            const soDon = normLookup($opt.data('so-don') || '');
-            if (keyword === text || keyword === ma || keyword === soDon || keyword === (ma + ' - ' + ten)) {
+            const soHoaDon = normLookup($opt.data('so-hoa-don') || '');
+            if (keyword === text || keyword === ma || keyword === soHoaDon || keyword === (ma + ' - ' + ten)) {
                 matchedValue = optVal;
                 return false;
             }
@@ -468,7 +468,7 @@
         }
         const ma = opt.data('ma') || '';
         const ten = opt.data('ten') || '';
-        $('#kh_display').val(ma + ' - ' + ten);
+        $('#kh_display').val(ma);
         $('#previewKhMa').text(ma || '--').removeClass('text-muted');
         $('#previewKhTen').text(ten || '').removeClass('text-muted');
         $('#previewKhTongNo').text(fmtMoney(opt.data('tong-hoa-don') || 0));
@@ -491,14 +491,14 @@
         }
     }
 
-    function updateDonPreviewFromSelect() {
+    function updateHoaDonPreviewFromSelect() {
         if ($('#loai_phieu_thu').val() !== '1') {
             return;
         }
-        const opt = $('#don_ban option:selected');
+        const opt = $('#hoa_don option:selected');
         const tongThuCurrent = parseFloat(unformatCurrency($('#tong_thu').val() || 0));
         if (!opt.val()) {
-            $('#don_display').val('');
+            $('#hoa_don_display').val('');
             $('#previewSoDon').text('Chưa chọn').addClass('text-muted');
             $('#previewNgay').text('--/--/----').addClass('text-muted');
             $('#previewConNo').text(fmtMoney(0));
@@ -506,11 +506,11 @@
             return;
         }
 
-        const soDon = opt.data('so-don') || '';
+        const soHoaDon = opt.data('so-hoa-don') || '';
         const ngay = opt.data('ngay') || '--/--/----';
         const conNo = parseFloat(opt.data('con-no') || 0);
-        $('#don_display').val((soDon ? soDon + ' - ' : '') + (opt.data('ten-kh') || ''));
-        $('#previewSoDon').text(soDon).removeClass('text-muted');
+        $('#hoa_don_display').val(soHoaDon);
+        $('#previewSoDon').text(soHoaDon).removeClass('text-muted');
         $('#previewNgay').text(ngay).removeClass('text-muted');
         $('#previewConNo').text(fmtMoney(conNo));
 
@@ -616,7 +616,7 @@
 
         if (!isLoai1) {
             $('#don_ban').val('').trigger('change');
-            $('#don_display').val('');
+            $('#hoa_don_display').val('');
             if (!isChiForm) {
                 $('#thuRuleHint').text('Quy tắc: Loại 2 thu theo khách hàng, không bắt buộc chọn hóa đơn. Số tiền thu không vượt công nợ tổng của khách hàng.');
             }
@@ -624,7 +624,7 @@
             if (!isChiForm) {
                 $('#thuRuleHint').text('Quy tắc: Loại 1 không vượt công nợ của hóa đơn/đơn liên kết. Loại 2 không vượt công nợ tổng của khách hàng.');
             }
-            updateDonPreviewFromSelect();
+            updateHoaDonPreviewFromSelect();
         }
         updateKhDisplayFromSelect();
     }
@@ -650,31 +650,31 @@
         });
     }
 
-    function loadDonResults() {
-        const q = $('#donSearchInput').val().trim();
+    function loadHoaDonResults() {
+        const q = $('#hoaDonSearchInput').val().trim();
         const khId = $('#khach_hang').val() || '';
-        $.get('{% url "don_ban_api_lookup" %}', { q: q, khach_hang_id: khId }, function(resp) {
+        $.get('{% url "hoa_don_ban_api_lookup" %}', { q: q, khach_hang_id: khId }, function(resp) {
             const rows = resp.results || [];
             if (!rows.length) {
-                $('#donSearchResults').html('<div class="p-3 text-muted text-center">Không tìm thấy đơn bán phù hợp</div>');
+                $('#hoaDonSearchResults').html('<div class="p-3 text-muted text-center">Không tìm thấy đơn bán phù hợp</div>');
                 return;
             }
 
             let html = '<div class="lookup-head don"><span>Số đơn</span><span>Ngày</span><span>Khách hàng</span><span>Tổng tiền</span></div>';
             rows.forEach(function(r) {
-                html += '<button type="button" class="lookup-row don btn-don-select" data-id="' + r.id + '">'
+                html += '<button type="button" class="lookup-row don btn-hoa-don-select" data-id="' + r.id + '">'
                     + '<span><strong>' + escapeHtml(r.so_don || '') + '</strong></span>'
                     + '<span>' + escapeHtml(r.ngay_chung_tu || '') + '</span>'
                     + '<span>' + escapeHtml((r.ma_kh || '') + ' - ' + (r.ten_kh || '')) + '</span>'
                     + '<span class="text-end">' + fmtMoney(r.tong_thanh_toan || 0) + '</span>'
                     + '</button>';
             });
-            $('#donSearchResults').html(html);
+            $('#hoaDonSearchResults').html(html);
         });
     }
 
     $('#khach_hang').on('change', updateKhDisplayFromSelect);
-    $('#don_ban').on('change', updateDonPreviewFromSelect);
+    $('#hoa_don').on('change', updateHoaDonPreviewFromSelect);
     $('#loai_phieu_thu').on('change', updateLoaiPhieuUI);
     $('#hinh_thuc_thu').on('change', updateTkCoPreview);
     $('#tong_thu').on('input', function() {
@@ -709,7 +709,7 @@
     });
 
     $('#don_display').on('change blur', function() {
-        syncLookupInputToSelect('#don_display', '#don_ban');
+        syncLookupInputToSelect('#hoa_don_display', '#hoa_don');
     });
 
     $('#btnSearchKh').on('click', function() {
@@ -721,23 +721,23 @@
         loadKhResults();
     });
 
-    $('#btnSearchDon').on('click', function() {
+    $('#btnSearchHoaDon').on('click', function() {
         if (isChiForm) {
             return;
         }
         if ($('#loai_phieu_thu').val() !== '1') {
             return;
         }
-        if (!donModal) {
-            donModal = new bootstrap.Modal(document.getElementById('modalDonBan'));
+        if (!hoaDonModal) {
+            hoaDonModal = new bootstrap.Modal(document.getElementById('modalDonBan'));
         }
-        donModal.show();
-        $('#donSearchInput').val('');
-        loadDonResults();
+        hoaDonModal.show();
+        $('#hoaDonSearchInput').val('');
+        loadHoaDonResults();
     });
 
     $('#khSearchInput').on('input', loadKhResults);
-    $('#donSearchInput').on('input', loadDonResults);
+    $('#hoaDonSearchInput').on('input', loadHoaDonResults);
     $('#tkSearchInput').on('input', loadTkResults);
 
     $('.btn-search-tk').on('click', function() {
@@ -758,11 +758,11 @@
         }
     });
 
-    $(document).on('click', '.btn-don-select', function() {
+    $(document).on('click', '.btn-hoa-don-select', function() {
         const id = String($(this).data('id') || '');
         $('#don_ban').val(id).trigger('change');
-        if (donModal) {
-            donModal.hide();
+        if (hoaDonModal) {
+            hoaDonModal.hide();
         }
     });
 
@@ -787,7 +787,7 @@
             $('#tk_co').val(isChiForm ? '131' : ($('#hinh_thuc_thu').val() === 'chuyen_khoan' ? '112' : '111'));
         }
         updateKhDisplayFromSelect();
-        updateDonPreviewFromSelect();
+        updateHoaDonPreviewFromSelect();
         updateTkCoPreview();
         updateTkPreview();
         updateTongThuDisplay();

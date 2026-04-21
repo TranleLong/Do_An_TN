@@ -1,0 +1,225 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-truck text-primary"></i> Phiếu giao hàng</div>
+    </div>
+
+    <div class="px-3 pt-3">
+        <div class="erp-toolbar" role="toolbar" aria-label="Thanh thao tác phiếu giao hàng">
+            <a href="{% url 'phieu_giao_hang_them' %}" class="erp-toolbar-btn" title="Thêm mới"><i class="fas fa-plus"></i></a>
+            <button type="button" class="erp-toolbar-btn" id="btnGiaoEdit" title="Sửa"><i class="fas fa-pen-to-square"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnGiaoDelete" title="Xóa"><i class="fas fa-trash"></i></button>
+            <span class="erp-toolbar-sep"></span>
+            <button type="button" class="erp-toolbar-btn" id="btnGiaoCopy" title="Chép dữ liệu"><i class="fas fa-copy"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnGiaoExport" title="Kết xuất dữ liệu"><i class="fas fa-file-export"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnGiaoTemplate" title="Tải tệp mẫu"><i class="fas fa-file-arrow-down"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnGiaoImport" title="Đẩy dữ liệu lên"><i class="fas fa-file-import"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnGiaoSearch" title="Tìm kiếm"><i class="fas fa-magnifying-glass"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnGiaoView" title="Xem"><i class="fas fa-eye"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnGiaoPrint" title="In"><i class="fas fa-print"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnGiaoQuery" title="Lọc / Truy vấn"><i class="fas fa-filter"></i></button>
+            <button type="button" class="erp-toolbar-btn" id="btnGiaoRefresh" title="Làm mới"><i class="fas fa-rotate-right"></i></button>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead style="background:#f4f7fb;">
+                    <tr>
+                        <th style="width:42px;">Chọn</th>
+                        <th>Ngày lập</th>
+                        <th>Số phiếu</th>
+                        <th>Mã KH</th>
+                        <th>Tên khách hàng</th>
+                        <th>Diễn giải</th>
+                        <th class="text-end">Tổng SL</th>
+                        <th class="text-end">Tổng tiền</th>
+                        <th>Trạng thái</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr>
+                        <td class="text-center">
+                            <input type="checkbox" name="selected_giao" class="erp-row-select"
+                                value="{{ item.pk }}"
+                                data-edit-url="{% url 'phieu_giao_hang_sua' item.pk %}"
+                                data-delete-url="{% url 'phieu_giao_hang_xoa' item.pk %}"
+                                data-view-url="{% url 'phieu_giao_hang_sua' item.pk %}"
+                                data-trang-thai="{{ item.trang_thai }}">
+                        </td>
+                        <td>{{ item.ngay_lap|date:'d/m/Y' }}</td>
+                        <td><strong class="text-primary">{{ item.so_phieu }}</strong></td>
+                        <td>{{ item.khach_hang.ma_kh|default:'-' }}</td>
+                        <td>{{ item.ten_kh|default:'-' }}</td>
+                        <td class="text-muted" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ item.dien_giai|default:'-' }}</td>
+                        <td class="text-end">{{ item.tong_so_luong|floatformat:0 }}</td>
+                        <td class="text-end fw-semibold">{{ item.tong_tien|floatformat:0 }}</td>
+                        <td>
+                            {% if item.trang_thai == 'cho_giao' %}
+                                <span class="badge badge-warning"><i class="fas fa-clock me-1"></i>Chờ giao</span>
+                            {% else %}
+                                <span class="badge badge-success"><i class="fas fa-check-circle me-1"></i>Đã giao</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center text-muted py-5">
+                            <i class="fas fa-truck fa-2x mb-2 d-block" style="opacity:.3;"></i>
+                            Chưa có phiếu giao hàng nào.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if items %}
+    <div class="card-footer bg-transparent text-muted small">
+        Tổng: {{ items|length }} phiếu
+    </div>
+    {% endif %}
+</div>
+
+<form method="post" id="formGiaoDelete" style="display:none;">{% csrf_token %}</form>
+
+<!-- Modal Tìm kiếm / Lọc -->
+<div class="modal fade" id="modalGiaoLoc" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Điều kiện lọc phiếu giao hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="get" class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Tìm kiếm</label>
+                    <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Số phiếu, mã KH, tên khách hàng...">
+                </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Từ ngày</label>
+                        <input type="date" name="tu_ngay" class="form-control" value="{{ tu_ngay }}">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Đến ngày</label>
+                        <input type="date" name="den_ngay" class="form-control" value="{{ den_ngay }}">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mã khách hàng</label>
+                    <input type="text" name="ma_kh" value="{{ ma_kh_filter }}" class="form-control" placeholder="VD: KH001">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Trạng thái</label>
+                    <select name="trang_thai" class="form-control">
+                        <option value="">-- Tất cả --</option>
+                        <option value="cho_giao" {% if trang_thai_filter == 'cho_giao' %}selected{% endif %}>Chờ giao hàng</option>
+                        <option value="da_giao"  {% if trang_thai_filter == 'da_giao'  %}selected{% endif %}>Đã giao hàng</option>
+                    </select>
+                </div>
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{% url 'phieu_giao_hang_list' %}" class="btn btn-light border">Bỏ lọc</a>
+                    <button type="submit" class="btn btn-primary">Lọc</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal xác nhận xóa -->
+<div class="modal fade" id="modalGiaoXoa" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle text-danger me-2"></i>Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Bạn có chắc chắn muốn xóa phiếu giao hàng <strong id="giaoXoaTarget"></strong> không?
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Hủy</button>
+                <form id="giaoXoaForm" method="post" style="display:inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger"><i class="fas fa-trash me-1"></i>Xóa</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getSelectedGiao() {
+    return Array.from(document.querySelectorAll('input[name="selected_giao"]:checked'));
+}
+function getSingleGiao() {
+    const s = getSelectedGiao();
+    return s.length === 1 ? s[0] : null;
+}
+
+document.getElementById('btnGiaoEdit').addEventListener('click', function() {
+    const input = getSingleGiao();
+    if (!input) { alert('Vui lòng chọn đúng 1 phiếu để sửa.'); return; }
+    if (input.dataset.trangThai === 'da_giao') { alert('Phiếu đã giao hàng không thể sửa.'); return; }
+    window.location.href = input.dataset.editUrl;
+});
+
+document.getElementById('btnGiaoDelete').addEventListener('click', function() {
+    const input = getSingleGiao();
+    if (!input) { alert('Vui lòng chọn đúng 1 phiếu để xóa.'); return; }
+    if (input.dataset.trangThai === 'da_giao') { alert('Phiếu đã giao hàng không thể xóa.'); return; }
+    const soPhieu = input.closest('tr').querySelector('strong.text-primary')?.textContent || '';
+    document.getElementById('giaoXoaTarget').textContent = soPhieu;
+    document.getElementById('giaoXoaForm').action = input.dataset.deleteUrl;
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalGiaoXoa')).show();
+});
+
+document.getElementById('btnGiaoCopy').addEventListener('click', function() {
+    const input = getSingleGiao();
+    if (!input) { alert('Vui lòng chọn đúng 1 phiếu để chép dữ liệu.'); return; }
+    window.location.href = "{% url 'phieu_giao_hang_them' %}?copy_from=" + input.value;
+});
+
+document.getElementById('btnGiaoExport').addEventListener('click', function() {
+    alert('Chức năng kết xuất chưa được triển khai.');
+});
+
+document.getElementById('btnGiaoTemplate').addEventListener('click', function() {
+    alert('Chức năng tải mẫu chưa được triển khai.');
+});
+
+document.getElementById('btnGiaoImport').addEventListener('click', function() {
+    alert('Chức năng import chưa được triển khai.');
+});
+
+document.getElementById('btnGiaoSearch').addEventListener('click', function() {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalGiaoLoc')).show();
+});
+
+document.getElementById('btnGiaoView').addEventListener('click', function() {
+    const input = getSingleGiao();
+    if (!input) { alert('Vui lòng chọn đúng 1 phiếu để xem.'); return; }
+    window.location.href = input.dataset.viewUrl;
+});
+
+document.getElementById('btnGiaoPrint').addEventListener('click', function() {
+    window.print();
+});
+
+document.getElementById('btnGiaoQuery').addEventListener('click', function() {
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('modalGiaoLoc')).show();
+});
+
+document.getElementById('btnGiaoRefresh').addEventListener('click', function() {
+    window.location.reload();
+});
+</script>
+{% endblock %}

@@ -144,12 +144,12 @@
             ],
             khu_vuc: [
                 {% for vt in vi_tri_list %}
-                { id: '{{ vt.pk }}', khoId: '{{ vt.kho_id }}', code: '{{ vt.ma_vi_tri|escapejs }}', name: '{{ vt.kho.ma_kho|escapejs }} - {{ vt.ma_vi_tri|escapejs }}' },
+                { id: '{{ vt.pk }}', khoId: '{{ vt.kho_id }}', code: '{{ vt.ma_vi_tri|escapejs }}', name: '{{ vt.ma_vi_tri|escapejs }}' },
                 {% endfor %}
             ],
             vi_tri_hang_loi: [
                 {% for vt in vi_tri_list %}
-                { id: '{{ vt.pk }}', khoId: '{{ vt.kho_id }}', code: '{{ vt.ma_vi_tri|escapejs }}', name: '{{ vt.kho.ma_kho|escapejs }} - {{ vt.ma_vi_tri|escapejs }}' },
+                { id: '{{ vt.pk }}', khoId: '{{ vt.kho_id }}', code: '{{ vt.ma_vi_tri|escapejs }}', name: '{{ vt.ma_vi_tri|escapejs }}' },
                 {% endfor %}
             ],
             nhom_hang: [
@@ -231,10 +231,7 @@
         }
 
         function getLabel(item) {
-            if (item.code && item.name) {
-                return item.code + ' - ' + item.name;
-            }
-            return item.name || item.code || '';
+            return item.code || item.name || '';
         }
 
         function getItems(fieldKey) {

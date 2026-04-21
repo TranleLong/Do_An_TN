@@ -164,7 +164,7 @@
             <div class="col-md-4">
                 <label class="form-label">Mã khách <span class="text-danger">*</span></label>
                 <div class="lookup-box">
-                    <input type="text" id="kh_display" class="form-control lookup-input lookup-display" list="kh_lookup_list" value="{% if don.khach_hang %}{{ don.khach_hang.ma_kh }} - {{ don.ten_kh }}{% endif %}" placeholder="Nhập mã/tên khách hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                    <input type="text" id="kh_display" class="form-control lookup-input lookup-display" list="kh_lookup_list" value="{% if don.khach_hang %}{{ don.khach_hang.ma_kh }}{% endif %}" placeholder="Nhập mã/tên khách hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                     <button type="button" class="lookup-icon-btn" id="btnSearchKh" title="Tra cứu khách hàng"><i class="fas fa-search"></i></button>
                 </div>
                 <select name="khach_hang" id="khach_hang" style="display:none;" required>
@@ -175,7 +175,7 @@
                 </select>
                 <datalist id="kh_lookup_list">
                     {% for kh in kh_list %}
-                    <option value="{{ kh.ma_kh }} - {{ kh.ten_kh }}" label="{{ kh.ten_kh }}"></option>
+                    <option value="{{ kh.ma_kh }}" label="{{ kh.ten_kh }}"></option>
                     {% endfor %}
                 </datalist>
             </div>
@@ -210,7 +210,7 @@
                 </select>
                 <datalist id="nv_lookup_list">
                     {% for nv in nv_list %}
-                    <option value="{{ nv.ma_kh }} - {{ nv.ten_kh }}" label="{{ nv.ten_kh }}"></option>
+                    <option value="{{ nv.ma_kh }}" label="{{ nv.ten_kh }}"></option>
                     {% endfor %}
                 </datalist>
             </div>
@@ -218,9 +218,7 @@
                 <label class="form-label">Trạng thái</label>
                 <select name="trang_thai" class="form-control">
                     <option value="1" {% if don.trang_thai|default:'1' == '1' %}selected{% endif %}>1 - Lập chứng từ</option>
-                    <option value="2" {% if don.trang_thai == '2' %}selected{% endif %}>2 - Chờ duyệt</option>
-                    <option value="3" {% if don.trang_thai == '3' %}selected{% endif %}>3 - Duyệt</option>
-                    <option value="4" {% if don.trang_thai == '4' %}selected{% endif %}>4 - Treo</option>
+                    <option value="2" {% if don.trang_thai == '2' %}selected{% endif %}>2 - Treo</option>
                 </select>
             </div>
 
@@ -228,7 +226,7 @@
                 <label class="form-label">Kho xuất <span class="text-danger">*</span></label>
                 <select name="kho" class="form-control" required>
                     {% for k in kho_list %}
-                    <option value="{{ k.pk }}" {% if don.kho_id == k.pk %}selected{% endif %}>{{ k.ma_kho }} - {{ k.ten_kho }}</option>
+                    <option value="{{ k.pk }}" {% if don.kho_id == k.pk %}selected{% endif %}>{{ k.ma_kho }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -281,8 +279,8 @@
                             <td><input type="text" class="form-control ton-kho text-center" readonly></td>
                             <td><input type="number" name="so_luong[]" class="form-control so-luong calc-input" min="1" step="1" value="{{ ct.so_luong|floatformat:0 }}" required></td>
                             <td><input type="text" name="don_gia[]" class="form-control don-gia calc-input money-input" inputmode="numeric" value="{{ ct.don_gia|floatformat:0 }}" required></td>
-                            <td><input type="number" name="chiet_khau[]" class="form-control chiet-khau calc-input" min="0" max="100" step="0.01" value="{{ ct.chiet_khau }}"></td>
-                            <td><input type="number" name="vat[]" class="form-control thue-vat calc-input" min="0" step="0.01" value="{{ ct.thue_vat }}"></td>
+                            <td><input type="number" name="chiet_khau[]" class="form-control chiet-khau calc-input" min="0" max="100" step="0.01" value="{{ ct.chiet_khau|stringformat:".2f" }}"></td>
+                            <td><input type="number" name="vat[]" class="form-control thue-vat calc-input" min="0" step="0.01" value="{{ ct.thue_vat|stringformat:".2f" }}"></td>
                             <td><input type="date" name="ngay_giao[]" class="form-control" value="{{ ct.ngay_giao|date:'Y-m-d' }}" required></td>
                             <td><input type="text" class="form-control thanh-tien text-end" readonly></td>
                             <td><button type="button" class="btn btn-sm btn-danger btn-remove"><i class="fas fa-times"></i></button></td>
@@ -425,7 +423,7 @@
     function bindKhDisplay() {
         const kh = $('#khach_hang option:selected');
         if (kh.val()) {
-            $('#kh_display').val((kh.data('ma') || '') + ' - ' + (kh.data('ten') || ''));
+            $('#kh_display').val(kh.data('ma') || '');
         } else {
             $('#kh_display').val('');
         }
@@ -434,7 +432,7 @@
     function bindNvDisplay() {
         const nv = $('#nv_ban_id option:selected');
         if (nv.val()) {
-            $('#nv_display').val((nv.data('ma') || '') + ' - ' + (nv.data('ten') || ''));
+            $('#nv_display').val(nv.data('ma') || '');
         } else {
             $('#nv_display').val('');
         }
@@ -872,17 +870,49 @@
         applyDonCopyData();
         bindKhDisplay();
         bindNvDisplay();
+        
+        // Tính toán lại tất cả các dòng khi trang nạp
         $('#chiTietBody .item-row').each(function() {
-            const gia = parseFloat($(this).find('.don-gia').val()) || 0;
-            const ck = parseFloat($(this).find('.chiet-khau').val()) || 0;
-            bindHangDisplayByRow($(this));
-            $(this).data('manual-price', gia > 0);
-            $(this).data('manual-discount', ck >= 0);
-            capNhatTonKho($(this));
-            capNhatGiaBan($(this));
-            tinhTongRow($(this));
+            const $row = $(this);
+            const giaVal = $row.find('.don-gia').val();
+            const ckVal = $row.find('.chiet-khau').val();
+            
+            // Sử dụng parseMoneyInput để đọc được các số có định dạng VN (1.000.000)
+            const gia = parseMoneyInput(giaVal);
+            const ck = parseFloat(ckVal) || 0;
+            
+            bindHangDisplayByRow($row);
+            $row.data('manual-price', gia > 0);
+            $row.data('manual-discount', ck >= 0);
+            
+            // Hiển thị lại đúng định dạng tiền trong ô Giá
+            if (gia > 0) {
+                $row.find('.don-gia').val(formatMoneyInputValue(gia));
+            }
+            
+            tinhTongRow($row);
+            capNhatTonKho($row);
         });
         tinhTongDon();
+
+        // Kiểm tra hợp lệ khi bấm Lưu
+        $('#donBanForm').on('submit', function(e) {
+            let hasValidRow = false;
+            $('#chiTietBody .item-row').each(function() {
+                const hId = $(this).find('.hang-select').val();
+                const sl = parseFloat($(this).find('.so-luong').val()) || 0;
+                if (hId && sl > 0) {
+                    hasValidRow = true;
+                    return false;
+                }
+            });
+            
+            if (!hasValidRow) {
+                e.preventDefault();
+                alert('Đơn hàng phải có ít nhất 1 dòng hàng hóa hợp lệ (đã chọn hàng và nhập số lượng).');
+                return false;
+            }
+        });
     });
 </script>
 {% endblock %}

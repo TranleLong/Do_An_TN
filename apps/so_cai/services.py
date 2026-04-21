@@ -107,71 +107,70 @@ def _invoice_payload(doc_id: int) -> LedgerPayload:
     tong_thue = _as_decimal(hoa_don.tong_tien_thue)
     tong_thanh_toan = _as_decimal(hoa_don.tong_cong)
 
-    lines: list[dict] = [
-        {
-            'account_code': str(hoa_don.tk_no or '131').strip() or '131',
+    tk_no = str(hoa_don.tk_no or '131').strip()
+    is_cash_invoice = tk_no in ('111', '112')
+    lines: list[dict] = []
+
+    if not is_cash_invoice:
+        lines.append({
+            'account_code': tk_no,
             'debit': tong_thanh_toan,
             'credit': Decimal('0'),
             'customer_id': hoa_don.khach_hang_id,
             'note': 'Ghi nhan cong no/thu tien hoa don',
             'warehouse_id': None,
-        }
-    ]
+        })
 
-    doanh_thu_by_tk = defaultdict(Decimal)
-    gia_von_by_tk = defaultdict(Decimal)
+        doanh_thu_by_tk = defaultdict(Decimal)
+        for ct in hoa_don.chi_tiet.all():
+            tk_doanh_thu = str(ct.tk_doanh_thu or '511').strip() or '511'
+            doanh_thu_by_tk[tk_doanh_thu] += _as_decimal(ct.tien_hang)
+
+        for tk, amount in doanh_thu_by_tk.items():
+            lines.append({
+                'account_code': tk,
+                'debit': Decimal('0'),
+                'credit': amount,
+                'customer_id': hoa_don.khach_hang_id,
+                'note': 'Doanh thu ban hang',
+                'warehouse_id': None,
+            })
+
+        if tong_thue > 0:
+            lines.append({
+                'account_code': '3331',
+                'debit': Decimal('0'),
+                'credit': tong_thue,
+                'customer_id': hoa_don.khach_hang_id,
+                'note': 'Thue GTGT dau ra',
+                'warehouse_id': None,
+            })
+
+    # Gia von: No tk_gia_von / Co tk_kho (per line, default 632 / 156)
+
     for ct in hoa_don.chi_tiet.all():
-        tk_doanh_thu = str(ct.tk_doanh_thu or '511').strip() or '511'
-        doanh_thu_by_tk[tk_doanh_thu] += _as_decimal(ct.tien_hang)
-
         tk_gia_von = str(ct.tk_gia_von or '632').strip() or '632'
+        tk_kho_co = str(getattr(ct, 'tk_kho', None) or '156').strip() or '156'
         ton = TonKho.objects.filter(hang_hoa_id=ct.hang_hoa_id, kho_id=ct.kho_id).first()
         gia_von_tb = _as_decimal(ton.gia_von_tb if ton else 0)
         gia_von_line = gia_von_tb * _as_decimal(ct.so_luong)
-        gia_von_by_tk[tk_gia_von] += gia_von_line
-
-    for tk, amount in doanh_thu_by_tk.items():
-        lines.append({
-            'account_code': tk,
-            'debit': Decimal('0'),
-            'credit': amount,
-            'customer_id': hoa_don.khach_hang_id,
-            'note': 'Doanh thu ban hang',
-            'warehouse_id': None,
-        })
-
-    if tong_thue > 0:
-        lines.append({
-            'account_code': '3331',
-            'debit': Decimal('0'),
-            'credit': tong_thue,
-            'customer_id': hoa_don.khach_hang_id,
-            'note': 'Thue GTGT dau ra',
-            'warehouse_id': None,
-        })
-
-    # Gia von: No 632/Credit 156
-    tong_gia_von = sum(gia_von_by_tk.values(), Decimal('0'))
-    for tk, amount in gia_von_by_tk.items():
-        if amount <= 0:
+        if gia_von_line <= 0:
             continue
         lines.append({
-            'account_code': tk,
-            'debit': amount,
+            'account_code': tk_gia_von,
+            'debit': gia_von_line,
             'credit': Decimal('0'),
             'customer_id': hoa_don.khach_hang_id,
             'note': 'Gia von hang ban',
-            'warehouse_id': None,
+            'warehouse_id': ct.kho_id,
         })
-
-    if tong_gia_von > 0:
         lines.append({
-            'account_code': '156',
+            'account_code': tk_kho_co,
             'debit': Decimal('0'),
-            'credit': tong_gia_von,
+            'credit': gia_von_line,
             'customer_id': None,
             'note': 'Xuat kho gia von',
-            'warehouse_id': None,
+            'warehouse_id': ct.kho_id,
         })
 
     return LedgerPayload(
@@ -187,31 +186,75 @@ def _invoice_payload(doc_id: int) -> LedgerPayload:
 
 
 def _receipt_payload(doc_id: int) -> LedgerPayload:
-    phieu = PhieuThu.objects.select_related('khach_hang').get(pk=doc_id)
+    phieu = PhieuThu.objects.select_related('khach_hang', 'hoa_don').get(pk=doc_id)
     if str(phieu.trang_thai or '').strip() not in ('2', '3'):
         raise LedgerPostingError('Phieu thu chua o trang thai da ghi so (2 - Chuyen so cai).')
 
     tk_no = '111' if phieu.hinh_thuc_thu == 'tien_mat' else '112'
     so_tien = _as_decimal(phieu.tong_thu)
 
-    lines = _compact_lines([
-        {
+    lines = []
+
+    hoa_don_lk = getattr(phieu, 'hoa_don', None)
+    if hoa_don_lk and str(hoa_don_lk.tk_no or '').strip() in ('111', '112'):
+        # Đây là hóa đơn thu tiền ngay, doanh thu & thuế chưa được ghi qua sổ cái lúc duyệt hóa đơn
+        # Nên phiếu thu sẽ gánh việc ghi Nợ 111 / Có 511, 3331...
+        doanh_thu_by_tk = defaultdict(Decimal)
+        tong_thue = Decimal('0')
+        for ct in hoa_don_lk.chi_tiet.all():
+            tk_doanh_thu = str(ct.tk_doanh_thu or '511').strip() or '511'
+            doanh_thu_by_tk[tk_doanh_thu] += _as_decimal(ct.tien_hang)
+            tong_thue += _as_decimal(ct.tien_thue)
+            
+        lines.append({
             'account_code': tk_no,
-            'debit': so_tien,
+            'debit': so_tien, 
             'credit': Decimal('0'),
             'customer_id': phieu.khach_hang_id,
-            'note': 'Thu tien khach hang',
+            'note': 'Thu tien ban hang',
             'warehouse_id': None,
-        },
-        {
-            'account_code': '131',
-            'debit': Decimal('0'),
-            'credit': so_tien,
-            'customer_id': phieu.khach_hang_id,
-            'note': 'Giam cong no khach hang',
-            'warehouse_id': None,
-        },
-    ])
+        })
+        
+        for tk, amount in doanh_thu_by_tk.items():
+            lines.append({
+                'account_code': tk,
+                'debit': Decimal('0'),
+                'credit': amount,
+                'customer_id': phieu.khach_hang_id,
+                'note': 'Doanh thu ban hang (tu hoa don)',
+                'warehouse_id': None,
+            })
+
+        if tong_thue > 0:
+            lines.append({
+                'account_code': '3331',
+                'debit': Decimal('0'),
+                'credit': tong_thue,
+                'customer_id': phieu.khach_hang_id,
+                'note': 'Thue GTGT dau ra (tu hoa don)',
+                'warehouse_id': None,
+            })
+    else:
+        # Thu công nợ bình thường
+        lines = _compact_lines([
+            {
+                'account_code': tk_no,
+                'debit': so_tien,
+                'credit': Decimal('0'),
+                'customer_id': phieu.khach_hang_id,
+                'note': 'Thu tien khach hang',
+                'warehouse_id': None,
+            },
+            {
+                'account_code': '131',
+                'debit': Decimal('0'),
+                'credit': so_tien,
+                'customer_id': phieu.khach_hang_id,
+                'note': 'Giam cong no khach hang',
+                'warehouse_id': None,
+            },
+        ])
+
 
     return LedgerPayload(
         document_number=phieu.so_phieu,
@@ -374,28 +417,54 @@ def _kiem_ke_payload(doc_id: int) -> LedgerPayload:
 
 
 def _return_payload(doc_id: int) -> LedgerPayload:
-    phieu = PhieuTraHang.objects.select_related('khach_hang').get(pk=doc_id)
-    so_tien = _as_decimal(phieu.tong_tien_hoan)
+    phieu = PhieuTraHang.objects.prefetch_related('chi_tiet__hang_hoa').select_related('khach_hang').get(pk=doc_id)
+    so_tien = _as_decimal(phieu.tong_tien_tra)
     if so_tien <= 0:
         raise LedgerPostingError('Phieu tra hang khong co gia tri but toan.')
 
-    tk_co = '131' if phieu.hinh_thuc_hoan == 'bu_tru_no' else '111'
-    lines = _compact_lines([
+    # Doanh thu giam (hoac 531)
+    tk_no = (phieu.tk_no or '511').strip()
+    tk_co = (phieu.tk_co or '131').strip()
+    lines = [
         {
-            'account_code': '531',
+            'account_code': tk_no,
             'debit': so_tien,
             'credit': Decimal('0'),
             'customer_id': phieu.khach_hang_id,
-            'note': 'Hang ban bi tra lai',
+            'note': 'Giam doanh thu hang ban bi tra lai',
         },
         {
             'account_code': tk_co,
             'debit': Decimal('0'),
             'credit': so_tien,
             'customer_id': phieu.khach_hang_id,
-            'note': 'Doi ung hang ban bi tra lai',
+            'note': 'Doi ung giam doanh thu',
         },
-    ])
+    ]
+
+    # Nhap lai gia von (156 / 632)
+    tong_gia_von = Decimal('0')
+    for ct in phieu.chi_tiet.all():
+        gia_von_1 = ct.hang_hoa.get_gia_von() if hasattr(ct.hang_hoa, 'get_gia_von') else Decimal('0')
+        tong_gia_von += Decimal(gia_von_1 or 0) * Decimal(ct.so_luong or 0)
+    
+    if tong_gia_von > 0:
+        lines.append({
+            'account_code': '156',
+            'debit': tong_gia_von,
+            'credit': Decimal('0'),
+            'customer_id': None,
+            'note': 'Nhap lai gia von hang tra lai',
+        })
+        lines.append({
+            'account_code': '632',
+            'debit': Decimal('0'),
+            'credit': tong_gia_von,
+            'customer_id': None,
+            'note': 'Giam tru gia von hang ban',
+        })
+
+    lines = _compact_lines(lines)
 
     return LedgerPayload(
         document_number=phieu.so_phieu,

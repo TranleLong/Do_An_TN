@@ -83,28 +83,18 @@
             </div>
         </div>
 
-        <div class="form-group">
-            <label class="form-label" id="dia_chi_label">
-                Địa chỉ
-                <span class="text-danger" id="dia_chi_required" style="display: none;">*</span>
-            </label>
-            <input type="text" name="dia_chi" id="dia_chi" class="form-control" value="{{ obj.dia_chi }}">
-            <small class="text-muted" id="dia_chi_hint">Địa chỉ bắt buộc khi chọn loại khách hàng 2 - Doanh nghiệp.</small>
-        </div>
-
         <div class="form-row">
+            <div class="col col-6 form-group">
+                <label class="form-label" id="dia_chi_label">
+                    Địa chỉ
+                    <span class="text-danger" id="dia_chi_required" style="display: none;">*</span>
+                </label>
+                <input type="text" name="dia_chi" id="dia_chi" class="form-control" value="{{ obj.dia_chi }}">
+                <small class="text-muted" id="dia_chi_hint">Địa chỉ bắt buộc khi chọn loại khách hàng 2 - Doanh nghiệp.</small>
+            </div>
             <div class="col col-6 form-group">
                 <label class="form-label">Email</label>
                 <input type="email" name="email" class="form-control" value="{{ obj.email }}">
-            </div>
-            <div class="col col-6 form-group">
-                <label class="form-label">Nhóm khách hàng</label>
-                <select name="nhom_kh" class="form-control">
-                    <option value="">-- Chọn nhóm --</option>
-                    {% for n in nhom_list %}
-                    <option value="{{ n.pk }}" {% if obj.nhom_kh_id == n.pk %}selected{% endif %}>{{ n.ten_nhom }}</option>
-                    {% endfor %}
-                </select>
             </div>
         </div>
 
@@ -169,16 +159,20 @@ document.addEventListener('DOMContentLoaded', function() {
     const decimalFields = Array.from(document.querySelectorAll('.js-decimal-format'));
 
     function stripNumberChars(value) {
-        return (value || '')
-            .toString()
-            .replace(/[^0-9]/g, '');
+        const raw = (value || '').toString().replace(/[^0-9]/g, '');
+        if (!raw) return '';
+        // Remove leading zeros: 05 -> 5, 000 -> 0
+        return raw.replace(/^0+(?!$)/, '');
     }
 
     function stripDecimalChars(value) {
-        return (value || '')
-            .toString()
-            .replace(/[^0-9.,]/g, '')
-            .replace(/,/g, '.');
+        let raw = (value || '').toString().replace(/[^0-9.,]/g, '').replace(/,/g, '.');
+        if (!raw) return '';
+        // Remove leading zeros for integers but keep 0.xx
+        if (raw.length > 1 && raw.startsWith('0') && raw[1] !== '.') {
+            raw = raw.replace(/^0+(?!$|(\.))/, '');
+        }
+        return raw;
     }
 
     function formatIntegerDots(value) {

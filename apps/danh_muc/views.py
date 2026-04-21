@@ -43,7 +43,10 @@ def _parse_int_field(value, default=0):
 
 
 def _parse_decimal_field(value, default=0):
-    text = str(value or '').strip().replace('.', '').replace(',', '.')
+    val_str = str(value or '').strip()
+    if not val_str:
+        return default
+    text = val_str.replace('.', '').replace(',', '.')
     text = re.sub(r'[^0-9.-]', '', text)
     if text in ('', '-', '.', '-.'):
         return default
@@ -326,10 +329,32 @@ def kh_list(request):
 
 @login_required
 def kh_form(request, pk=None):
-    obj = get_object_or_404(KhachHang, pk=pk) if pk else None
-    
-    # Nếu GET request (mở form add), generate mã KH tiếp theo
-    if request.method != 'POST' and not pk:
+
+    # Xử lý copy_from: nếu có tham số copy_from trên URL, lấy dữ liệu khách hàng gốc để đổ vào form tạo mới
+    copy_from = request.GET.get('copy_from')
+    if pk:
+        obj = get_object_or_404(KhachHang, pk=pk)
+    elif copy_from:
+        kh_copy = get_object_or_404(KhachHang, pk=copy_from)
+        obj = KhachHang(
+            ma_kh=_generate_next_ma_kh(),
+            ten_kh=kh_copy.ten_kh,
+            la_khach_hang=kh_copy.la_khach_hang,
+            la_nha_cung_cap=kh_copy.la_nha_cung_cap,
+            la_nhan_vien=kh_copy.la_nhan_vien,
+            loai_kh=kh_copy.loai_kh,
+            nhom_kh=kh_copy.nhom_kh,
+            ma_so_thue=kh_copy.ma_so_thue,
+            dia_chi=kh_copy.dia_chi,
+            so_dien_thoai=kh_copy.so_dien_thoai,
+            email=kh_copy.email,
+            han_muc_cong_no=kh_copy.han_muc_cong_no,
+            so_ngay_no_max=kh_copy.so_ngay_no_max,
+            chiet_khau_mac_dinh=kh_copy.chiet_khau_mac_dinh,
+            ghi_chu=kh_copy.ghi_chu,
+        )
+    else:
+        # Nếu GET request (mở form add), generate mã KH tiếp theo
         obj = KhachHang(ma_kh=_generate_next_ma_kh())
     
     if request.method == 'POST':
@@ -671,17 +696,38 @@ def hang_hoa_list(request):
 
 @login_required
 def hang_hoa_form(request, pk=None):
-    hang = get_object_or_404(HangHoa, pk=pk) if pk else None
+
+    # Xử lý copy_from: nếu có tham số copy_from trên URL, lấy dữ liệu hàng hóa gốc để đổ vào form tạo mới
+    copy_from = request.GET.get('copy_from')
+    if pk:
+        hang = get_object_or_404(HangHoa, pk=pk)
+    elif copy_from:
+        hang_copy = get_object_or_404(HangHoa, pk=copy_from)
+        hang = HangHoa(
+            ma_hang=_generate_next_ma_hang(),
+            ten_hang=hang_copy.ten_hang,
+            nhom_hang=hang_copy.nhom_hang,
+            thuong_hieu=hang_copy.thuong_hieu,
+            don_vi_tinh=hang_copy.don_vi_tinh,
+            nha_cung_cap=hang_copy.nha_cung_cap,
+            xe_tuong_thich=hang_copy.xe_tuong_thich,
+            ton_toi_thieu=hang_copy.ton_toi_thieu,
+            ton_toi_da=hang_copy.ton_toi_da,
+            trang_thai='dang_ban',
+            ghi_chu=hang_copy.ghi_chu,
+        )
+        so_vi_tri_default, _ = _extract_slot_size_and_note(hang.ghi_chu)
+    else:
+        hang = None
+        if request.method != 'POST':
+            hang = HangHoa(ma_hang=_generate_next_ma_hang())
     nhom_list = NhomHang.objects.all()
     thuong_hieu_list = ThuongHieu.objects.all()
     dvt_list = DonViTinh.objects.all()
     ncc_list = NhaCungCap.objects.filter(trang_thai=True).order_by('ma_ncc')
     so_vi_tri_default = 1
-
     if hang:
         so_vi_tri_default, _ = _extract_slot_size_and_note(hang.ghi_chu)
-    elif request.method != 'POST':
-        hang = HangHoa(ma_hang=_generate_next_ma_hang())
 
     def _render_hang_form(hang_obj):
         return render(request, 'core/hang_hoa_form.html', {
@@ -829,6 +875,7 @@ def hang_hoa_lookup_api(request):
     q = request.GET.get('q', '').strip()
     only_available = str(request.GET.get('only_available', '')).strip().lower() in ('1', 'true', 'yes', 'on')
     kho_id = request.GET.get('kho_id')
+    nhom_id = request.GET.get('nhom_id')
     try:
         page = max(int(request.GET.get('page', 1)), 1)
     except ValueError:
@@ -840,6 +887,8 @@ def hang_hoa_lookup_api(request):
     page_size = min(max(page_size, 1), 50)
 
     items = HangHoa.objects.select_related('don_vi_tinh').filter(trang_thai='dang_ban')
+    if nhom_id:
+        items = items.filter(nhom_hang_id=nhom_id)
     if q:
         items = items.filter(
             Q(ma_hang__icontains=q) |
@@ -904,6 +953,7 @@ def nhom_hang_list(request):
             ma = request.POST.get('ma_nhom', '').strip().upper()
             ten = request.POST.get('ten_nhom', '').strip()
             mo_ta = request.POST.get('mo_ta', '').strip()
+            bien_do = _parse_decimal_field(request.POST.get('bien_do_loi_nhuan', 10), 10)
             hang_ids = [x for x in request.POST.getlist('hang_ids[]') if str(x).isdigit()]
             if not ma:
                 ma = _generate_next_ma_nhom()
@@ -912,7 +962,7 @@ def nhom_hang_list(request):
             elif NhomHang.objects.filter(ma_nhom=ma).exists():
                 messages.error(request, 'Mã nhóm đã tồn tại')
             else:
-                nhom = NhomHang.objects.create(ma_nhom=ma, ten_nhom=ten, mo_ta=mo_ta)
+                nhom = NhomHang.objects.create(ma_nhom=ma, ten_nhom=ten, mo_ta=mo_ta, bien_do_loi_nhuan=bien_do)
                 if hang_ids:
                     HangHoa.objects.filter(pk__in=hang_ids).update(nhom_hang=nhom)
                 messages.success(request, 'Đã thêm nhóm hàng')
@@ -925,6 +975,7 @@ def nhom_hang_list(request):
                 ma = request.POST.get('ma_nhom', '').strip()
                 ten = request.POST.get('ten_nhom', '').strip()
                 mo_ta = request.POST.get('mo_ta', '').strip()
+                bien_do = _parse_decimal_field(request.POST.get('bien_do_loi_nhuan', 10), 10)
                 hang_ids = [int(x) for x in request.POST.getlist('hang_ids[]') if str(x).isdigit()]
                 if not ma or not ten:
                     messages.error(request, 'Vui lòng nhập đủ mã nhóm và tên nhóm')
@@ -934,7 +985,8 @@ def nhom_hang_list(request):
                     nhom.ma_nhom = ma
                     nhom.ten_nhom = ten
                     nhom.mo_ta = mo_ta
-                    nhom.save(update_fields=['ma_nhom', 'ten_nhom', 'mo_ta'])
+                    nhom.bien_do_loi_nhuan = bien_do
+                    nhom.save(update_fields=['ma_nhom', 'ten_nhom', 'mo_ta', 'bien_do_loi_nhuan'])
                     HangHoa.objects.filter(nhom_hang=nhom).exclude(pk__in=hang_ids).update(nhom_hang=None)
                     if hang_ids:
                         HangHoa.objects.filter(pk__in=hang_ids).update(nhom_hang=nhom)
@@ -964,22 +1016,27 @@ def nhom_hang_list(request):
     items = _paginate_queryset(request, items)
 
     nhom_ids = [x.pk for x in items]
-    nhom_meta = {nid: {'count': 0, 'hang_ids': []} for nid in nhom_ids}
-    for hh in HangHoa.objects.filter(nhom_hang_id__in=nhom_ids).values('pk', 'nhom_hang_id'):
+    nhom_meta = {nid: {'count': 0, 'hang_ids': [], 'hang_details': []} for nid in nhom_ids}
+    for hh in HangHoa.objects.filter(nhom_hang_id__in=nhom_ids).values('pk', 'nhom_hang_id', 'ma_hang', 'ten_hang'):
         data = nhom_meta.get(hh['nhom_hang_id'])
         if data is not None:
             data['count'] += 1
             data['hang_ids'].append(str(hh['pk']))
+            data['hang_details'].append({
+                'id': hh['pk'],
+                'ma': hh['ma_hang'],
+                'ten': hh['ten_hang']
+            })
     for item in items:
-        meta = nhom_meta.get(item.pk, {'count': 0, 'hang_ids': []})
+        meta = nhom_meta.get(item.pk, {'count': 0, 'hang_ids': [], 'hang_details': []})
         item.so_hang = meta['count']
         item.hang_ids_csv = ','.join(meta['hang_ids'])
+        item.hang_details_json = json.dumps(meta['hang_details'])
 
     return render(request, 'core/nhom_hang.html', {
         'items': items,
         'page_obj': items,
         'q': q,
-        'hang_list': HangHoa.objects.all().order_by('ma_hang'),
         'nhom_next_ma': _generate_next_ma_nhom(),
         'nhom_meta': nhom_meta,
         'page_title': 'Nhóm hàng',

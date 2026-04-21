@@ -178,11 +178,11 @@
             </div>
             <div class="col-md-3">
                 <label class="form-label">Ngày lập <span class="text-danger">*</span></label>
-                <input type="date" name="ngay_lap" class="form-control" value="{{ form_values.ngay_lap|default:today|date:'Y-m-d' }}" required>
+                <input type="date" name="ngay_lap" class="form-control" value="{% if form_values.ngay_lap %}{{ form_values.ngay_lap }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}" required>
             </div>
             <div class="col-md-3">
-                <label class="form-label">Ngày hạch toán</label>
-                <input type="date" name="ngay_hach_toan" class="form-control" value="{{ form_values.ngay_hach_toan|default:today|date:'Y-m-d' }}">
+                <label class="form-label">Ngày hạch toán <span class="text-danger">*</span></label>
+                <input type="date" name="ngay_hach_toan" class="form-control" value="{% if form_values.ngay_hach_toan %}{{ form_values.ngay_hach_toan }}{% else %}{{ today|date:'Y-m-d' }}{% endif %}" required>
             </div>
             <div class="col-md-3">
                 <label class="form-label">Trạng thái</label>
@@ -210,9 +210,13 @@
                     {% endfor %}
                 </datalist>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-2">
                 <label class="form-label">Mã khách</label>
-                <input type="text" id="khach_hang_display" class="form-control" value="{% if phieu and phieu.khach_hang %}{{ phieu.khach_hang.ma_kh }} - {{ phieu.khach_hang.ten_kh }}{% endif %}" readonly>
+                <input type="text" id="khach_hang_display" class="form-control" value="{% if phieu and phieu.khach_hang %}{{ phieu.khach_hang.ma_kh }}{% endif %}" readonly>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Tên khách</label>
+                <input type="text" id="khach_hang_ten_display" class="form-control" value="{% if phieu and phieu.khach_hang %}{{ phieu.khach_hang.ten_kh }}{% endif %}" readonly>
             </div>
             <div class="col-md-2">
                 <label class="form-label">TK nợ <span class="text-danger">*</span></label>
@@ -701,7 +705,8 @@
                     alert(data.error);
                     return;
                 }
-                document.getElementById('khach_hang_display').value = (data.ma_kh || '') + ' - ' + (data.ten_kh || '');
+                document.getElementById('khach_hang_display').value = data.ma_kh || '';
+                document.getElementById('khach_hang_ten_display').value = data.ten_kh || '';
 
                 const body = document.getElementById('doiTraBody');
                 body.innerHTML = '';
@@ -956,10 +961,9 @@
         alert('Phiếu đổi trả đã hoàn tất, không được phép xóa.');
         return;
         {% elif phieu %}
-        if (!confirm('Bạn chắc chắn muốn xóa phiếu đổi trả này?')) {
-            return;
-        }
-        document.getElementById('formDtDeleteSingle').submit();
+        window.erpShowConfirmDialog('Bạn chắc chắn muốn xóa phiếu đổi trả này?<br><span style=\"color:#6b7280; font-size:13px;\">Hành động này không thể hoàn tác.</span>', function() {
+            document.getElementById('formDtDeleteSingle').submit();
+        });
         {% else %}
         alert('Phiếu chưa lưu nên chưa thể xóa.');
         {% endif %}

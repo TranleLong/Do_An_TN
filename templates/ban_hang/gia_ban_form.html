@@ -143,7 +143,7 @@
                 <select name="nhom_hang" id="nhomHang" style="display:none;">
                     <option value="">-- Chọn nhóm hàng --</option>
                     {% for nhom in nhom_list %}
-                    <option value="{{ nhom.pk }}" data-bien-do="{{ nhom.bien_do_loi_nhuan|default:10 }}" {% if editing and phieu.nhom_hang_id == nhom.pk %}selected{% endif %}>{{ nhom.ma_nhom }} - {{ nhom.ten_nhom }}</option>
+                    <option value="{{ nhom.pk }}" data-bien-do="{{ nhom.bien_do_loi_nhuan|default:10|stringformat:".2f" }}" {% if editing and phieu.nhom_hang_id == nhom.pk %}selected{% endif %}>{{ nhom.ma_nhom }} - {{ nhom.ten_nhom }}</option>
                     {% endfor %}
                 </select>
                 <datalist id="nhom_lookup_list">
@@ -154,7 +154,7 @@
             </div>
             <div class="col-md-4 mb-3">
                 <label class="form-label">Biên độ lợi nhuận (%) <span class="text-danger">*</span></label>
-                <input type="number" name="bien_do_loi_nhuan" id="bienDo" class="form-control" step="0.01" min="0" value="{% if editing %}{{ phieu.bien_do_loi_nhuan }}{% else %}10{% endif %}" required>
+                <input type="number" name="bien_do_loi_nhuan" id="bienDo" class="form-control" step="0.01" min="0" value="{% if editing %}{{ phieu.bien_do_loi_nhuan }}{% else %}0{% endif %}" required>
             </div>
             <div class="col-md-4 mb-3">
                 <label class="form-label">Loại tiền tệ <span class="text-danger">*</span></label>
@@ -306,10 +306,10 @@
                 <div class="lookup-scroll" id="nhomSearchResults">
                     <div class="lookup-head"><span>Mã nhóm</span><span>Tên nhóm</span><span>Biên độ</span></div>
                     {% for nhom in nhom_list %}
-                    <button type="button" class="lookup-row btn-nhom-select" data-id="{{ nhom.pk }}" data-display="{{ nhom.ma_nhom }} - {{ nhom.ten_nhom }}" data-bien-do="{{ nhom.bien_do_loi_nhuan|default:10 }}">
+                    <button type="button" class="lookup-row btn-nhom-select" data-id="{{ nhom.pk }}" data-display="{{ nhom.ma_nhom }} - {{ nhom.ten_nhom }}" data-bien-do="{{ nhom.bien_do_loi_nhuan|default:10|stringformat:".2f" }}">
                         <span><strong>{{ nhom.ma_nhom }}</strong></span>
                         <span>{{ nhom.ten_nhom }}</span>
-                        <span class="text-end">{{ nhom.bien_do_loi_nhuan|default:10 }}%</span>
+                        <span class="text-end">{{ nhom.bien_do_loi_nhuan|default:10|stringformat:".2f" }}%</span>
                     </button>
                     {% empty %}
                     <div class="p-3 text-center text-muted">Chưa có nhóm hàng.</div>
@@ -330,24 +330,7 @@
             <div class="modal-body">
                 <input type="text" id="hangSearchInput" class="form-control mb-2" placeholder="Nhập mã hàng hoặc tên hàng..." autocomplete="off">
                 <div class="lookup-scroll" id="hangSearchResults">
-                    <div class="lookup-head"><span>Mã hàng</span><span>Tên hàng</span><span>ĐVT</span></div>
-                    {% for h in hang_list %}
-                    <button
-                        type="button"
-                        class="lookup-row btn-hang-select"
-                        data-id="{{ h.pk }}"
-                        data-display="{{ h.ma_hang }} - {{ h.ten_hang }}"
-                        data-ma="{{ h.ma_hang }}"
-                        data-ten="{{ h.ten_hang }}"
-                        data-dvt="{{ h.don_vi_tinh.ten|default:'' }}"
-                    >
-                        <span><strong>{{ h.ma_hang }}</strong></span>
-                        <span>{{ h.ten_hang }}</span>
-                        <span class="text-end">{{ h.don_vi_tinh.ten|default:'' }}</span>
-                    </button>
-                    {% empty %}
-                    <div class="p-3 text-center text-muted">Chưa có hàng hóa.</div>
-                    {% endfor %}
+                    <!-- AJAX results will be loaded here -->
                 </div>
             </div>
         </div>
@@ -377,9 +360,15 @@ function tinhGiaBanRow(row) {
 }
 
 function applyGroupFilter() {
+    const nhomId = $('#nhomHang').val();
     $('.hang-select').each(function() {
         $(this).find('option').each(function() {
-            $(this).show();
+            const rowNhom = $(this).data('nhom');
+            if (!nhomId || !rowNhom || rowNhom == nhomId || !$(this).val()) {
+                $(this).prop('disabled', false).show();
+            } else {
+                $(this).prop('disabled', true).hide();
+            }
         });
     });
 }
@@ -458,19 +447,30 @@ function filterNhomRows() {
     });
 }
 
-function filterHangRows() {
-    const q = $('#hangSearchInput').val().trim().toLowerCase();
-    $('#hangSearchResults .btn-hang-select').each(function() {
-        const text = [
-            String($(this).data('ma') || '').toLowerCase(),
-            String($(this).data('ten') || '').toLowerCase(),
-            String($(this).data('dvt') || '').toLowerCase(),
-        ].join(' ');
-        if (!q || text.includes(q)) {
-            $(this).show();
-        } else {
-            $(this).hide();
+function loadHangResults() {
+    const q = $('#hangSearchInput').val().trim();
+    const nhomId = $('#nhomHang').val();
+    $.get('{% url "hang_hoa_lookup_api" %}', { q: q, nhom_id: nhomId, page: 1, page_size: 20 }, function(resp) {
+        const rows = resp.results || [];
+        if (!rows.length) {
+            $('#hangSearchResults').html('<div class="p-3 text-center text-muted">Chưa có hàng hóa.</div>');
+            return;
         }
+        let html = '<div class="lookup-head"><span>Mã hàng</span><span>Tên hàng</span><span>ĐVT</span></div>';
+        rows.forEach(function(h) {
+            const display = (h.ma_hang || '') + ' - ' + (h.ten_hang || '');
+            html += '<button type="button" class="lookup-row btn-hang-select"'
+                + ' data-id="' + h.id + '"'
+                + ' data-display="' + display.replace(/"/g, '&quot;') + '"'
+                + ' data-ma="' + (h.ma_hang || '').replace(/"/g, '&quot;') + '"'
+                + ' data-ten="' + (h.ten_hang || '').replace(/"/g, '&quot;') + '"'
+                + ' data-dvt="' + (h.dvt || '').replace(/"/g, '&quot;') + '">'
+                + '<span><strong>' + (h.ma_hang || '') + '</strong></span>'
+                + '<span>' + (h.ten_hang || '') + '</span>'
+                + '<span class="text-end">' + (h.dvt || '') + '</span>'
+                + '</button>';
+        });
+        $('#hangSearchResults').html(html);
     });
 }
 
@@ -526,7 +526,7 @@ $('#nhomHang').on('change', function() {
     const selected = $('#nhomHang option:selected');
     const bienDo = selected.data('bien-do');
     if (bienDo !== undefined && bienDo !== null && bienDo !== '') {
-        $('#bienDo').val(bienDo);
+        $('#bienDo').val(bienDo).trigger('input');
     }
     syncSelectedGroup();
     applyGroupFilter();
@@ -551,13 +551,13 @@ $(document).on('click', '.btn-search-hang', function() {
     modal.show();
     setTimeout(function() {
         $('#hangSearchInput').val('');
-        filterHangRows();
+        loadHangResults();
         $('#hangSearchInput').trigger('focus');
     }, 150);
 });
 
 $('#hangSearchInput').on('input', function() {
-    filterHangRows();
+    loadHangResults();
 });
 
 $(document).on('click', '.btn-hang-select', function() {
@@ -635,7 +635,7 @@ $(document).on('click', '.btn-nhom-select', function() {
     const bienDo = $(this).data('bien-do');
     $('#nhomHang').val(String(id)).trigger('change');
     if (bienDo !== undefined && bienDo !== null && bienDo !== '') {
-        $('#bienDo').val(bienDo);
+        $('#bienDo').val(bienDo).trigger('input');
     }
     $('#nhomDisplay').val(display || '');
     bootstrap.Modal.getOrCreateInstance(document.getElementById('modalNhomHang')).hide();

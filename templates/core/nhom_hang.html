@@ -1,5 +1,26 @@
 {% extends 'base.html' %}
 
+{% block extra_css %}
+<style>
+    .multi-lookup-results {
+        max-height: 350px;
+        overflow-y: auto;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+    }
+    .lookup-row-check {
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .lookup-row-check:hover {
+        background: #f1f5f9;
+    }
+    .lookup-row-check.selected {
+        background: #eff6ff;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="card">
     <div class="card-header">
@@ -25,6 +46,7 @@
                         <th style="width:42px;">Chọn</th>
                         <th>Mã nhóm</th>
                         <th>Tên nhóm</th>
+                        <th class="text-right">Biên độ (%)</th>
                         <th class="text-right">Số hàng</th>
                         <th>Mô tả</th>
                     </tr>
@@ -32,9 +54,17 @@
                 <tbody>
                     {% for item in items %}
                     <tr>
-                        <td class="text-center"><input type="checkbox" name="selected_nhom" class="erp-row-select" value="{{ item.pk }}" data-ma="{{ item.ma_nhom }}" data-ten="{{ item.ten_nhom }}" data-mo-ta="{{ item.mo_ta|default:'' }}" data-hang-ids="{{ item.hang_ids_csv }}"></td>
+                        <td class="text-center"><input type="checkbox" name="selected_nhom" class="erp-row-select" 
+                            value="{{ item.pk }}" 
+                            data-ma="{{ item.ma_nhom }}" 
+                            data-ten="{{ item.ten_nhom }}" 
+                            data-mo-ta="{{ item.mo_ta|default:'' }}" 
+                            data-bien-do="{{ item.bien_do_loi_nhuan|floatformat:2 }}" 
+                            data-hang-ids="{{ item.hang_ids_csv }}"
+                            data-hang-details="{{ item.hang_details_json }}"></td>
                         <td>{{ item.ma_nhom }}</td>
                         <td>{{ item.ten_nhom }}</td>
+                        <td class="text-right">{{ item.bien_do_loi_nhuan|floatformat:2 }}%</td>
                         <td class="text-right">{{ item.so_hang|default:0 }}</td>
                         <td>{{ item.mo_ta|default:'-' }}</td>
                     </tr>
@@ -84,18 +114,25 @@
                     <label class="form-label">Tên nhóm <span class="text-danger">*</span></label>
                     <input type="text" name="ten_nhom" class="form-control" required>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Mô tả</label>
-                    <input type="text" name="mo_ta" class="form-control" placeholder="Mô tả nhóm hàng...">
+                <div class="row">
+                    <div class="col-6 mb-3">
+                        <label class="form-label">Biên độ lợi nhuận (%) <span class="text-danger">*</span></label>
+                        <input type="number" name="bien_do_loi_nhuan" class="form-control" step="0.01" value="10" required>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <label class="form-label">Mô tả</label>
+                        <input type="text" name="mo_ta" class="form-control" placeholder="Mô tả nhóm hàng...">
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Hàng hóa thuộc nhóm</label>
-                    <select name="hang_ids[]" class="form-control" multiple size="8">
-                        {% for hh in hang_list %}
-                        <option value="{{ hh.pk }}">{{ hh.ma_hang }} - {{ hh.ten_hang }}</option>
-                        {% endfor %}
-                    </select>
-                    <small class="text-muted">Giữ Ctrl để chọn nhiều hàng hóa.</small>
+                    <div class="input-group">
+                        <input type="text" id="addHangSummary" class="form-control bg-white" placeholder="Chưa chọn hàng hóa..." readonly onclick="openMultiLookup('create')">
+                        <button class="btn btn-outline-secondary" type="button" onclick="openMultiLookup('create')">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <div id="addHiddenHangInputs"></div>
                 </div>
                 <div class="d-flex justify-content-end gap-2">
                     <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Hủy</button>
@@ -125,18 +162,25 @@
                     <label class="form-label">Tên nhóm <span class="text-danger">*</span></label>
                     <input type="text" name="ten_nhom" id="editTenNhom" class="form-control" required>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Mô tả</label>
-                    <input type="text" name="mo_ta" id="editMoTa" class="form-control" placeholder="Mô tả nhóm hàng...">
+                <div class="row">
+                    <div class="col-6 mb-3">
+                        <label class="form-label">Biên độ lợi nhuận (%) <span class="text-danger">*</span></label>
+                        <input type="number" name="bien_do_loi_nhuan" id="editBienDo" class="form-control" step="0.01" required>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <label class="form-label">Mô tả</label>
+                        <input type="text" name="mo_ta" id="editMoTa" class="form-control" placeholder="Mô tả nhóm hàng...">
+                    </div>
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Hàng hóa thuộc nhóm</label>
-                    <select name="hang_ids[]" id="editHangIds" class="form-control" multiple size="8">
-                        {% for hh in hang_list %}
-                        <option value="{{ hh.pk }}">{{ hh.ma_hang }} - {{ hh.ten_hang }}</option>
-                        {% endfor %}
-                    </select>
-                    <small class="text-muted">Giữ Ctrl để chọn nhiều hàng hóa.</small>
+                    <div class="input-group">
+                        <input type="text" id="editHangSummary" class="form-control bg-white" placeholder="Chưa chọn hàng hóa..." readonly onclick="openMultiLookup('edit')">
+                        <button class="btn btn-outline-secondary" type="button" onclick="openMultiLookup('edit')">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <div id="editHiddenHangInputs"></div>
                 </div>
                 <div class="d-flex justify-content-end gap-2">
                     <button type="button" class="btn btn-light border" data-bs-dismiss="modal">Hủy</button>
@@ -188,13 +232,24 @@
         document.getElementById('editNhomId').value = row.value;
         document.getElementById('editMaNhom').value = row.dataset.ma || '';
         document.getElementById('editTenNhom').value = row.dataset.ten || '';
+        document.getElementById('editBienDo').value = row.dataset.bienDo || '10';
         document.getElementById('editMoTa').value = row.dataset.moTa || '';
 
-        const selectedIds = new Set(String(row.dataset.hangIds || '').split(',').filter(Boolean));
-        const sel = document.getElementById('editHangIds');
-        Array.from(sel.options).forEach(function(opt) {
-            opt.selected = selectedIds.has(opt.value);
-        });
+        // Nạp danh sách hàng hóa từ JSON
+        currentFormMode = 'edit';
+        try {
+            const details = JSON.parse(row.dataset.hangDetails || '[]');
+            selectedHang = details.map(h => ({
+                id: String(h.id),
+                ma: h.ma,
+                ten: h.ten
+            }));
+            renderSelectedHang();
+        } catch (e) {
+            console.error('Error parsing hang details', e);
+            selectedHang = [];
+            renderSelectedHang();
+        }
 
         bootstrap.Modal.getOrCreateInstance(document.getElementById('modalNhomEdit')).show();
     });
@@ -205,40 +260,173 @@
             alert('Vui lòng chọn ít nhất 1 nhóm để xóa.');
             return;
         }
-        if (!confirm('Bạn chắc chắn muốn xóa các nhóm đã chọn?')) {
-            return;
-        }
-        const form = document.createElement('form');
-        form.method = 'post';
-        form.action = '{% url "nhom_hang_list" %}';
+        window.erpShowConfirmDialog('Bạn chắc chắn muốn xóa các nhóm đã chọn?<br><span style="color:#6b7280; font-size:13px;">Hành động này không thể hoàn tác.</span>', function() {
+            const form = document.createElement('form');
+            form.method = 'post';
+            form.action = '{% url "nhom_hang_list" %}';
 
-        const csrf = document.createElement('input');
-        csrf.type = 'hidden';
-        csrf.name = 'csrfmiddlewaretoken';
-        csrf.value = '{{ csrf_token }}';
-        form.appendChild(csrf);
+            const csrf = document.createElement('input');
+            csrf.type = 'hidden';
+            csrf.name = 'csrfmiddlewaretoken';
+            csrf.value = '{{ csrf_token }}';
+            form.appendChild(csrf);
 
-        const action = document.createElement('input');
-        action.type = 'hidden';
-        action.name = 'action';
-        action.value = 'delete';
-        form.appendChild(action);
+            const action = document.createElement('input');
+            action.type = 'hidden';
+            action.name = 'action';
+            action.value = 'delete';
+            form.appendChild(action);
 
-        selected.forEach(function(input) {
-            const hidden = document.createElement('input');
-            hidden.type = 'hidden';
-            hidden.name = 'ids[]';
-            hidden.value = input.value;
-            form.appendChild(hidden);
+            selected.forEach(function(input) {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'ids[]';
+                hidden.value = input.value;
+                form.appendChild(hidden);
+            });
+
+            document.body.appendChild(form);
+            form.submit();
         });
-
-        document.body.appendChild(form);
-        form.submit();
     });
 
     document.getElementById('btnNhomSearch').addEventListener('click', function() {
         const modal = new bootstrap.Modal(document.getElementById('modalNhomSearch'));
         modal.show();
     });
+
+    // --- LOGIC TRA CỨU NHIỀU HÀNG HÓA ---
+    let selectedHang = []; // {id, ma, ten}
+    let currentFormMode = 'create'; // 'create' or 'edit'
+
+    function openMultiLookup(mode) {
+        currentFormMode = mode;
+        const modal = new bootstrap.Modal(document.getElementById('modalHangMulti'));
+        modal.show();
+        setTimeout(() => {
+            document.getElementById('multiHangSearchInput').value = '';
+            document.getElementById('multiHangSearchInput').focus();
+            loadMultiHangRows();
+        }, 300);
+    }
+
+    function loadMultiHangRows() {
+        const q = document.getElementById('multiHangSearchInput').value.trim();
+        const resultsDiv = document.getElementById('multiHangResults');
+        resultsDiv.innerHTML = '<div class="p-4 text-center"><div class="spinner-border spinner-border-sm text-primary"></div> Đang tải...</div>';
+
+        $.get('{% url "hang_hoa_lookup_api" %}', { q: q, page_size: 50 }, function(resp) {
+            const rows = resp.results || [];
+            if (!rows.length) {
+                resultsDiv.innerHTML = '<div class="p-4 text-center text-muted">Không tìm thấy hàng hóa nào.</div>';
+                return;
+            }
+
+            let html = '<table class="table table-sm table-hover mb-0"><thead><tr><th style="width:40px;"></th><th>Mã hàng</th><th>Tên hàng</th><th>ĐVT</th></tr></thead><tbody>';
+            rows.forEach(h => {
+                const isSelected = selectedHang.some(s => s.id == String(h.id));
+                html += `
+                    <tr class="lookup-row-check ${isSelected ? 'selected' : ''}" onclick="toggleHangInLookup(this, '${h.id}', '${escapeHtml(h.ma_hang)}', '${escapeHtml(h.ten_hang)}')">
+                        <td class="text-center">
+                            <input type="checkbox" class="form-check-input hang-checkbox" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation()">
+                        </td>
+                        <td><strong>${h.ma_hang}</strong></td>
+                        <td>${h.ten_hang}</td>
+                        <td>${h.dvt || '-'}</td>
+                    </tr>
+                `;
+            });
+            html += '</tbody></table>';
+            resultsDiv.innerHTML = html;
+        });
+    }
+
+    function toggleHangInLookup(row, id, ma, ten) {
+        const checkbox = row.querySelector('.hang-checkbox');
+        const idx = selectedHang.findIndex(s => s.id == id);
+        
+        if (idx > -1) {
+            selectedHang.splice(idx, 1);
+            row.classList.remove('selected');
+            checkbox.checked = false;
+        } else {
+            selectedHang.push({id: id, ma: ma, ten: ten});
+            row.classList.add('selected');
+            checkbox.checked = true;
+        }
+        renderSelectedHang();
+    }
+
+    function renderSelectedHang() {
+        const summaryInput = document.getElementById(currentFormMode === 'create' ? 'addHangSummary' : 'editHangSummary');
+        const hiddenContainer = document.getElementById(currentFormMode === 'create' ? 'addHiddenHangInputs' : 'editHiddenHangInputs');
+        
+        if (selectedHang.length === 0) {
+            summaryInput.value = '';
+            hiddenContainer.innerHTML = '';
+            return;
+        }
+
+        summaryInput.value = `Đã chọn ${selectedHang.length} mặt hàng : ${selectedHang.map(s => s.ma).slice(0, 3).join(', ')}${selectedHang.length > 3 ? '...' : ''}`;
+        
+        let hiddenHtml = '';
+        selectedHang.forEach(s => {
+            hiddenHtml += `<input type="hidden" name="hang_ids[]" value="${s.id}">`;
+        });
+        hiddenContainer.innerHTML = hiddenHtml;
+    }
+
+    function removeHangFromSelected(id) {
+        selectedHang = selectedHang.filter(s => s.id != id);
+        renderSelectedHang();
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    document.getElementById('multiHangSearchInput').addEventListener('input', debounce(loadMultiHangRows, 400));
+
+    function debounce(func, timeout = 300) {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => { func.apply(this, args); }, timeout);
+        };
+    }
+
+    document.getElementById('btnNhomAdd').addEventListener('click', function() {
+        selectedHang = [];
+        currentFormMode = 'create';
+        renderSelectedHang();
+        const modal = new bootstrap.Modal(document.getElementById('modalNhomAdd'));
+        modal.show();
+    });
 </script>
+
+<!-- Modal Tra cứu nhiều hàng hóa -->
+<div class="modal fade" id="modalHangMulti" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tra cứu và chọn hàng hóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" id="multiHangSearchInput" class="form-control" placeholder="Tìm theo mã hàng hoặc tên hàng...">
+                </div>
+                <div class="multi-lookup-results scroll-styled" id="multiHangResults">
+                    <!-- Results via AJAX -->
+                </div>
+            </div>
+            <div class="modal-footer justify-content-between">
+                <span class="text-muted small">Các mặt hàng bạn tích chọn sẽ tự động được đưa vào danh sách.</span>
+                <button type="button" class="btn btn-primary btn-sm px-4" data-bs-dismiss="modal">Xong</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

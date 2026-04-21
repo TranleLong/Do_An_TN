@@ -42,6 +42,9 @@
                     <tr><th style="border:none; padding: 0.5rem 0;">Mã khách:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.khach_hang.ma_kh|default:"-" }}</td></tr>
                     <tr><th style="border:none; padding: 0.5rem 0;">Số tiền:</th><td style="border:none; padding: 0.5rem 0; color: var(--danger); font-weight: bold; font-size: 1.1em;">{{ phieu.tong_thu|floatformat:0|vnd }} đ</td></tr>
                     <tr><th style="border:none; padding: 0.5rem 0;">Người tạo:</th><td style="border:none; padding: 0.5rem 0;">{{ phieu.nguoi_tao.username|default:"-" }}</td></tr>
+                    {% if phieu.hoa_don %}
+                    <tr><th style="border:none; padding: 0.5rem 0;">Hóa đơn liên kết:</th><td style="border:none; padding: 0.5rem 0;"><a href="{% url 'hoa_don_ban_detail' phieu.hoa_don.pk %}">{{ phieu.hoa_don.so_hoa_don }}</a></td></tr>
+                    {% endif %}
                     <tr><th style="border:none; padding: 0.5rem 0;">Ghi chú:</th><td style="border:none; padding: 0.5rem 0;">{{ ghi_chu_hien_thi|default:"-" }}</td></tr>
                 </table>
             </div>

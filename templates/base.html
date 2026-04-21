@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}{{ page_title }} - ERP Tiến Hương{% endblock %}</title>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- FontAwesome Icons -->
+    <link rel="icon" href="/static/favicon.ico">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/style.css?v=6">
@@ -204,7 +201,7 @@
             </div>
             
             <nav class="sidebar-nav">
-                <div class="nav-item {% if active_menu == 'dashboard' or active_menu == 'so_cai' or active_menu == 'ky_ke_toan' %}open{% endif %}">
+                <div class="nav-item {% if active_menu == 'dashboard' or active_menu == 'so_cai' or active_menu == 'so_nhat_ky_chung' or active_menu == 'ky_ke_toan' %}open{% endif %}">
                     <a href="#" class="nav-link dropdown-toggle" onclick="toggleSubmenu(event, this)">
                         <i class="fas fa-chart-pie"></i> Hệ thống
                         <i class="fas fa-chevron-down ms-auto"></i>
@@ -212,30 +209,56 @@
                     <div class="submenu">
                         <a href="{% url 'dashboard' %}" class="submenu-link {% if active_menu == 'dashboard' %}active{% endif %}">Tổng quan</a>
                         <a href="{% url 'so_cai' %}" class="submenu-link {% if active_menu == 'so_cai' %}active{% endif %}">Sổ cái</a>
+                        <a href="{% url 'so_nhat_ky_chung' %}" class="submenu-link {% if active_menu == 'so_nhat_ky_chung' %}active{% endif %}">Sổ nhật ký chung</a>
                         <a href="{% url 'ky_ke_toan' %}" class="submenu-link {% if active_menu == 'ky_ke_toan' %}active{% endif %}">Kỳ kế toán</a>
                     </div>
                 </div>
 
-                <div class="nav-item {% if active_menu == 'don_ban' or active_menu == 'hoa_don_ban' or active_menu == 'doi_tra' or active_menu == 'gia_ban' or active_menu == 'phieu_thu' or active_menu == 'phieu_chi' or active_menu == 'cong_no_kh' or active_menu == 'bao_cao_cong_no_kh_ct' or active_menu == 'bao_cao_bh' %}open{% endif %}">
+                <div class="nav-item {% if active_menu == 'don_ban' or active_menu == 'hoa_don_ban' or active_menu == 'doi_tra' or active_menu == 'gia_ban' or active_menu == 'phieu_giao_hang' or active_menu == 'phieu_thu' or active_menu == 'phieu_chi' or active_menu == 'cong_no_kh' or active_menu == 'bao_cao_cong_no_kh_ct' or active_menu == 'bao_cao_bh' %}open{% endif %}">
                     <a href="#" class="nav-link dropdown-toggle" onclick="toggleSubmenu(event, this)">
                         <i class="fas fa-shopping-cart"></i> Phân hệ Bán Hàng
                         <i class="fas fa-chevron-down ms-auto"></i>
                     </a>
                     <div class="submenu">
-                        <div class="submenu-title">Bán hàng</div>
-                        <a href="{% url 'don_ban_list' %}" class="submenu-link {% if active_menu == 'don_ban' %}active{% endif %}">Đơn bán hàng</a>
-                        <a href="{% url 'hoa_don_ban_list' %}" class="submenu-link {% if active_menu == 'hoa_don_ban' %}active{% endif %}">Hóa đơn bán hàng</a>
-                        <a href="{% url 'phieu_doi_tra_list' %}" class="submenu-link {% if active_menu == 'doi_tra' %}active{% endif %}">Quản lý đổi trả</a>
-                        <a href="{% url 'gia_ban_list' %}" class="submenu-link {% if active_menu == 'gia_ban' %}active{% endif %}">Quản lý giá bán</a>
-                        
-                        <div class="submenu-title">Kế toán bán hàng</div>
-                        <a href="{% url 'phieu_thu_list' %}" class="submenu-link {% if active_menu == 'phieu_thu' %}active{% endif %}">Phiếu thu tiền</a>
-                        <a href="{% url 'bh_phieu_chi_list' %}" class="submenu-link {% if active_menu == 'phieu_chi' %}active{% endif %}">Phiếu chi tiền</a>
-                        <a href="{% url 'cong_no_kh' %}" class="submenu-link {% if active_menu == 'cong_no_kh' %}active{% endif %}">Công nợ khách hàng</a>
-                        <a href="{% url 'bao_cao_cong_no_kh_ct' %}" class="submenu-link {% if active_menu == 'bao_cao_cong_no_kh_ct' %}active{% endif %}">Báo cáo công nợ chi tiết</a>
-                        <a href="{% url 'bao_cao_doanh_thu' %}" class="submenu-link {% if active_menu == 'bao_cao_bh' %}active{% endif %}">Báo cáo doanh thu</a>
+                        <div class="warehouse-group {% if active_menu == 'don_ban' or active_menu == 'hoa_don_ban' or active_menu == 'doi_tra' or active_menu == 'gia_ban' or active_menu == 'phieu_giao_hang' %}open{% endif %}">
+                            <button type="button" class="warehouse-group-toggle" onclick="toggleWarehouseGroup(event, this)">
+                                <span>Bán hàng</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="warehouse-group-body">
+                                <a href="{% url 'don_ban_list' %}" class="submenu-link {% if active_menu == 'don_ban' %}active{% endif %}">Đơn bán hàng</a>
+                                <a href="{% url 'hoa_don_ban_list' %}" class="submenu-link {% if active_menu == 'hoa_don_ban' %}active{% endif %}">Hóa đơn bán hàng</a>
+                                <a href="{% url 'phieu_doi_tra_list' %}" class="submenu-link {% if active_menu == 'doi_tra' %}active{% endif %}">Quản lý đổi trả</a>
+                                <a href="{% url 'gia_ban_list' %}" class="submenu-link {% if active_menu == 'gia_ban' %}active{% endif %}">Quản lý giá bán</a>
+                                <a href="{% url 'phieu_giao_hang_list' %}" class="submenu-link {% if active_menu == 'phieu_giao_hang' %}active{% endif %}">Phiếu giao hàng</a>
+                            </div>
+                        </div>
+
+                        <div class="warehouse-group {% if active_menu == 'phieu_thu' or active_menu == 'phieu_chi' or active_menu == 'cong_no_kh' %}open{% endif %}">
+                            <button type="button" class="warehouse-group-toggle" onclick="toggleWarehouseGroup(event, this)">
+                                <span>Kế toán bán hàng</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="warehouse-group-body">
+                                <a href="{% url 'phieu_thu_list' %}" class="submenu-link {% if active_menu == 'phieu_thu' %}active{% endif %}">Phiếu thu tiền</a>
+                                <a href="{% url 'bh_phieu_chi_list' %}" class="submenu-link {% if active_menu == 'phieu_chi' %}active{% endif %}">Phiếu chi tiền</a>
+                                <a href="{% url 'cong_no_kh' %}" class="submenu-link {% if active_menu == 'cong_no_kh' %}active{% endif %}">Công nợ khách hàng</a>
+                            </div>
+                        </div>
+
+                        <div class="warehouse-group {% if active_menu == 'bao_cao_cong_no_kh_ct' or active_menu == 'bao_cao_bh' %}open{% endif %}">
+                            <button type="button" class="warehouse-group-toggle" onclick="toggleWarehouseGroup(event, this)">
+                                <span>Báo cáo &amp; Phân tích</span>
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                            <div class="warehouse-group-body">
+                                <a href="{% url 'bao_cao_cong_no_kh_ct' %}" class="submenu-link {% if active_menu == 'bao_cao_cong_no_kh_ct' %}active{% endif %}">Báo cáo công nợ chi tiết</a>
+                                <a href="{% url 'bao_cao_doanh_thu' %}" class="submenu-link {% if active_menu == 'bao_cao_bh' %}active{% endif %}">Báo cáo doanh thu</a>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
 
                 <div class="nav-item {% if active_menu == 'ton_kho' or active_menu == 'phieu_nhap' or active_menu == 'phieu_xuat' or active_menu == 'kiem_ke' or active_menu == 'bao_cao_xnt' or active_menu == 'so_chi_tiet_hang_hoa' or active_menu == 'bao_cao_ton_hien_tai' or active_menu == 'bao_cao_kho' or active_menu == 'tinh_gia_xuat' or active_menu == 'doi_chieu_kho' or active_menu == 'so_do_kho' %}open{% endif %}">
                     <a href="#" class="nav-link dropdown-toggle" onclick="toggleSubmenu(event, this)">
@@ -984,20 +1007,20 @@
                         alert('Đã bỏ chọn các dòng hiện tại.');
                         return;
                     }
-                    if (!window.confirm('Bạn có chắc muốn xóa các dòng đã chọn?')) {
-                        return;
+                    const labels = $selected.map(function(_, input) {
+                        const $row = $(input).closest('tr');
+                        return $row.find('td').eq(1).text().trim() || $row.find('td').eq(2).text().trim() || ('dòng #' + $(input).val());
+                    }).get().filter(Boolean);
+                    const labelText = labels.length <= 3 ? labels.join(', ') : labels.slice(0,3).join(', ') + '...';
+                    if (typeof window.erpConfirmDelete === 'function') {
+                        window.erpConfirmDelete(deleteUrls, labelText, $selected.length);
+                    } else {
+                        if (!window.confirm('Bạn có chắc muốn xóa ' + $selected.length + ' dòng đã chọn?')) { return; }
+                        const csrf = $('input[name="csrfmiddlewaretoken"]').first().val() || '';
+                        Promise.all(deleteUrls.map(function (url) {
+                            return fetch(url, { method: 'POST', headers: csrf ? { 'X-CSRFToken': csrf } : {} });
+                        })).then(function () { window.location.reload(); }).catch(function () { alert('Có lỗi khi xóa dữ liệu.'); });
                     }
-                    const csrf = $('input[name="csrfmiddlewaretoken"]').first().val() || '';
-                    Promise.all(deleteUrls.map(function (url) {
-                        return fetch(url, {
-                            method: 'POST',
-                            headers: csrf ? { 'X-CSRFToken': csrf } : {}
-                        });
-                    })).then(function () {
-                        window.location.reload();
-                    }).catch(function () {
-                        alert('Có lỗi khi xóa dữ liệu.');
-                    });
                     return;
                 }
 
@@ -1006,15 +1029,21 @@
                         alert('Vui lòng chọn dòng cần chép dữ liệu.');
                         return;
                     }
-                    const lines = $selected.map(function (_, input) {
-                        const rowText = $(input).closest('tr').text().replace(/\s+/g, ' ').trim();
-                        return rowText;
-                    }).get().filter(Boolean);
-                    navigator.clipboard.writeText(lines.join('\n')).then(function () {
-                        alert('Đã chép ' + lines.length + ' dòng vào clipboard.');
-                    }).catch(function () {
-                        alert('Không thể chép dữ liệu.');
-                    });
+                    // Lấy id bản ghi đầu tiên được chọn
+                    const firstId = $selected.first().val();
+                    // Tìm nút thêm mới trên toolbar
+                    const $addBtn = $toolbar.find('a.erp-toolbar-btn:has(i.fa-plus)');
+                    if ($addBtn.length && firstId) {
+                        let addUrl = $addBtn.attr('href');
+                        if (addUrl.indexOf('?') === -1) {
+                            addUrl += '?copy_from=' + encodeURIComponent(firstId);
+                        } else {
+                            addUrl += '&copy_from=' + encodeURIComponent(firstId);
+                        }
+                        window.location.href = addUrl;
+                        return;
+                    }
+                    alert('Không tìm thấy đường dẫn tạo mới để chép dữ liệu.');
                     return;
                 }
 
@@ -1174,6 +1203,320 @@
         })();
 
     </script>
+
+    <!-- ═══════════════════════════════════════════════════════
+         GLOBAL DELETE CONFIRMATION MODAL
+    ═══════════════════════════════════════════════════════ -->
+    <div class="modal fade" id="globalDeleteModal" tabindex="-1" aria-labelledby="globalDeleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width:460px;">
+            <div class="modal-content" style="border-radius:12px; border:1px solid #ffc9c9; overflow:hidden; box-shadow:0 20px 50px rgba(0,0,0,.2);">
+                <!-- Header -->
+                <div id="gdmHeader" class="modal-header border-0 pb-0" style="background:linear-gradient(180deg,#fff5f5,#ffe9e9); padding:18px 20px 12px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div id="gdmIconWrap" style="width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:20px; flex-shrink:0;">
+                            <i id="gdmIcon" class="fas fa-trash-can"></i>
+                        </div>
+                        <h5 class="modal-title" id="globalDeleteModalLabel" style="margin:0; font-weight:700; font-size:16px; color:#1e3a5f;">Xác nhận xóa</h5>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Đóng" style="margin:-6px -6px -6px 0;"></button>
+                </div>
+                <!-- Body -->
+                <div class="modal-body" style="padding:16px 20px 12px; background:#fff;">
+                    <div id="gdmBody" style="font-size:14px; color:#374151; line-height:1.6;"></div>
+                </div>
+                <!-- Footer -->
+                <div class="modal-footer border-0" style="background:#fafafa; padding:12px 20px; gap:8px;">
+                    <button type="button" class="btn btn-light border" data-bs-dismiss="modal" style="min-width:90px;">Hủy</button>
+                    <button type="button" id="gdmConfirmBtn" class="btn btn-danger" style="min-width:110px; display:none;">
+                        <i class="fas fa-trash me-1"></i> Xóa
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ═══════════════════════════════════════════════════════════
+    // ERP GLOBAL DELETE MODAL SYSTEM
+    // ═══════════════════════════════════════════════════════════
+    (function () {
+        var _modal = null;
+        var _bsModal = null;
+        var _pendingAction = null;
+
+        function getModal() {
+            if (!_modal) {
+                _modal = document.getElementById('globalDeleteModal');
+                if (_modal && window.bootstrap) {
+                    _bsModal = new bootstrap.Modal(_modal);
+                }
+            }
+            return { el: _modal, bs: _bsModal };
+        }
+
+        function getCSRF() {
+            var el = document.querySelector('input[name="csrfmiddlewaretoken"]');
+            return el ? el.value : '';
+        }
+
+        // Kiểm tra message lỗi từ redirect sau khi POST
+        // Để detect lỗi period-lock / has_related_docs,
+        // ta dùng fetch và đọc messages từ trang redirect
+        function parseErrorFromHtml(html) {
+            var parser = new DOMParser();
+            var doc = parser.parseFromString(html, 'text/html');
+            // Ưu tiên: alert-danger với tag period-lock
+            var alerts = doc.querySelectorAll('.alert-danger, .alert-warning, [class*="alert"]');
+            for (var i = 0; i < alerts.length; i++) {
+                var txt = alerts[i].innerText || alerts[i].textContent || '';
+                txt = txt.replace(/\s+/g, ' ').trim();
+                if (txt) return txt;
+            }
+            // messages framework
+            var msgs = doc.querySelectorAll('[class*="message"], .messages li, #messages li');
+            for (var j = 0; j < msgs.length; j++) {
+                var t = (msgs[j].innerText || msgs[j].textContent || '').trim();
+                if (t) return t;
+            }
+            return '';
+        }
+
+        function isPeriodLockMessage(msg) {
+            return /ngo[àa]i k[ỳy]|k[ỳy] k[eế] to[áa]n|period|locked|kh[oó]a k[ỳy]/i.test(msg);
+        }
+
+        function isRelatedDocsMessage(msg) {
+            return /ph[aá]t sinh|ch[uứ]ng t[ừu] li[eê]n quan|related|kh[oó]ng th[eể] x[oó]a.*ph[aá]t sinh|has.*related/i.test(msg);
+        }
+
+        // ─── Hiện modal dạng xác nhận bình thường ────────────────
+        function showConfirm(urls, label, count, onConfirm) {
+            var m = getModal();
+            if (!m.el || !m.bs) {
+                if (window.confirm('Bạn có chắc muốn xóa ' + (label || (count + ' dòng')) + '?')) {
+                    onConfirm();
+                }
+                return;
+            }
+            // Reset style về danger (normal delete)
+            var header = document.getElementById('gdmHeader');
+            var iconWrap = document.getElementById('gdmIconWrap');
+            var icon = document.getElementById('gdmIcon');
+            var body = document.getElementById('gdmBody');
+            var confirmBtn = document.getElementById('gdmConfirmBtn');
+            var titleEl = document.getElementById('globalDeleteModalLabel');
+
+            header.style.background = 'linear-gradient(180deg,#fff5f5,#ffe9e9)';
+            iconWrap.style.background = '#ffe0e0';
+            iconWrap.style.color = '#c62828';
+            icon.className = 'fas fa-trash-can';
+            titleEl.textContent = 'Xác nhận xóa';
+            confirmBtn.style.display = '';
+            confirmBtn.className = 'btn btn-danger';
+            confirmBtn.innerHTML = '<i class="fas fa-trash me-1"></i> Xóa';
+
+            var countText = count > 1 ? ('<strong>' + count + ' dòng</strong>') : '';
+            var labelHtml = label ? ('<strong style="color:#c62828;">' + label + '</strong>') : '';
+            if (countText && labelHtml) {
+                body.innerHTML = 'Bạn có chắc chắn muốn xóa ' + countText + ' dòng (' + labelHtml + ') không?<br><span style="color:#6b7280; font-size:13px;">Hành động này không thể hoàn tác.</span>';
+            } else if (labelHtml) {
+                body.innerHTML = 'Bạn có chắc chắn muốn xóa ' + labelHtml + ' không?<br><span style="color:#6b7280; font-size:13px;">Hành động này không thể hoàn tác.</span>';
+            } else {
+                body.innerHTML = 'Bạn có chắc chắn muốn xóa dữ liệu đã chọn không?<br><span style="color:#6b7280; font-size:13px;">Hành động này không thể hoàn tác.</span>';
+            }
+
+            _pendingAction = onConfirm;
+            m.bs.show();
+        }
+
+        // ─── Hiện modal dạng lỗi (readonly, chỉ đóng) ────────────
+        function showError(title, message, iconClass, colorScheme) {
+            var m = getModal();
+            if (!m.el || !m.bs) { alert(title + '\n' + message); return; }
+
+            var header = document.getElementById('gdmHeader');
+            var iconWrap = document.getElementById('gdmIconWrap');
+            var icon = document.getElementById('gdmIcon');
+            var body = document.getElementById('gdmBody');
+            var confirmBtn = document.getElementById('gdmConfirmBtn');
+            var titleEl = document.getElementById('globalDeleteModalLabel');
+
+            if (colorScheme === 'warning') {
+                header.style.background = 'linear-gradient(180deg,#fffbf0,#fff3cd)';
+                iconWrap.style.background = '#fff3cd';
+                iconWrap.style.color = '#856404';
+            } else {
+                header.style.background = 'linear-gradient(180deg,#f0f7ff,#deeeff)';
+                iconWrap.style.background = '#deeeff';
+                iconWrap.style.color = '#1565c0';
+            }
+            icon.className = iconClass || 'fas fa-circle-exclamation';
+            titleEl.textContent = title;
+            body.innerHTML = message;
+            confirmBtn.style.display = 'none';
+            _pendingAction = null;
+            m.bs.show();
+        }
+
+        // ─── PUBLIC: gọi từ bất kỳ template nào ─────────────────
+        // urls: string | string[]
+        // label: tên hiển thị
+        // count: số lượng (optional)
+        window.erpConfirmDelete = function (urls, label, count) {
+            if (typeof urls === 'string') urls = [urls];
+            count = count || urls.length || 1;
+            showConfirm(urls, label, count, function () {
+                var csrf = getCSRF();
+                // Với 1 URL duy nhất: submit form để Django xử lý redirect + messages
+                if (urls.length === 1) {
+                    var form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = urls[0];
+                    var csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrfmiddlewaretoken';
+                    csrfInput.value = csrf;
+                    form.appendChild(csrfInput);
+                    document.body.appendChild(form);
+                    form.submit();
+                    return;
+                }
+                // Nhiều URL: fetch song song rồi reload
+                Promise.all(urls.map(function (url) {
+                    return fetch(url, {
+                        method: 'POST',
+                        headers: csrf ? { 'X-CSRFToken': csrf } : {},
+                        redirect: 'follow'
+                    });
+                })).then(function (responses) {
+                    // Kiểm tra xem có lỗi không từ response cuối cùng
+                    var lastResp = responses[responses.length - 1];
+                    if (lastResp && lastResp.ok) {
+                        return lastResp.text();
+                    }
+                    throw new Error('Lỗi xóa');
+                }).then(function (html) {
+                    var errMsg = parseErrorFromHtml(html);
+                    var m2 = getModal();
+                    if (errMsg && m2.bs) { m2.bs.hide(); }
+                    window.location.reload();
+                }).catch(function () {
+                    window.location.reload();
+                });
+            });
+        };
+
+        // ─── PUBLIC: wrapper cho confirmDelete dùng trong templates ─
+        window.confirmDelete = function (url, label) {
+            window.erpConfirmDelete([url], label, 1);
+        };
+
+        // ─── PUBLIC: Hỗ trợ hiển thị modal tự do và chạy callback khi Xác nhận
+        window.erpShowConfirmDialog = function (message_html, onConfirm) {
+            var m = getModal();
+            if (!m.el || !m.bs) {
+                if (window.confirm(message_html.replace(/<[^>]+>/g, ''))) {
+                    onConfirm();
+                }
+                return;
+            }
+            var header = document.getElementById('gdmHeader');
+            var iconWrap = document.getElementById('gdmIconWrap');
+            var icon = document.getElementById('gdmIcon');
+            var body = document.getElementById('gdmBody');
+            var confirmBtn = document.getElementById('gdmConfirmBtn');
+            var titleEl = document.getElementById('globalDeleteModalLabel');
+
+            header.style.background = 'linear-gradient(180deg,#fff5f5,#ffe9e9)';
+            iconWrap.style.background = '#ffe0e0';
+            iconWrap.style.color = '#c62828';
+            icon.className = 'fas fa-trash-can';
+            titleEl.textContent = 'Xác nhận xóa';
+            confirmBtn.style.display = '';
+            confirmBtn.className = 'btn btn-danger';
+            confirmBtn.innerHTML = '<i class="fas fa-trash me-1"></i> Xóa';
+            
+            body.innerHTML = message_html;
+            _pendingAction = onConfirm;
+            m.bs.show();
+        };
+
+        // ─── Intercept form onsubmit="return confirm(...)" ────────
+        // Thay các form dùng onsubmit=confirm() bằng modal
+        document.addEventListener('DOMContentLoaded', function () {
+            // Gắn nút confirm trong modal
+            var confirmBtn = document.getElementById('gdmConfirmBtn');
+            if (confirmBtn) {
+                confirmBtn.addEventListener('click', function () {
+                    var m = getModal();
+                    if (m.bs) m.bs.hide();
+                    if (typeof _pendingAction === 'function') {
+                        _pendingAction();
+                        _pendingAction = null;
+                    }
+                });
+            }
+
+            // Intercept form onsubmit có chứa confirm()
+            document.querySelectorAll('form[onsubmit]').forEach(function (form) {
+                var os = form.getAttribute('onsubmit') || '';
+                if (!os.includes('confirm(')) return;
+                // Lấy text từ confirm()
+                var match = os.match(/confirm\(['"](.*?)['"]/)
+                var msg = match ? match[1] : 'dữ liệu này';
+                form.setAttribute('onsubmit', 'return false;');
+                form.dataset.confirmLabel = msg;
+                // Tìm submit button trong form
+                form.addEventListener('submit', function (e) {
+                    e.preventDefault();
+                    var label = form.dataset.confirmLabel || msg;
+                    window.erpConfirmDelete([form.action], label, 1);
+                });
+            });
+
+            // Intercept button/link với onclick="return confirm()"
+            document.querySelectorAll('[onclick]').forEach(function (el) {
+                var oc = el.getAttribute('onclick') || '';
+                if (!oc.includes('confirm(')) return;
+                var match = oc.match(/confirm\(['"](.*?)['"]/)
+                var label = match ? match[1] : 'thao tác này';
+                el.removeAttribute('onclick');
+                el.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    // Tìm form cha hoặc link
+                    var parentForm = el.closest('form');
+                    if (parentForm) {
+                        window.erpConfirmDelete([parentForm.action], label, 1);
+                    }
+                });
+            });
+
+            // Intercept button trong .erp-row-select delete (data-delete-url)
+            // Đã xử lý ở toolbar JS
+        });
+
+        // ─── Đọc messages Django sau load để kiểm tra lỗi period-lock ─
+        // Nếu messages có tag 'period-lock', hiển thị modal lỗi
+        document.addEventListener('DOMContentLoaded', function () {
+            var periodMsgs = document.querySelectorAll('[data-erp-message-tag*="period-lock"], .alert[data-tag="period-lock"]');
+            periodMsgs.forEach(function (el) {
+                var msg = (el.innerText || el.textContent || '').trim();
+                if (msg) {
+                    showError(
+                        'Ngoài kỳ kế toán',
+                        '<i class="fas fa-lock me-2" style="color:#856404;"></i>' +
+                        '<strong>Không thể xóa/sửa chứng từ này.</strong><br><br>' +
+                        '<span style="color:#374151;">' + msg + '</span>',
+                        'fas fa-calendar-xmark',
+                        'warning'
+                    );
+                }
+            });
+        });
+
+    })();
+    </script>
+
     {% block extra_js %}{% endblock %}
 </body>
 </html>

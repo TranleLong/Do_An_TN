@@ -161,17 +161,8 @@
             alert('Chọn ít nhất 1 khách hàng để xóa.');
             return;
         }
-        if (!confirm('Bạn có chắc muốn xóa các khách hàng đã chọn?')) return;
-        const csrf = document.querySelector('#formKhDelete input[name="csrfmiddlewaretoken"]').value;
-        const requests = selected.map(item =>
-            fetch(item.dataset.deleteUrl, {
-                method: 'POST',
-                headers: { 'X-CSRFToken': csrf }
-            })
-        );
-        Promise.all(requests).then(function() {
-            window.location.reload();
-        });
+        const deleteUrls = selected.map(item => item.dataset.deleteUrl);
+        window.erpConfirmDelete(deleteUrls, 'khách hàng đã chọn', selected.length);
     });
 
     document.getElementById('btnKhHistory').addEventListener('click', function() {

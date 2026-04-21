@@ -124,14 +124,8 @@
             alert('Chọn ít nhất 1 nhà cung cấp để xóa.');
             return;
         }
-        if (!confirm('Bạn có chắc muốn xóa các nhà cung cấp đã chọn?')) return;
-        const csrf = document.querySelector('#formNccDelete input[name="csrfmiddlewaretoken"]').value;
-        Promise.all(selected.map(item => fetch(item.dataset.deleteUrl, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': csrf }
-        }))).then(function() {
-            window.location.reload();
-        });
+        const deleteUrls = selected.map(item => item.dataset.deleteUrl);
+        window.erpConfirmDelete(deleteUrls, 'nhà cung cấp đã chọn', selected.length);
     });
 
     document.getElementById('btnNccSearch').addEventListener('click', function() {

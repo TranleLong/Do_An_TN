@@ -283,17 +283,18 @@
             showPeriodGuard('Chứng từ đang ngoài kỳ kế toán, không thể thực hiện thao tác này.');
             return;
         }
-        if (!confirm('Bạn chắc chắn muốn xóa các hóa đơn đã chọn?')) return;
-        const form = document.getElementById('formHdDelete');
-        form.querySelectorAll('input[name="ids[]"]').forEach(function(el) { el.remove(); });
-        selected.forEach(function(input) {
-            const hidden = document.createElement('input');
-            hidden.type = 'hidden';
-            hidden.name = 'ids[]';
-            hidden.value = input.value;
-            form.appendChild(hidden);
+        window.erpShowConfirmDialog('Bạn chắc chắn muốn xóa các hóa đơn đã chọn?<br><span style=\"color:#6b7280; font-size:13px;\">Hành động này không thể hoàn tác.</span>', function() {
+            const form = document.getElementById('formHdDelete');
+            form.querySelectorAll('input[name=\"ids[]\"]').forEach(function(el) { el.remove(); });
+            selected.forEach(function(input) {
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.name = 'ids[]';
+                hidden.value = input.value;
+                form.appendChild(hidden);
+            });
+            form.submit();
         });
-        form.submit();
     });
 
     document.getElementById('btnHdCopy').addEventListener('click', function() {
@@ -302,9 +303,7 @@
             showPeriodGuard('Vui lòng chọn đúng 1 hóa đơn để chép dữ liệu.');
             return;
         }
-        const form = document.getElementById('formHdCopy');
-        form.action = selected.dataset.copyUrl;
-        form.submit();
+        window.location.href = '{% url "hoa_don_ban_them" %}?copy_from=' + selected.value;
     });
 
     document.getElementById('btnHdView').addEventListener('click', function() {

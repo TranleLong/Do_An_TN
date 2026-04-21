@@ -9,4 +9,5 @@ urlpatterns = [
     path('api/post-to-ledger/', views.post_to_ledger_api, name='so_cai_api_post_to_ledger'),
     path('api/general-ledger/', views.general_ledger_api, name='so_cai_api_general_ledger'),
     path('api/trial-balance/', views.trial_balance_api, name='so_cai_api_trial_balance'),
+    path('nhat-ky-chung/', views.nhat_ky_chung_view, name='so_nhat_ky_chung'),
 ]

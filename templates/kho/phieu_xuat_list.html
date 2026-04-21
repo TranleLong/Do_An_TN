@@ -181,10 +181,11 @@
             alert('Vui lòng chọn đúng 1 phiếu xuất để xóa.');
             return;
         }
-        if (!confirm('Bạn chắc chắn muốn xóa phiếu đã chọn?')) return;
-        const form = document.getElementById('formXuatDelete');
-        form.action = input.dataset.deleteUrl;
-        form.submit();
+        window.erpShowConfirmDialog('Bạn chắc chắn muốn xóa phiếu đã chọn?<br><span style=\"color:#6b7280; font-size:13px;\">Hành động này không thể hoàn tác.</span>', function() {
+            const form = document.getElementById('formXuatDelete');
+            form.action = input.dataset.deleteUrl;
+            form.submit();
+        });
     });
     document.getElementById('btnXuatPrintPdf').addEventListener('click', function() {
         const input = getSelectedXuatInput();

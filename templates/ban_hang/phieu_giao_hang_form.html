@@ -1,0 +1,540 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: #fff;
+        border: 1px solid #d0dff0;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        overflow: hidden;
+    }
+    .form-section-header {
+        background: linear-gradient(180deg, #eaf2ff 0%, #dceeff 100%);
+        border-bottom: 1px solid #c3d7f0;
+        padding: 10px 16px;
+        font-weight: 700;
+        color: #1e3a5f;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .form-section-body { padding: 14px 16px; }
+    .detail-table { font-size: 13px; min-width: 1100px; }
+    .detail-table thead th {
+        background: #f4f7fb;
+        border-bottom: 1px solid #c4d5e8;
+        color: #3d5877;
+        font-weight: 600;
+        padding: 8px 6px;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    .detail-table td { padding: 5px 6px; vertical-align: middle; }
+    .detail-table input, .detail-table select {
+        font-size: 13px;
+        padding: 4px 7px;
+        height: 32px;
+    }
+    .btn-add-row { font-size: 13px; }
+    .total-bar {
+        background: #f8fbff;
+        border-top: 2px solid #c4d5e8;
+        padding: 10px 16px;
+        display: flex;
+        gap: 32px;
+        justify-content: flex-end;
+        font-weight: 600;
+        color: #1e3a5f;
+    }
+    .total-bar .total-value {
+        font-size: 16px;
+        color: #0d47a1;
+        margin-left: 8px;
+    }
+    .inherit-btn {
+        background: linear-gradient(135deg, #1565c0, #0d47a1);
+        color: #fff;
+        border: 0;
+        border-radius: 6px;
+        padding: 7px 16px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        transition: opacity .15s;
+    }
+    .inherit-btn:hover { opacity: .88; color: #fff; }
+    .action-bar {
+        background: linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+        border: 1px solid #d0dff0;
+        border-radius: 8px;
+        padding: 12px 16px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+    /* Kế thừa modal */
+    #inheritModal .modal-dialog { max-width: 820px; }
+    .hd-row {
+        display: grid;
+        grid-template-columns: 150px 180px 1fr;
+        gap: 8px;
+        padding: 10px 14px;
+        border: 0;
+        border-bottom: 1px solid #e9eef5;
+        background: #fff;
+        cursor: pointer;
+        text-align: left;
+        width: 100%;
+        font-size: 14px;
+    }
+    .hd-row:hover { background: #f2f8ff; }
+    .hd-head {
+        display: grid;
+        grid-template-columns: 150px 180px 1fr;
+        gap: 8px;
+        padding: 8px 14px;
+        background: #eef5fb;
+        border-bottom: 1px solid #cfdeef;
+        font-weight: 700;
+        color: #1f4d83;
+        font-size: 13px;
+    }
+    .hd-code { font-weight: 700; color: #0d4b86; }
+    /* lookup */
+    .lookup-wrap { position: relative; z-index: 2100; }
+    .lookup-input { padding-right: 38px; }
+    .lookup-btn {
+        position: absolute; right: 5px; top: 50%; transform: translateY(-50%);
+        width: 26px; height: 26px; border: 0; background: transparent;
+        color: #6b7d94; border-radius: 50%; padding: 0; cursor: pointer;
+    }
+    .lookup-btn:hover { background: #eaf2fd; color: #1d5ea8; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="action-bar">
+    {% if not editing %}
+    <button type="button" class="inherit-btn" id="btnInherit">
+        <i class="fas fa-clone"></i> Kế thừa từ hóa đơn bán hàng
+    </button>
+    {% endif %}
+    <div class="ms-auto d-flex gap-2">
+        <button type="submit" form="mainForm" class="btn btn-primary">
+            <i class="fas fa-save me-1"></i>Lưu
+        </button>
+        <a href="{% url 'phieu_giao_hang_list' %}" class="btn btn-light border">
+            <i class="fas fa-times me-1"></i>Hủy
+        </a>
+    </div>
+</div>
+
+<form id="mainForm" method="post">
+{% csrf_token %}
+<input type="hidden" name="hoa_don_goc" id="hdGocId" value="{{ phieu.hoa_don_goc_id|default:'' }}">
+
+<!-- THÔNG TIN CHUNG -->
+<div class="form-section">
+    <div class="form-section-header"><i class="fas fa-info-circle"></i> Thông tin chung</div>
+    <div class="form-section-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Số phiếu giao hàng <span class="text-danger">*</span></label>
+                <input type="text" name="so_phieu" class="form-control"
+                    value="{{ phieu.so_phieu|default:so_phieu_default }}"
+                    {% if editing %}readonly{% endif %}
+                    required>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label fw-semibold">Ngày lập <span class="text-danger">*</span></label>
+                <input type="date" name="ngay_lap" class="form-control"
+                    value="{{ phieu.ngay_lap|date:'Y-m-d'|default:today|date:'Y-m-d' }}" required>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label fw-semibold">Trạng thái</label>
+                <select name="trang_thai" class="form-select">
+                    <option value="cho_giao" {% if phieu.trang_thai == 'cho_giao' or not phieu %}selected{% endif %}>Chờ giao hàng</option>
+                    <option value="da_giao"  {% if phieu.trang_thai == 'da_giao' %}selected{% endif %}>Đã giao hàng</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Mã khách hàng <span class="text-danger">*</span></label>
+                <div class="lookup-wrap">
+                    <input type="text" id="khDispInput" class="form-control lookup-input lookup-display"
+                        placeholder="Mã hoặc tên KH..."
+                        value="{% if phieu.khach_hang %}{{ phieu.khach_hang.ma_kh }}{% endif %}"
+                        list="kh_list_data" autocomplete="off">
+                    <datalist id="kh_list_data">
+                        {% for kh in kh_list %}
+                        <option value="{{ kh.ma_kh }}"></option>
+                        {% endfor %}
+                    </datalist>
+                    <input type="hidden" name="khach_hang" id="khHiddenId" value="{{ phieu.khach_hang_id|default:'' }}">
+                    <button type="button" class="lookup-btn" id="btnKhLookup" title="Tra cứu">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Tên khách hàng</label>
+                <input type="text" id="tenKhDisplay" class="form-control" readonly
+                    value="{{ phieu.ten_kh|default:'' }}">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label fw-semibold">Người nhận</label>
+                <input type="text" name="nguoi_nhan" class="form-control"
+                    value="{{ phieu.nguoi_nhan|default:'' }}" placeholder="Họ tên người nhận hàng">
+            </div>
+            <div class="col-12">
+                <label class="form-label fw-semibold">Diễn giải</label>
+                <input type="text" name="dien_giai" class="form-control"
+                    value="{{ phieu.dien_giai|default:'' }}" placeholder="Ghi chú nội dung giao hàng">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- CHI TIẾT PHIẾU GIAO HÀNG -->
+<div class="form-section">
+    <div class="form-section-header">
+        <i class="fas fa-list-ul"></i> Chi tiết phiếu giao hàng
+        <button type="button" class="btn btn-sm btn-outline-primary ms-auto btn-add-row" id="btnAddRow">
+            <i class="fas fa-plus"></i> Thêm dòng
+        </button>
+    </div>
+    <div style="overflow-x:auto;">
+        <table class="table table-sm detail-table mb-0" id="detailTable">
+            <thead>
+                <tr>
+                    <th style="width:38px;"></th>
+                    <th style="min-width:130px;">Mã hàng <span class="text-danger">*</span></th>
+                    <th style="min-width:160px;">Tên mặt hàng</th>
+                    <th style="min-width:70px;">ĐVT</th>
+                    <th style="min-width:110px;">Mã kho <span class="text-danger">*</span></th>
+                    <th style="min-width:100px;">Mã vị trí</th>
+                    <th style="min-width:90px;">Số lượng <span class="text-danger">*</span></th>
+                    <th style="min-width:120px;">Đơn giá</th>
+                    <th style="min-width:110px;">Ngày giao <span class="text-danger">*</span></th>
+                    <th style="min-width:140px;">Loại vận chuyển</th>
+                    <th style="min-width:140px;">Ghi chú</th>
+                </tr>
+            </thead>
+            <tbody id="detailBody">
+                {% for ct in chi_tiet %}
+                <tr class="detail-row">
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 btn-remove-row"><i class="fas fa-times"></i></button>
+                    </td>
+                    <td>
+                        <select name="hang_id[]" class="form-select hang-select" required>
+                            <option value="">-- Chọn --</option>
+                            {% for h in hang_list %}
+                            <option value="{{ h.pk }}" data-ten="{{ h.ten_hang }}" data-dvt="{{ h.don_vi_tinh.ten|default:'' }}"
+                                {% if h.pk == ct.hang_hoa_id %}selected{% endif %}>
+                                {{ h.ma_hang }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td><input type="text" class="form-control ten-hang-display" readonly value="{{ ct.hang_hoa.ten_hang }}"></td>
+                    <td><input type="text" class="form-control dvt-display" readonly value="{{ ct.hang_hoa.don_vi_tinh.ten|default:'' }}"></td>
+                    <td>
+                        <select name="kho_id[]" class="form-select" required>
+                            <option value="">-- Chọn --</option>
+                            {% for k in kho_list %}
+                            <option value="{{ k.pk }}" {% if k.pk == ct.kho_id %}selected{% endif %}>{{ k.ma_kho }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td><input type="text" name="vi_tri[]" class="form-control" value="{{ ct.vi_tri }}"></td>
+                    <td><input type="number" name="so_luong[]" class="form-control so-luong-input" value="{{ ct.so_luong|floatformat:0 }}" min="0.01" step="0.01" required></td>
+                    <td><input type="number" name="don_gia[]" class="form-control don-gia-input" value="{{ ct.don_gia }}" min="0"></td>
+                    <td><input type="date" name="ngay_giao[]" class="form-control" value="{{ ct.ngay_giao|date:'Y-m-d' }}" required></td>
+                    <td>
+                        <select name="loai_van_chuyen[]" class="form-select">
+                            <option value="tu_giao"     {% if ct.loai_van_chuyen == 'tu_giao'     %}selected{% endif %}>Tự giao</option>
+                            <option value="doi_tac"     {% if ct.loai_van_chuyen == 'doi_tac'     %}selected{% endif %}>Đối tác VC</option>
+                            <option value="khach_tu_lay"{% if ct.loai_van_chuyen == 'khach_tu_lay'%}selected{% endif %}>Khách tự lấy</option>
+                        </select>
+                    </td>
+                    <td><input type="text" name="ghi_chu[]" class="form-control" value="{{ ct.ghi_chu }}"></td>
+                </tr>
+                {% empty %}
+                <!-- hàng trống mặc định khi tạo mới -->
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="total-bar">
+        <span>Tổng số lượng: <span class="total-value" id="totalSL">0</span></span>
+        <span>Tổng tiền: <span class="total-value" id="totalMoney">0 ₫</span></span>
+    </div>
+</div>
+</form>
+
+<!-- HANG LIST JSON (cho add row) -->
+<script id="hangListData" type="application/json">
+[{% for h in hang_list %}{"id":{{ h.pk }},"ma":"{{ h.ma_hang|escapejs }}","ten":"{{ h.ten_hang|escapejs }}","dvt":"{{ h.don_vi_tinh.ten|default:''|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
+</script>
+<script id="khoListData" type="application/json">
+[{% for k in kho_list %}{"id":{{ k.pk }},"ma":"{{ k.ma_kho|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
+</script>
+<script id="khListData" type="application/json">
+[{% for kh in kh_list %}{"id":{{ kh.pk }},"ma":"{{ kh.ma_kh|escapejs }}","ten":"{{ kh.ten_kh|escapejs }}"}{% if not forloop.last %},{% endif %}{% endfor %}]
+</script>
+
+<!-- MODAL KẾ THỪA HÓA ĐƠN -->
+<div class="modal fade" id="inheritModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(180deg,#f7fbff,#e9f3ff);border-bottom:1px solid #c7dcf3;">
+                <h5 class="modal-title"><i class="fas fa-file-invoice me-2 text-primary"></i>Chọn hóa đơn bán hàng để kế thừa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="p-2 border-bottom">
+                    <input type="text" class="form-control" id="hdSearchInput" placeholder="Tìm số hóa đơn, mã KH, tên KH...">
+                </div>
+                <div class="hd-head">
+                    <div>Số hóa đơn</div><div>Mã KH</div><div>Tên khách hàng</div>
+                </div>
+                <div id="hdModalList" style="max-height:380px; overflow-y:auto;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL TRA CỨU KHÁCH HÀNG -->
+<div class="modal fade" id="khLookupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable" style="max-width:660px;">
+        <div class="modal-content">
+            <div class="modal-header" style="background:linear-gradient(180deg,#f7fbff,#e9f3ff);border-bottom:1px solid #c7dcf3;">
+                <h5 class="modal-title">Danh mục khách hàng</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="p-2 border-bottom">
+                    <input type="text" class="form-control" id="khModalSearchInput" placeholder="Gõ mã hoặc tên khách hàng...">
+                </div>
+                <div style="display:grid;grid-template-columns:170px 1fr;gap:8px;padding:8px 14px;background:#eef5fb;border-bottom:1px solid #cfdeef;font-weight:700;color:#1f4d83;font-size:13px;">
+                    <div>Mã khách</div><div>Tên khách hàng</div>
+                </div>
+                <div id="khModalList" style="max-height:380px;overflow-y:auto;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const hangList = JSON.parse(document.getElementById('hangListData').textContent);
+    const khoList  = JSON.parse(document.getElementById('khoListData').textContent);
+    const khList   = JSON.parse(document.getElementById('khListData').textContent);
+    const today    = '{{ today|date:"Y-m-d" }}';
+
+    // ─── KẾ THỪA HÓA ĐƠN ───────────────────────────────────────────────
+    const hoaDonList = [
+        {% for hd in hoa_don_list %}
+        {
+            id: {{ hd.pk }},
+            so: "{{ hd.so_hoa_don|escapejs }}",
+            ma_kh: "{{ hd.khach_hang.ma_kh|escapejs }}",
+            ten_kh: "{{ hd.ten_kh|default:hd.khach_hang.ten_kh|escapejs }}",
+            kh_id: {{ hd.khach_hang_id }}
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    function norm(t) {
+        return (t||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').trim();
+    }
+
+    function renderHdList(kw) {
+        const key = norm(kw);
+        const list = !key ? hoaDonList : hoaDonList.filter(h => norm(h.so).includes(key)||norm(h.ma_kh).includes(key)||norm(h.ten_kh).includes(key));
+        const container = document.getElementById('hdModalList');
+        if (!list.length) {
+            container.innerHTML = '<div class="text-center text-muted py-3">Không tìm thấy.</div>';
+            return;
+        }
+        container.innerHTML = list.slice(0,50).map(h =>
+            `<button type="button" class="hd-row" data-id="${h.id}" data-kh-id="${h.kh_id}" data-ten-kh="${h.ten_kh}">
+                <div class="hd-code">${h.so}</div>
+                <div>${h.ma_kh}</div>
+                <div>${h.ten_kh}</div>
+            </button>`
+        ).join('');
+    }
+
+    const btnInherit = document.getElementById('btnInherit');
+    if (btnInherit) {
+        const inheritModal = new bootstrap.Modal(document.getElementById('inheritModal'));
+        btnInherit.addEventListener('click', () => {
+            renderHdList('');
+            inheritModal.show();
+            setTimeout(() => document.getElementById('hdSearchInput').focus(), 150);
+        });
+        document.getElementById('hdSearchInput').addEventListener('input', function() { renderHdList(this.value); });
+        document.getElementById('hdModalList').addEventListener('click', async function(e) {
+            const row = e.target.closest('.hd-row');
+            if (!row) return;
+            const hdId = row.dataset.id;
+            const khId = row.dataset.khId;
+            const tenKh = row.dataset.tenKh;
+            inheritModal.hide();
+            // Gọi API lấy chi tiết hóa đơn
+            try {
+                const resp = await fetch(`/ban-hang/giao-hang/api/hoa-don/${hdId}/`);
+                const data = await resp.json();
+                if (!data.ok) return;
+                document.getElementById('hdGocId').value = hdId;
+                // Cập nhật khách hàng
+                const kh = khList.find(k => k.id == data.khach_hang_id);
+                if (kh) {
+                    document.getElementById('khDispInput').value = kh.ma;
+                    document.getElementById('khHiddenId').value = kh.id;
+                    document.getElementById('tenKhDisplay').value = kh.ten;
+                }
+                // Fill chi tiết
+                const body = document.getElementById('detailBody');
+                body.innerHTML = '';
+                data.rows.forEach(r => addRow(r));
+                calcTotals();
+            } catch(err) { console.error(err); }
+        });
+    }
+
+    // ─── KHÁCH HÀNG LOOKUP ────────────────────────────────────────────
+    const khModal = new bootstrap.Modal(document.getElementById('khLookupModal'));
+    function renderKhList(kw) {
+        const key = norm(kw);
+        const list = !key ? khList : khList.filter(k => norm(k.ma).includes(key)||norm(k.ten).includes(key));
+        const container = document.getElementById('khModalList');
+        container.innerHTML = list.slice(0,80).map(k =>
+            `<button type="button" style="display:grid;grid-template-columns:170px 1fr;gap:8px;padding:10px 14px;border:0;border-bottom:1px solid #e9eef5;background:#fff;cursor:pointer;text-align:left;width:100%;"
+                class="kh-row-btn" data-id="${k.id}" data-ma="${k.ma}" data-ten="${k.ten}">
+                <div style="font-weight:700;color:#0d4b86;">${k.ma}</div>
+                <div style="color:#30465f;">${k.ten}</div>
+            </button>`
+        ).join('');
+    }
+    document.getElementById('btnKhLookup').addEventListener('click', () => {
+        renderKhList('');
+        khModal.show();
+        setTimeout(() => document.getElementById('khModalSearchInput').focus(), 150);
+    });
+    document.getElementById('khModalSearchInput').addEventListener('input', function() { renderKhList(this.value); });
+    document.getElementById('khModalList').addEventListener('click', function(e) {
+        const row = e.target.closest('.kh-row-btn');
+        if (!row) return;
+        document.getElementById('khDispInput').value = row.dataset.ma;
+        document.getElementById('khHiddenId').value = row.dataset.id;
+        document.getElementById('tenKhDisplay').value = row.dataset.ten;
+        khModal.hide();
+    });
+
+    // Khi blur lookup input khách hàng – tự resolve
+    document.getElementById('khDispInput').addEventListener('blur', function() {
+        const val = norm(this.value);
+        if (!val) return;
+        const found = khList.find(k => norm(k.ma+' - '+k.ten) === val || norm(k.ma) === val);
+        if (found) {
+            document.getElementById('khHiddenId').value = found.id;
+            document.getElementById('tenKhDisplay').value = found.ten;
+        }
+    });
+
+    // ─── CHI TIẾT BẢNG ─────────────────────────────────────────────────
+    function buildHangOptions(selectedId) {
+        return `<option value="">-- Chọn --</option>` +
+            hangList.map(h => `<option value="${h.id}" data-ten="${h.ten}" data-dvt="${h.dvt}" ${h.id==selectedId?'selected':''}>${h.ma}</option>`).join('');
+    }
+    function buildKhoOptions(selectedId) {
+        return `<option value="">-- Chọn --</option>` +
+            khoList.map(k => `<option value="${k.id}" ${k.id==selectedId?'selected':''}>${k.ma}</option>`).join('');
+    }
+
+    function addRow(data) {
+        data = data || {};
+        const tr = document.createElement('tr');
+        tr.className = 'detail-row';
+        tr.innerHTML = `
+            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger py-0 px-1 btn-remove-row"><i class="fas fa-times"></i></button></td>
+            <td><select name="hang_id[]" class="form-select hang-select" required>${buildHangOptions(data.hang_id||'')}</select></td>
+            <td><input type="text" class="form-control ten-hang-display" readonly value="${data.ten_hang||''}"></td>
+            <td><input type="text" class="form-control dvt-display" readonly value="${data.dvt||''}"></td>
+            <td><select name="kho_id[]" class="form-select" required>${buildKhoOptions(data.kho_id||'')}</select></td>
+            <td><input type="text" name="vi_tri[]" class="form-control" value="${data.vi_tri||''}"></td>
+            <td><input type="number" name="so_luong[]" class="form-control so-luong-input" value="${data.so_luong||''}" min="0.01" step="0.01" required></td>
+            <td><input type="number" name="don_gia[]" class="form-control don-gia-input" value="${data.don_gia||0}" min="0"></td>
+            <td><input type="date" name="ngay_giao[]" class="form-control" value="${data.ngay_giao||today}" required></td>
+            <td>
+                <select name="loai_van_chuyen[]" class="form-select">
+                    <option value="tu_giao">Tự giao</option>
+                    <option value="doi_tac">Đối tác VC</option>
+                    <option value="khach_tu_lay">Khách tự lấy</option>
+                </select>
+            </td>
+            <td><input type="text" name="ghi_chu[]" class="form-control" value="${data.ghi_chu||''}"></td>
+        `;
+        document.getElementById('detailBody').appendChild(tr);
+        // Gắn sự kiện thay đổi hàng
+        tr.querySelector('.hang-select').addEventListener('change', function() {
+            const opt = this.options[this.selectedIndex];
+            tr.querySelector('.ten-hang-display').value = opt.dataset.ten || '';
+            tr.querySelector('.dvt-display').value = opt.dataset.dvt || '';
+        });
+    }
+
+    document.getElementById('btnAddRow').addEventListener('click', () => {
+        addRow();
+        calcTotals();
+    });
+
+    document.getElementById('detailBody').addEventListener('click', function(e) {
+        const btn = e.target.closest('.btn-remove-row');
+        if (btn) { btn.closest('tr').remove(); calcTotals(); }
+    });
+
+    // Gắn sự kiện change cho hàng đã render từ server (khi sửa)
+    document.querySelectorAll('.hang-select').forEach(sel => {
+        sel.addEventListener('change', function() {
+            const opt = this.options[this.selectedIndex];
+            const row = this.closest('tr');
+            row.querySelector('.ten-hang-display').value = opt.dataset.ten || '';
+            row.querySelector('.dvt-display').value = opt.dataset.dvt || '';
+        });
+    });
+
+    // ─── TÍNH TỔNG ──────────────────────────────────────────────────────
+    function calcTotals() {
+        let totalSL = 0, totalMoney = 0;
+        document.querySelectorAll('.detail-row').forEach(row => {
+            const sl = parseFloat(row.querySelector('.so-luong-input')?.value || 0) || 0;
+            const dg = parseFloat(row.querySelector('.don-gia-input')?.value  || 0) || 0;
+            totalSL += sl;
+            totalMoney += sl * dg;
+        });
+        document.getElementById('totalSL').textContent = totalSL.toLocaleString('vi-VN');
+        document.getElementById('totalMoney').textContent = totalMoney.toLocaleString('vi-VN') + ' ₫';
+    }
+
+    document.getElementById('detailBody').addEventListener('input', calcTotals);
+    calcTotals();
+
+    // Nếu không có dòng nào (tạo mới không kế thừa) thì thêm 1 dòng trống
+    if (document.querySelectorAll('.detail-row').length === 0) {
+        addRow();
+    }
+})();
+</script>
+{% endblock %}

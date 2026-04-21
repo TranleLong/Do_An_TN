@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load money_filters %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <div class="card-title mb-0">
+            <i class="fas fa-book-open text-primary"></i> {{ page_title }}
+        </div>
+        <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-success btn-sm" onclick="window.print()">
+                <i class="fas fa-print"></i> In sổ
+            </button>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <!-- Form lọc theo phong cách Sổ Cái -->
+        <form method="get" class="form-row mb-4 align-items-end p-3" style="background: rgba(0,0,0,0.03); border-radius: 8px;">
+            <div class="col col-md-3 form-group mb-0">
+                <label class="form-label fw-bold small">Tài khoản</label>
+                <div class="lookup-wrap">
+                    <input type="text" class="form-control form-control-sm lookup-input js-account-display" 
+                           value="{{ account_label }}" placeholder="Tất cả tài khoản..." readonly>
+                    <input type="hidden" name="tai_khoan" class="js-account-code" value="{{ account_code }}">
+                    <button type="button" class="lookup-btn" id="btnLookupAccount" title="Tra cứu tài khoản">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="col col-md-2 form-group mb-0">
+                <label class="form-label fw-bold small">Từ ngày</label>
+                <input type="date" name="tu_ngay" class="form-control form-control-sm" value="{{ from_date|date:'Y-m-d' }}">
+            </div>
+            <div class="col col-md-2 form-group mb-0">
+                <label class="form-label fw-bold small">Đến ngày</label>
+                <input type="date" name="den_ngay" class="form-control form-control-sm" value="{{ to_date|date:'Y-m-d' }}">
+            </div>
+            <div class="col col-md-2 form-group mb-0">
+                <label class="form-label fw-bold small">Loại chứng từ</label>
+                <select name="loai_chung_tu" class="form-select form-select-sm">
+                    <option value="">-- Tất cả --</option>
+                    {% for val, name in doc_types %}
+                    <option value="{{ val }}" {% if val == document_type %}selected{% endif %}>{{ name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col col-md-2 form-group mb-0">
+                <label class="form-label fw-bold small">Số CT</label>
+                <input type="text" name="so_chung_tu" class="form-control form-control-sm" value="{{ document_number }}" placeholder="Tìm số...">
+            </div>
+            <div class="col col-md-1 form-group mb-0">
+                <button type="submit" class="btn btn-primary btn-sm w-100">
+                    <i class="fas fa-filter"></i> Lọc
+                </button>
+            </div>
+        </form>
+
+        <!-- Bảng dữ liệu Nhật ký chung -->
+        <div class="table-responsive">
+            <h5 class="text-center text-uppercase fw-bold mb-4" style="color: #1a56db; letter-spacing: 1px;">
+                SỔ NHẬT KÝ CHUNG
+            </h5>
+            <table class="table table-bordered table-hover align-middle table-sm" style="font-size: 0.875rem;">
+                <thead class="table-light text-center">
+                    <tr>
+                        <th rowspan="2" class="align-middle" style="width: 90px;">Ngày HT</th>
+                        <th colspan="2">Chứng từ</th>
+                        <th rowspan="2" class="align-middle">Diễn giải</th>
+                        <th rowspan="2" class="align-middle" style="width: 70px;">TK Nợ</th>
+                        <th rowspan="2" class="align-middle" style="width: 70px;">TK Có</th>
+                        <th colspan="2">Số tiền</th>
+                        <th rowspan="2" class="align-middle">Đối tượng</th>
+                    </tr>
+                    <tr>
+                        <th style="width: 100px;">Số CT</th>
+                        <th style="width: 90px;">Ngày CT</th>
+                        <th style="width: 110px;">Phát sinh Nợ</th>
+                        <th style="width: 110px;">Phát sinh Có</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in items %}
+                    <tr>
+                        <td class="text-center">{{ row.journal_entry.posting_date|date:"d/m/Y" }}</td>
+                        <td class="fw-bold text-primary">{{ row.journal_entry.document_number }}</td>
+                        <td class="text-center">{{ row.journal_entry.document_date|date:"d/m/Y" }}</td>
+                        <td class="text-wrap" style="min-width: 250px;">
+                            {{ row.note|default:row.journal_entry.description }}
+                        </td>
+                        <td class="text-center fw-bold">{% if row.debit_amount > 0 %}{{ row.account.ma_tk }}{% endif %}</td>
+                        <td class="text-center fw-bold">{% if row.credit_amount > 0 %}{{ row.account.ma_tk }}{% endif %}</td>
+                        <td class="text-end">{% if row.debit_amount > 0 %}{{ row.debit_amount|floatformat:0|vnd }}{% endif %}</td>
+                        <td class="text-end">{% if row.credit_amount > 0 %}{{ row.credit_amount|floatformat:0|vnd }}{% endif %}</td>
+                        <td class="small">
+                            {% if row.customer %}<span class="badge bg-light text-dark"><i class="fas fa-user-tag me-1 text-muted"></i>{{ row.customer.ten_kh }}</span>{% endif %}
+                            {% if row.supplier %}<span class="badge bg-light text-dark"><i class="fas fa-truck me-1 text-muted"></i>{{ row.supplier.ten_ncc }}</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-4 text-muted">
+                            <i class="fas fa-info-circle me-1"></i> Không có dữ liệu phát sinh trong kỳ lọc.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                {% if items %}
+                <tfoot>
+                    <tr class="table-light fw-bold" style="border-top: 2px solid #dee2e6;">
+                        <td colspan="6" class="text-center text-uppercase">Tổng phát sinh trong kỳ</td>
+                        <td class="text-end text-primary" style="font-size: 1rem;">{{ tong_no|floatformat:0|vnd }}</td>
+                        <td class="text-end text-danger" style="font-size: 1rem;">{{ tong_co|floatformat:0|vnd }}</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+                {% endif %}
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Tra cứu tài khoản -->
+<div class="modal fade" id="modalLookupAccount" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-list-ul me-2"></i>Tra cứu tài khoản kế toán</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="input-group mb-3">
+                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                    <input type="text" id="accountLookupSearch" class="form-control border-start-0" 
+                           placeholder="Nhập mã hoặc tên tài khoản để tìm nhanh..." autocomplete="off">
+                </div>
+                <div id="accountLookupResults" class="lookup-results border rounded" style="max-height: 400px; overflow-y: auto;">
+                    <!-- Kết quả load qua AJAX -->
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-3">
+                    <small id="accountLookupPaging" class="text-muted fw-bold"></small>
+                    <div class="btn-group shadow-sm">
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="accountLookupPrev">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="accountLookupNext">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .lookup-wrap { position: relative; }
+    .lookup-input { padding-right: 35px; background-color: #fcfcfc !important; cursor: pointer; }
+    .lookup-btn {
+        position: absolute;
+        right: 4px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 26px;
+        height: 26px;
+        border: 0;
+        border-radius: 4px;
+        background: transparent;
+        color: #1a56db;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    .lookup-btn:hover { background: #eff6ff; color: #1e40af; }
+    
+    .lookup-row {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 100px 1fr;
+        gap: 15px;
+        padding: 12px 15px;
+        border: 0;
+        border-bottom: 1px solid #f1f5f9;
+        background: #fff;
+        text-align: left;
+        transition: background 0.2s;
+    }
+    .lookup-row:hover { background: #f8fafc; cursor: pointer; }
+    .lookup-row:last-child { border-bottom: 0; }
+    .lookup-row-code { font-weight: 700; color: #1e40af; }
+    .lookup-row-name { color: #334155; }
+
+    @media print {
+        .sidebar, .navbar, .btn, form, #modalLookupAccount { display: none !important; }
+        .main-content { padding: 0 !important; margin: 0 !important; }
+        .card { border: 0 !important; box-shadow: none !important; }
+        .table { width: 100% !important; border-collapse: collapse !important; }
+        .table-bordered th, .table-bordered td { border: 1px solid #333 !important; }
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let accountLookupModal = null;
+    let accountLookupPage = 1;
+    let accountLookupTotalPages = 1;
+
+    function loadAccountLookup(page) {
+        const q = $('#accountLookupSearch').val().trim();
+        $.ajax({
+            url: '{% url "tai_khoan_api_lookup" %}',
+            method: 'GET',
+            data: { q: q, page: page, page_size: 10 },
+            success: function(resp) {
+                const results = resp.results || [];
+                accountLookupPage = resp.page || 1;
+                accountLookupTotalPages = resp.total_pages || 1;
+
+                if (!results.length) {
+                    $('#accountLookupResults').html('<div class="p-4 text-center text-muted">Không tìm thấy tài khoản.</div>');
+                } else {
+                    let html = '';
+                    results.forEach(item => {
+                        html += `
+                            <button type="button" class="lookup-row js-select-account" 
+                                    data-ma-tk="${item.ma_tk}" data-ten-tk="${item.ten_tk}">
+                                <div class="lookup-row-code">${item.ma_tk}</div>
+                                <div class="lookup-row-name">${item.ten_tk}</div>
+                            </button>`;
+                    });
+                    $('#accountLookupResults').html(html);
+                }
+                $('#accountLookupPaging').text(`Trang ${accountLookupPage}/${accountLookupTotalPages}`);
+                $('#accountLookupPrev').prop('disabled', accountLookupPage <= 1);
+                $('#accountLookupNext').prop('disabled', accountLookupPage >= accountLookupTotalPages);
+            }
+        });
+    }
+
+    $(document).ready(function() {
+        $('#btnLookupAccount, .js-account-display').on('click', function() {
+            if (!accountLookupModal) {
+                accountLookupModal = new bootstrap.Modal(document.getElementById('modalLookupAccount'));
+            }
+            $('#accountLookupSearch').val('');
+            loadAccountLookup(1);
+            accountLookupModal.show();
+            setTimeout(() => $('#accountLookupSearch').focus(), 400);
+        });
+
+        $('#accountLookupSearch').on('input', function() { loadAccountLookup(1); });
+        $('#accountLookupPrev').on('click', function() { if (accountLookupPage > 1) loadAccountLookup(accountLookupPage - 1); });
+        $('#accountLookupNext').on('click', function() { if (accountLookupPage < accountLookupTotalPages) loadAccountLookup(accountLookupPage + 1); });
+
+        $(document).on('click', '.js-select-account', function() {
+            const code = $(this).data('ma-tk');
+            const name = $(this).data('ten-tk');
+            $('.js-account-code').val(code);
+            $('.js-account-display').val(`${code} - ${name}`);
+            accountLookupModal.hide();
+        });
+    });
+</script>
+{% endblock %}
