@@ -673,7 +673,7 @@
 
     function loadKhResults() {
         const q = $('#khSearchInput').val().trim();
-        $.get('{% url "khach_hang_api_lookup" %}', { q: q, page: 1, page_size: 20 }, function(resp) {
+        $.get('{% url "khach_hang_api_lookup" %}', { q: q, role: 'kh_nv', page: 1, page_size: 20 }, function(resp) {
             const rows = resp.results || [];
             if (!rows.length) {
                 $('#khSearchResults').html('<div class="p-3 text-muted text-center">Không tìm thấy khách hàng</div>');
@@ -1225,6 +1225,12 @@
             <td>
                 <div class="lookup-box">
                     <input type="text" name="tk_gia_von[]" class="form-control" value="632">
+                    <button type="button" class="lookup-icon-btn btn-search-tk-row" title="Tra cứu tài khoản"><i class="fas fa-search"></i></button>
+                </div>
+            </td>
+            <td>
+                <div class="lookup-box">
+                    <input type="text" name="tk_kho[]" class="form-control" value="156">
                     <button type="button" class="lookup-icon-btn btn-search-tk-row" title="Tra cứu tài khoản"><i class="fas fa-search"></i></button>
                 </div>
             </td>

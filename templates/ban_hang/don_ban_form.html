@@ -607,7 +607,7 @@
 
     function loadKhResults() {
         const q = $('#khSearchInput').val().trim();
-        $.get('{% url "khach_hang_api_lookup" %}', { q: q, page: 1, page_size: 20 }, function(resp) {
+        $.get('{% url "khach_hang_api_lookup" %}', { q: q, role: 'kh_nv', page: 1, page_size: 20 }, function(resp) {
             const rows = resp.results || [];
             if (!rows.length) {
                 $('#khSearchResults').html('<div class="p-3 text-muted text-center">Không tìm thấy khách hàng</div>');

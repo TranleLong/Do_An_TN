@@ -272,7 +272,7 @@ def _build_hoa_don_context(request, hoa_don=None):
         'hoa_don': hoa_don,
         'chi_tiet': chi_tiet,
         'editing': bool(hoa_don),
-        'kh_list': KhachHang.objects.filter(trang_thai=True),
+        'kh_list': KhachHang.objects.filter(Q(la_khach_hang=True) | Q(la_nhan_vien=True), trang_thai=True).order_by('ma_kh'),
         'nv_list': nv_qs,
         'kho_list': kho_qs.order_by('ma_kho'),
         'hang_list': hang_qs.order_by('ma_hang'),
@@ -873,7 +873,7 @@ def don_ban_them(request):
         return redirect('don_ban_detail', pk=don.pk)
 
     context = {
-        'kh_list': KhachHang.objects.filter(trang_thai=True),
+        'kh_list': KhachHang.objects.filter(Q(la_khach_hang=True) | Q(la_nhan_vien=True), trang_thai=True).order_by('ma_kh'),
         'nv_list': KhachHang.objects.filter(trang_thai=True, la_nhan_vien=True).order_by('ma_kh'),
         'kho_list': Kho.objects.filter(trang_thai=True),
         'hang_list': HangHoa.objects.all().order_by('ma_hang'),
@@ -1031,7 +1031,7 @@ def don_ban_sua(request, pk):
     context = {
         'don': don,
         'editing': True,
-        'kh_list': KhachHang.objects.filter(trang_thai=True),
+        'kh_list': KhachHang.objects.filter(Q(la_khach_hang=True) | Q(la_nhan_vien=True), trang_thai=True).order_by('ma_kh'),
         'nv_list': nv_list.order_by('ma_kh'),
         'kho_list': kho_qs.order_by('ma_kho'),
         'hang_list': hang_qs.order_by('ma_hang'),
@@ -1327,7 +1327,15 @@ def _build_phieu_thu_context(form_values=None, hoa_don_selected=None, editing=Fa
         form_values['trang_thai'] = '2'
     elif not str(form_values.get('trang_thai') or '').strip():
         form_values['trang_thai'] = '1'
-    kh_list = list(KhachHang.objects.filter(trang_thai=True).order_by('ma_kh'))
+    if is_chi_mode:
+        # Phiếu chi: Chỉ hiện Nhà cung cấp
+        kh_list = list(KhachHang.objects.filter(trang_thai=True, la_nha_cung_cap=True).order_by('ma_kh'))
+    else:
+        # Phiếu thu: Chỉ hiện Khách hàng hoặc Nhân viên
+        kh_list = list(KhachHang.objects.filter(
+            Q(la_khach_hang=True) | Q(la_nhan_vien=True),
+            trang_thai=True
+        ).order_by('ma_kh'))
     kh_cong_no_map = _phieu_thu_khach_hang_cong_no_map()
     for kh in kh_list:
         info = kh_cong_no_map.get(kh.pk) or {}
@@ -2721,6 +2729,8 @@ def khach_hang_api_lookup(request):
         items = items.filter(la_nha_cung_cap=True)
     elif role == 'nhan_vien':
         items = items.filter(la_nhan_vien=True)
+    elif role == 'kh_nv':
+        items = items.filter(Q(la_khach_hang=True) | Q(la_nhan_vien=True))
     if query:
         items = items.filter(
             Q(ma_kh__icontains=query)
@@ -3734,7 +3744,7 @@ def phieu_giao_hang_them(request):
         'chi_tiet': chi_tiet_copy or ke_thua_chi_tiet,
         'ke_thua_hoa_don': ke_thua_hoa_don,
         'is_copy_mode': bool(phieu_copy),  # flag de template biet dang o che do copy
-        'kh_list': KhachHang.objects.filter(trang_thai=True).order_by('ma_kh'),
+        'kh_list': KhachHang.objects.filter(Q(la_khach_hang=True) | Q(la_nhan_vien=True), trang_thai=True).order_by('ma_kh'),
         'hoa_don_list': HoaDonBan.objects.select_related('khach_hang').order_by('-ngay_lap', '-id')[:200],
         'kho_list': Kho.objects.filter(trang_thai=True).order_by('ma_kho'),
         'hang_list': HangHoa.objects.filter(trang_thai='dang_ban').select_related('don_vi_tinh').order_by('ma_hang'),
