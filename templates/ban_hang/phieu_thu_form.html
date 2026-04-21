@@ -499,7 +499,7 @@
         const tongThuCurrent = parseFloat(unformatCurrency($('#tong_thu').val() || 0));
         if (!opt.val()) {
             $('#hoa_don_display').val('');
-            $('#previewSoDon').text('Chưa chọn').addClass('text-muted');
+            $('#previewSoHoaDon').text('Chưa chọn').addClass('text-muted');
             $('#previewNgay').text('--/--/----').addClass('text-muted');
             $('#previewConNo').text(fmtMoney(0));
             $('#previewTienThu').text(fmtMoney(tongThuCurrent));
@@ -510,7 +510,7 @@
         const ngay = opt.data('ngay') || '--/--/----';
         const conNo = parseFloat(opt.data('con-no') || 0);
         $('#hoa_don_display').val(soHoaDon);
-        $('#previewSoDon').text(soHoaDon).removeClass('text-muted');
+        $('#previewSoHoaDon').text(soHoaDon).removeClass('text-muted');
         $('#previewNgay').text(ngay).removeClass('text-muted');
         $('#previewConNo').text(fmtMoney(conNo));
 
@@ -522,6 +522,14 @@
         if (khId) {
             $('#khach_hang').val(khId).trigger('change');
         }
+
+        // Tự động điền lý do nộp nếu đang trống
+        const currentLyDo = $('#ly_do_nop').val() || '';
+        if (!currentLyDo.trim()) {
+            const khTen = $('#previewKhTen').text();
+            $('#ly_do_nop').val((isChiForm ? 'Chi tiền cho HĐ ' : 'Thu tiền cho HĐ ') + soHoaDon + (khTen ? ' - ' + khTen : ''));
+        }
+
         updateTongThuDisplay();
     }
 
@@ -615,7 +623,7 @@
         $('#sectionLoai2').toggle(!isLoai1);
 
         if (!isLoai1) {
-            $('#don_ban').val('').trigger('change');
+            $('#hoa_don').val('').trigger('change');
             $('#hoa_don_display').val('');
             if (!isChiForm) {
                 $('#thuRuleHint').text('Quy tắc: Loại 2 thu theo khách hàng, không bắt buộc chọn hóa đơn. Số tiền thu không vượt công nợ tổng của khách hàng.');
@@ -660,13 +668,19 @@
                 return;
             }
 
-            let html = '<div class="lookup-head don"><span>Số đơn</span><span>Ngày</span><span>Khách hàng</span><span>Tổng tiền</span></div>';
+            let html = '<div class="lookup-head don"><span>Số hóa đơn</span><span>Ngày</span><span>Khách hàng</span><span>Tổng tiền</span></div>';
             rows.forEach(function(r) {
-                html += '<button type="button" class="lookup-row don btn-hoa-don-select" data-id="' + r.id + '">'
-                    + '<span><strong>' + escapeHtml(r.so_don || '') + '</strong></span>'
-                    + '<span>' + escapeHtml(r.ngay_chung_tu || '') + '</span>'
+                html += '<button type="button" class="lookup-row don btn-hoa-don-select" '
+                    + 'data-id="' + r.id + '" '
+                    + 'data-so-hoa-don="' + (r.so_hoa_don || '') + '" '
+                    + 'data-ngay="' + (r.ngay_lap || '') + '" '
+                    + 'data-con-no="' + (r.con_no || 0) + '" '
+                    + 'data-kh-id="' + (r.khach_hang_id || '') + '" '
+                    + 'data-ma-kh="' + (r.ma_kh || '') + '">'
+                    + '<span><strong>' + escapeHtml(r.so_hoa_don || '') + '</strong></span>'
+                    + '<span>' + escapeHtml(r.ngay_lap || '') + '</span>'
                     + '<span>' + escapeHtml((r.ma_kh || '') + ' - ' + (r.ten_kh || '')) + '</span>'
-                    + '<span class="text-end">' + fmtMoney(r.tong_thanh_toan || 0) + '</span>'
+                    + '<span class="text-end">' + fmtMoney(r.con_no || 0) + '</span>'
                     + '</button>';
             });
             $('#hoaDonSearchResults').html(html);
@@ -708,7 +722,7 @@
         syncLookupInputToSelect('#kh_display', '#khach_hang');
     });
 
-    $('#don_display').on('change blur', function() {
+    $('#hoa_don_display').on('change blur', function() {
         syncLookupInputToSelect('#hoa_don_display', '#hoa_don');
     });
 
@@ -722,14 +736,11 @@
     });
 
     $('#btnSearchHoaDon').on('click', function() {
-        if (isChiForm) {
-            return;
-        }
         if ($('#loai_phieu_thu').val() !== '1') {
             return;
         }
         if (!hoaDonModal) {
-            hoaDonModal = new bootstrap.Modal(document.getElementById('modalDonBan'));
+            hoaDonModal = new bootstrap.Modal(document.getElementById('modalHoaDon'));
         }
         hoaDonModal.show();
         $('#hoaDonSearchInput').val('');
@@ -760,7 +771,27 @@
 
     $(document).on('click', '.btn-hoa-don-select', function() {
         const id = String($(this).data('id') || '');
-        $('#don_ban').val(id).trigger('change');
+        const soHd = $(this).data('so-hoa-don') || '';
+        const ngay = $(this).data('ngay') || '';
+        const conNo = $(this).data('con-no') || 0;
+        const maKh = $(this).data('ma-kh') || '';
+        const khId = String($(this).data('kh-id') || '');
+
+        // Nếu hóa đơn này chưa có trong select (do list ban đầu bị giới hạn), hãy thêm nó vào
+        let selectHd = $('#hoa_don');
+        if (selectHd.find('option[value="' + id + '"]').length === 0) {
+            let label = soHd + ' - ' + ngay + ' - ' + maKh + ' - Có nợ: ' + fmtMoney(conNo);
+            let newOpt = $('<option>')
+                .val(id)
+                .text(label)
+                .attr('data-so-hoa-don', soHd)
+                .attr('data-ngay', ngay)
+                .attr('data-con-no', conNo)
+                .attr('data-kh-id', khId);
+            selectHd.append(newOpt);
+        }
+
+        selectHd.val(id).trigger('change');
         if (hoaDonModal) {
             hoaDonModal.hide();
         }

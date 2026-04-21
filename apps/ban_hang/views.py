@@ -652,11 +652,12 @@ def _sync_cong_no_from_hoa_don(hoa_don):
     if not hoa_don or not hoa_don.khach_hang_id:
         return
 
-    # Chỉ ghi nhận công nợ khi hóa đơn đã ghi sổ.
-    if str(hoa_don.trang_thai or '').strip() not in ('2', '3'):
-        if hoa_don.don_ban:
-            _recompute_don_ban_from_linked_hoa_don(hoa_don.don_ban)
+    # Cho phép tính toán công nợ ngay cả khi ở trạng thái Lập chứng từ (trạng thái 1) 
+    # để có thể lập phiếu thu/chi kế thừa từ hóa đơn nháp.
+    if str(hoa_don.trang_thai or '').strip() == '4': # Bỏ qua nếu đã hủy
         return
+
+    hoa_don.tinh_tong() # Đảm bảo con_no đã được tính lại từ chi tiết
 
     # Chỉ ghi nhận công nợ khi hóa đơn hạch toán vào TK phải thu 131.
     if str(hoa_don.tk_no or '').strip() != '131':
@@ -1258,7 +1259,8 @@ def phieu_thu_list(request, mode='thu'):
 def _phieu_thu_hoa_don_queryset():
     return (
         HoaDonBan.objects.select_related('khach_hang')
-        .exclude(con_no=0)
+        .exclude(trang_thai='4')  # Không lấy hóa đơn đã hủy
+        .filter(con_no__gt=0)     # Chỉ lấy những đơn thực sự còn nợ (đã tính lại qua shell command)
         .distinct()
         .order_by('-ngay_lap', '-id')
     )
@@ -1452,7 +1454,7 @@ def phieu_thu_them(request, mode='thu'):
                         hinh_thuc_thu=data.get('hinh_thuc_thu', 'tien_mat'),
                         so_tham_chieu=data.get('so_tham_chieu', ''),
                         tong_thu=tong_thu,
-                        hoa_don=hoa_don_obj if (loai_phieu == '1' and not is_chi_mode) else None,
+                        hoa_don=hoa_don_obj if loai_phieu == '1' else None,
                         trang_thai=trang_thai_luu,
                         ghi_chu=ghi_chu_luu,
                         nguoi_tao=request.user,
@@ -1511,10 +1513,10 @@ def phieu_thu_them(request, mode='thu'):
             'hinh_thuc_thu': 'tien_mat',
             'loai_phieu_thu': loai_phieu_get,
             'trang_thai': '1',
-            'tong_thu': str(int(Decimal(don.con_no or 0))) if don else '',
+            'tong_thu': str(int(Decimal(hoa_don_obj.con_no or 0))) if hoa_don_obj else '',
             'so_phieu': _ensure_unique_so_phieu_chi() if is_chi_mode else _ensure_unique_so_phieu_thu(),
-            'don_ban': str(don.pk) if don else '',
-            'khach_hang': str(don.khach_hang_id) if don and don.khach_hang_id else '',
+            'hoa_don': str(hoa_don_obj.pk) if hoa_don_obj else '',
+            'khach_hang': str(hoa_don_obj.khach_hang_id) if hoa_don_obj and hoa_don_obj.khach_hang_id else '',
             'tk_no': '',
             'tk_co': '',
         }
@@ -1529,6 +1531,10 @@ def phieu_thu_sua(request, pk, mode='thu'):
         messages.error(request, 'Không tìm thấy chứng từ phù hợp.')
         return redirect('bh_phieu_chi_list' if is_chi_mode else 'phieu_thu_list')
 
+    if request.method == 'POST':
+        data = request.POST
+        loai_phieu_input = (data.get('loai_phieu_thu') or '1').strip()
+        loai_phieu = loai_phieu_input if loai_phieu_input in ('1', '2') else ('2' if is_chi_mode else '1')
         hoa_don_obj = phieu.hoa_don
         form_values = {
             'so_phieu': phieu.so_phieu,
@@ -1575,6 +1581,7 @@ def phieu_thu_sua(request, pk, mode='thu'):
         phieu.so_tham_chieu = data.get('so_tham_chieu', '')
         phieu.tong_thu = tong_thu
         phieu.trang_thai = trang_thai_luu
+        phieu.hoa_don = hoa_don_obj if loai_phieu == '1' else None
         
         ghi_chu = (data.get('ghi_chu') or '').strip()
         if ghi_chu:
@@ -2793,9 +2800,11 @@ def hoa_don_ban_api_lookup(request):
             'id': item.pk,
             'so_hoa_don': item.so_hoa_don,
             'ngay_lap': item.ngay_lap.strftime('%d/%m/%Y') if item.ngay_lap else '',
+            'khach_hang_id': item.khach_hang_id,
             'ma_kh': item.khach_hang.ma_kh if item.khach_hang else '',
             'ten_kh': item.ten_kh,
             'tong_cong': float(item.tong_cong or 0),
+            'con_no': float(item.con_no or 0),
         })
     return JsonResponse({'results': results})
 
