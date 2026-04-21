@@ -14,5 +14,5 @@ else:
     print("✓ Tài khoản admin đã tồn tại")
 END
 
-# Tạo dữ liệu demo (Đã tạm đóng vì thiếu file init_full_demo.py)
-# python init_full_demo.py
+# Tạo dữ liệu demo
+python init_full_demo.py
