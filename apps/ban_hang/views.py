@@ -268,11 +268,15 @@ def _build_hoa_don_context(request, hoa_don=None):
         if kho_ids:
             kho_qs = (kho_qs | Kho.objects.filter(pk__in=kho_ids)).distinct()
 
+    kh_qs = KhachHang.objects.filter(Q(la_khach_hang=True) | Q(la_nhan_vien=True), trang_thai=True)
+    if hoa_don and hoa_don.khach_hang_id:
+        kh_qs = (kh_qs | KhachHang.objects.filter(pk=hoa_don.khach_hang_id)).distinct()
+
     return {
         'hoa_don': hoa_don,
         'chi_tiet': chi_tiet,
         'editing': bool(hoa_don),
-        'kh_list': KhachHang.objects.filter(Q(la_khach_hang=True) | Q(la_nhan_vien=True), trang_thai=True).order_by('ma_kh'),
+        'kh_list': kh_qs.order_by('ma_kh'),
         'nv_list': nv_qs,
         'kho_list': kho_qs.order_by('ma_kho'),
         'hang_list': hang_qs.order_by('ma_hang'),
@@ -1028,10 +1032,14 @@ def don_ban_sua(request, pk):
     if don.kho_id:
         kho_qs = (kho_qs | Kho.objects.filter(pk=don.kho_id)).distinct()
 
+    kh_qs = KhachHang.objects.filter(Q(la_khach_hang=True) | Q(la_nhan_vien=True), trang_thai=True)
+    if don and don.khach_hang_id:
+        kh_qs = (kh_qs | KhachHang.objects.filter(pk=don.khach_hang_id)).distinct()
+
     context = {
         'don': don,
         'editing': True,
-        'kh_list': KhachHang.objects.filter(Q(la_khach_hang=True) | Q(la_nhan_vien=True), trang_thai=True).order_by('ma_kh'),
+        'kh_list': kh_qs.order_by('ma_kh'),
         'nv_list': nv_list.order_by('ma_kh'),
         'kho_list': kho_qs.order_by('ma_kho'),
         'hang_list': hang_qs.order_by('ma_hang'),
@@ -1329,13 +1337,21 @@ def _build_phieu_thu_context(form_values=None, hoa_don_selected=None, editing=Fa
         form_values['trang_thai'] = '1'
     if is_chi_mode:
         # Phiếu chi: Chỉ hiện Nhà cung cấp
-        kh_list = list(KhachHang.objects.filter(trang_thai=True, la_nha_cung_cap=True).order_by('ma_kh'))
+        kh_id_exist = form_values.get('khach_hang') if form_values else None
+        if kh_id_exist:
+            kh_list_qs = KhachHang.objects.filter(Q(trang_thai=True, la_nha_cung_cap=True) | Q(pk=kh_id_exist))
+        else:
+            kh_list_qs = KhachHang.objects.filter(trang_thai=True, la_nha_cung_cap=True)
+        kh_list = list(kh_list_qs.order_by('ma_kh').distinct())
     else:
         # Phiếu thu: Chỉ hiện Khách hàng hoặc Nhân viên
-        kh_list = list(KhachHang.objects.filter(
-            Q(la_khach_hang=True) | Q(la_nhan_vien=True),
-            trang_thai=True
-        ).order_by('ma_kh'))
+        kh_f = Q(la_khach_hang=True) | Q(la_nhan_vien=True)
+        kh_id_exist = form_values.get('khach_hang') if form_values else None
+        if kh_id_exist:
+            kh_list_qs = KhachHang.objects.filter(Q(trang_thai=True, **{'pk__in': []}) | Q(kh_f, trang_thai=True) | Q(pk=kh_id_exist))
+        else:
+            kh_list_qs = KhachHang.objects.filter(kh_f, trang_thai=True)
+        kh_list = list(kh_list_qs.order_by('ma_kh').distinct())
     kh_cong_no_map = _phieu_thu_khach_hang_cong_no_map()
     for kh in kh_list:
         info = kh_cong_no_map.get(kh.pk) or {}
@@ -3820,12 +3836,16 @@ def phieu_giao_hang_sua(request, pk):
         messages.success(request, f'Đã cập nhật phiếu giao hàng {phieu.so_phieu}')
         return redirect('phieu_giao_hang_list')
 
+    kh_qs = KhachHang.objects.filter(trang_thai=True)
+    if phieu and phieu.khach_hang_id:
+        kh_qs = (kh_qs | KhachHang.objects.filter(pk=phieu.khach_hang_id)).distinct()
+
     context = {
         'editing': True,
         'phieu': phieu,
         'chi_tiet': list(phieu.chi_tiet.select_related('hang_hoa', 'hang_hoa__don_vi_tinh', 'kho')),
         'ke_thua_hoa_don': phieu.hoa_don_goc,
-        'kh_list': KhachHang.objects.filter(trang_thai=True).order_by('ma_kh'),
+        'kh_list': kh_qs.order_by('ma_kh'),
         'hoa_don_list': HoaDonBan.objects.select_related('khach_hang').order_by('-ngay_lap', '-id')[:200],
         'kho_list': Kho.objects.filter(trang_thai=True).order_by('ma_kho'),
         'hang_list': HangHoa.objects.filter(trang_thai='dang_ban').select_related('don_vi_tinh').order_by('ma_hang'),

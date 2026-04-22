@@ -1006,6 +1006,69 @@ def thiet_lap_muc_ton_kho(request):
 
 
 # ─── SƠ ĐỒ KHO ──────────────────────────────────────────────
+def _restore_warehouse_structure(kho_id):
+    """Khôi phục cấu trúc 3 Dãy x 4 Kệ x 3 Tầng (36 ô) cho kho"""
+    for day in range(1, 4):  # Dãy 1, 2, 3
+        for ke in range(1, 5):  # Kệ 1, 2, 3, 4
+            for tang in range(1, 4):  # Tầng 1, 2, 3
+                ma_vi_tri = f"A-D{day:02d}-K{ke:02d}-T{tang:02d}"
+                ViTriKho.objects.get_or_create(
+                    kho_id=kho_id,
+                    ma_vi_tri=ma_vi_tri,
+                    defaults={'loai_o': 'pallet', 'suc_chua_toi_da': 50, 'trang_thai': 'hoat_dong'}
+                )
+
+def _recalculate_and_reallocate_stock(kho_id):
+    """Tính lại tồn kho thực tế (Nhập - Xuất) và phân bổ lại vào kệ"""
+    # 1. Tính toán tồn thực tế cho từng mặt hàng trong kho này
+    hang_hoa_ids = PhieuNhap_CT.objects.filter(phieu_nhap__kho_id=kho_id).values_list('hang_hoa_id', flat=True).distinct()
+    
+    # Xoá phân bổ cũ để xếp lại từ đầu cho ngăn nắp theo đúng quy tắc 3 tầng
+    TonKhoViTri.objects.filter(kho_id=kho_id).delete()
+
+    for hh_id in hang_hoa_ids:
+        # Tính tổng nhập
+        tong_nhap = PhieuNhap_CT.objects.filter(
+            phieu_nhap__kho_id=kho_id, 
+            hang_hoa_id=hh_id,
+            phieu_nhap__trang_thai__in=['2', '3']
+        ).aggregate(total=Sum('so_luong_nhan'))['total'] or 0
+        
+        # Tính tổng xuất
+        tong_xuat = PhieuXuat_CT.objects.filter(
+            phieu_xuat__kho_id=kho_id, 
+            hang_hoa_id=hh_id,
+            phieu_xuat__trang_thai__in=['2', '3']
+        ).aggregate(total=Sum('so_luong'))['total'] or 0
+        
+        ton_thuc_te = tong_nhap - tong_xuat
+        
+        # Cập nhật bảng TonKho (thẻ kho tổng)
+        ton_obj, _ = TonKho.objects.get_or_create(
+            kho_id=kho_id, hang_hoa_id=hh_id,
+            defaults={'so_luong': 0, 'gia_von_tb': 0}
+        )
+        ton_obj.so_luong = ton_thuc_te
+        ton_obj.save(update_fields=['so_luong', 'ngay_cap_nhat'])
+        
+        # Phân bổ tốn thực tế vào các kệ có sẵn trong DB (theo thứ tự ma_vi_tri)
+        if ton_thuc_te > 0:
+            vi_tri_list = ViTriKho.objects.filter(kho_id=kho_id, trang_thai='hoat_dong').order_by('ma_vi_tri')
+            remaining = ton_thuc_te
+            for vt in vi_tri_list:
+                if remaining <= 0: break
+                
+                da_dung = TonKhoViTri.objects.filter(vi_tri=vt).aggregate(s=Sum('so_luong'))['s'] or 0
+                suc_chua = vt.suc_chua_toi_da or 50
+                con_trong = suc_chua - da_dung
+                
+                if con_trong > 0:
+                    fill = min(remaining, con_trong)
+                    TonKhoViTri.objects.create(
+                        kho_id=kho_id, hang_hoa_id=hh_id, vi_tri=vt, so_luong=fill
+                    )
+                    remaining -= fill
+
 @login_required
 def so_do_kho(request):
     kho_sel = request.GET.get('kho_id', '')
@@ -1014,9 +1077,9 @@ def so_do_kho(request):
         hien_thi = 'tat_ca'
     kho_all = Kho.objects.filter(trang_thai=True)
 
-    _resync_tonkho_from_vitri_scope(kho_sel or None)
+    # Chặn lỗi: Không tự ý đồng bộ làm mất dữ liệu tồn kho chưa gán vị trí
+    # _resync_tonkho_from_vitri_scope(kho_sel or None)
 
-    # Thêm thống kê số mặt hàng cho mỗi kho
     kho_list = []
     for k in kho_all:
         k.so_mat_hang = TonKho.objects.filter(kho=k, so_luong__gt=0).count()
@@ -1034,6 +1097,10 @@ def so_do_kho(request):
     kho_maps = []
     ma_pattern = re.compile(r'^(?P<side>[A-Z0-9]+)-D(?P<day>\d+)-K(?P<ke>\d+)-T(?P<tang>\d+)$')
     for kho in map_kho_list:
+        # Tự động khôi phục cấu trúc 3 dãy x 4 kệ x 3 tầng và tính lại tồn kho cho từng kho
+        _restore_warehouse_structure(kho.id)
+        _recalculate_and_reallocate_stock(kho.id)
+
         vi_tri_hang_loi = (
             ViTriKho.objects
             .filter(kho=kho)
@@ -1158,7 +1225,15 @@ def so_do_kho(request):
             TonKhoViTri.objects.select_related('vi_tri', 'hang_hoa')
             .filter(kho=kho, so_luong__gt=0)
         )
-        ton_by_slot = {(r.vi_tri.ma_vi_tri or '').upper(): r for r in ton_vitri_rows}
+        
+        # Sửa lỗi: gom nhóm tất cả mặt hàng theo vị trí, thay vì chỉ lấy 1 cái duy nhất
+        ton_by_slot = {}
+        for r in ton_vitri_rows:
+            key = (r.vi_tri.ma_vi_tri or '').upper()
+            if key not in ton_by_slot:
+                ton_by_slot[key] = []
+            ton_by_slot[key].append(r)
+
         overflow_items = []
         occupied_side_blocks = []
         returns_ton_rows = []
@@ -1182,14 +1257,15 @@ def so_do_kho(request):
                     for tang in ke['tang_list']:
                         ma_vi_tri = f"{side['side']}-D{day['day']:02d}-K{ke['ke']:02d}-T{tang:02d}"
                         ma_vi_tri_key = ma_vi_tri.upper()
-                        ton = ton_by_slot.get(ma_vi_tri_key)
-                        if hien_thi == 'co_hang' and ton is None:
+                        ma_vi_tri_key = ma_vi_tri.upper()
+                        tons = ton_by_slot.get(ma_vi_tri_key, [])
+                        if hien_thi == 'co_hang' and not tons:
                             continue
                         levels.append({
                             'tang': tang,
                             'ma_vi_tri': ma_vi_tri,
                             'vi_tri_id': vi_tri_id_map.get(ma_vi_tri_key),
-                            'ton': ton,
+                            'tons': tons,
                         })
                         displayed_count += 1
 
@@ -1861,6 +1937,43 @@ def phieu_nhap_xoa(request, pk):
 
 
 @login_required
+def phieu_nhap_xoa_nhieu(request):
+    if request.method != 'POST':
+        return redirect('phieu_nhap_list')
+
+    ids = request.POST.getlist('ids[]') or request.POST.getlist('ids')
+    if not ids:
+        messages.error(request, 'Vui lòng chọn ít nhất 1 phiếu nhập để xóa.')
+        return redirect('phieu_nhap_list')
+
+    count_success = 0
+    errors = []
+    
+    for pk in ids:
+        try:
+            phieu = PhieuNhap.objects.get(pk=pk)
+            with transaction.atomic():
+                ok, err_msg = _rollback_phieu_nhap_inventory(phieu)
+                if not ok:
+                    errors.append(f'Phiếu {phieu.so_phieu}: {err_msg}')
+                    continue
+                phieu.delete()
+                count_success += 1
+        except PhieuNhap.DoesNotExist:
+            continue
+        except Exception as e:
+            errors.append(f'Lỗi hệ thống khi xóa phiếu ID {pk}: {str(e)}')
+
+    if count_success > 0:
+        messages.success(request, f'Đã xóa thành công {count_success} phiếu nhập.')
+    if errors:
+        for err in errors:
+            messages.error(request, err)
+            
+    return redirect('phieu_nhap_list')
+
+
+@login_required
 @xframe_options_exempt
 def phieu_nhap_in(request, pk):
     phieu = get_object_or_404(PhieuNhap.objects.select_related('nha_cung_cap', 'kho', 'nguoi_tao'), pk=pk)
@@ -2203,6 +2316,47 @@ def phieu_xuat_xoa(request, pk):
     so_phieu = phieu.so_phieu
     phieu.delete()
     messages.success(request, f'Đã xóa phiếu xuất {so_phieu}')
+    return redirect('phieu_xuat_list')
+
+
+@login_required
+def phieu_xuat_xoa_nhieu(request):
+    if request.method != 'POST':
+        return redirect('phieu_xuat_list')
+
+    ids = request.POST.getlist('ids[]') or request.POST.getlist('ids')
+    if not ids:
+        messages.error(request, 'Vui lòng chọn ít nhất 1 phiếu xuất để xóa.')
+        return redirect('phieu_xuat_list')
+
+    count_success = 0
+    errors = []
+
+    for pk in ids:
+        try:
+            phieu = PhieuXuat.objects.get(pk=pk)
+            if _phieu_xuat_has_related_documents(phieu):
+                errors.append(f'Phiếu {phieu.so_phieu} đã có chứng từ liên quan, không thể xóa.')
+                continue
+                
+            with transaction.atomic():
+                ok, err_msg = _rollback_phieu_xuat_inventory(phieu)
+                if not ok:
+                    errors.append(f'Phiếu {phieu.so_phieu}: {err_msg}')
+                    continue
+                phieu.delete()
+                count_success += 1
+        except PhieuXuat.DoesNotExist:
+            continue
+        except Exception as e:
+            errors.append(f'Lỗi hệ thống khi xóa phiếu ID {pk}: {str(e)}')
+
+    if count_success > 0:
+        messages.success(request, f'Đã xóa thành công {count_success} phiếu xuất.')
+    if errors:
+        for err in errors:
+            messages.error(request, err)
+
     return redirect('phieu_xuat_list')
 
 

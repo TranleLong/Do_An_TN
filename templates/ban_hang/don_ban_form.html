@@ -750,6 +750,13 @@
         if ($(this).hasClass('money-input')) {
             $(this).val(formatMoneyInputValue($(this).val()));
         }
+        if ($(this).hasClass('so-luong')) {
+            const ton = parseFloat($row.find('.ton-kho').val() || 0);
+            const sl = parseFloat($(this).val() || 0);
+            if (sl > ton) {
+                $(this).val(ton);
+            }
+        }
         if ($(this).hasClass('don-gia')) {
             $row.data('manual-price', true);
         }

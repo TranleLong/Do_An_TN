@@ -237,6 +237,7 @@
                         <th style="width: 14%">Mã hàng</th>
                         <th style="width: 20%">Tên hàng</th>
                         <th style="width: 8%">ĐVT</th>
+                        <th style="width: 10%" class="text-center">SL Tồn</th>
                         <th style="width: 12%" class="text-right">Số lượng xuất</th>
                         <th style="width: 18%" class="text-center">TK Nợ</th>
                         <th style="width: 18%" class="text-center">TK Có</th>
@@ -259,8 +260,9 @@
                         </td>
                         <td><input type="text" class="form-control hang-ten-display" readonly></td>
                         <td><input type="text" class="form-control hang-dvt-display text-center" readonly></td>
+                        <td><input type="text" class="form-control ton-kho-display text-center text-primary fw-bold" readonly value="0"></td>
                         <td>
-                            <input type="number" name="so_luong[]" class="form-control text-right" min="1" step="1" required>
+                            <input type="number" name="so_luong[]" class="form-control text-right so-luong-input" min="1" step="1" required>
                         </td>
                         <td>
                             <div class="lookup-wrap">
@@ -377,8 +379,9 @@
         </td>
         <td><input type="text" class="form-control hang-ten-display" readonly></td>
         <td><input type="text" class="form-control hang-dvt-display text-center" readonly></td>
+        <td><input type="text" class="form-control ton-kho-display text-center text-primary fw-bold" readonly value="0"></td>
         <td>
-            <input type="number" name="so_luong[]" class="form-control text-right" min="1" step="1" required>
+            <input type="number" name="so_luong[]" class="form-control text-right so-luong-input" min="1" step="1" required>
         </td>
         <td>
             <div class="lookup-wrap">
@@ -435,11 +438,25 @@
             row.find('.hang-display').val(String(opt.data('ma') || ''));
             row.find('.hang-ten-display').val(String(opt.data('ten') || ''));
             row.find('.hang-dvt-display').val(String(opt.data('dvt') || ''));
+            capNhatTonKho(row);
         } else {
             row.find('.hang-display').val('');
             row.find('.hang-ten-display').val('');
             row.find('.hang-dvt-display').val('');
+            row.find('.ton-kho-display').val('0');
         }
+    }
+
+    function capNhatTonKho(row) {
+        const hId = row.find('select[name="hang_id[]"]').val();
+        const kId = $('select[name="kho"]').val();
+        if (!hId || !kId) {
+            row.find('.ton-kho-display').val('0');
+            return;
+        }
+        $.get('{% url "hang_hoa_api" %}', { hang_id: hId, kho_id: kId }, function(resp) {
+            row.find('.ton-kho-display').val(new Intl.NumberFormat().format(resp.ton_kho || 0));
+        });
     }
 
     function syncHangDisplayToSelectByRow(row) {
@@ -680,6 +697,22 @@
 
     $(document).on('change', '.hang-select', function() {
         bindHangDisplayByRow($(this).closest('tr'));
+    });
+
+    $(document).on('input', '.so-luong-input', function() {
+        const $row = $(this).closest('tr');
+        const tonText = $row.find('.ton-kho-display').val() || '0';
+        const ton = parseFloat(tonText.replace(/\./g, '').replace(/,/g, '')) || 0;
+        const sl = parseFloat($(this).val() || 0);
+        if (sl > ton) {
+            $(this).val(ton);
+        }
+    });
+
+    $('select[name="kho"]').on('change', function() {
+        $('#chiTietBody .item-row').each(function() {
+            capNhatTonKho($(this));
+        });
     });
 
     // Kế thừa đơn hàng

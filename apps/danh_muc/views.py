@@ -845,10 +845,14 @@ def hang_hoa_xoa_nhieu(request):
 @login_required
 def hang_hoa_api(request):
     ma = request.GET.get('ma', '').strip()
+    hang_id = request.GET.get('hang_id', '').strip()
     from apps.kho.models import TonKho
 
     try:
-        h = HangHoa.objects.get(ma_hang=ma)
+        if hang_id:
+            h = HangHoa.objects.get(pk=hang_id)
+        else:
+            h = HangHoa.objects.get(ma_hang=ma)
         kho_id = request.GET.get('kho_id')
         ton = 0
         gia_von = 0

@@ -921,6 +921,15 @@
         if ($(this).hasClass('money-input')) {
             $(this).val(formatMoneyInputValue($(this).val()));
         }
+        if ($(this).hasClass('so-luong')) {
+            // Loại bỏ dấu phân cách nghìn nếu có trước khi parse
+            const tonText = $row.find('.ton-kho-display').val() || '0';
+            const ton = parseFloat(tonText.replace(/\./g, '').replace(/,/g, '')) || 0;
+            const sl = parseFloat($(this).val() || 0);
+            if (sl > ton) {
+                $(this).val(ton);
+            }
+        }
         if ($(this).hasClass('gia-ban')) {
             $row.data('manual-price', true);
         }

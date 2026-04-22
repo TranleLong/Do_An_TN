@@ -269,9 +269,11 @@
                                                 <div class="shelf-mini">
                                                     <div class="shelf-mini-title">Kệ {{ ke.ke }}</div>
                                                     {% for lv in ke.levels %}
-                                                    <div class="level-chip {% if not lv.ton %}empty{% endif %} {% if lv.vi_tri_id %}clickable js-vi-tri-chip{% endif %}" {% if lv.vi_tri_id %}data-vi-tri-id="{{ lv.vi_tri_id }}" data-ma-vi-tri="{{ lv.ma_vi_tri }}"{% endif %}>
-                                                        {% if lv.ton %}
-                                                        T{{ lv.tang }} • {{ lv.ton.hang_hoa.ma_hang }} ({{ lv.ton.so_luong|vnd }})
+                                                    <div class="level-chip {% if not lv.tons %}empty{% endif %} {% if lv.vi_tri_id %}clickable js-vi-tri-chip{% endif %}" {% if lv.vi_tri_id %}data-vi-tri-id="{{ lv.vi_tri_id }}" data-ma-vi-tri="{{ lv.ma_vi_tri }}"{% endif %}>
+                                                        {% if lv.tons %}
+                                                            {% for ton in lv.tons %}
+                                                            <span>T{{ lv.tang }} • {{ ton.hang_hoa.ma_hang }} ({{ ton.so_luong|vnd }})</span><br>
+                                                            {% endfor %}
                                                         {% else %}
                                                         T{{ lv.tang }} • Trống
                                                         {% endif %}

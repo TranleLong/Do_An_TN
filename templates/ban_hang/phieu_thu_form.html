@@ -160,7 +160,7 @@
                         <select name="loai_phieu_thu" id="loai_phieu_thu" class="form-control">
                             {% if loai_form == 'chi' %}
                             <option value="1" {% if form_values.loai_phieu_thu|default:'2' == '1' %}selected{% endif %}>1 - Chi tiền chi tiết theo hóa đơn</option>
-                            <option value="2" {% if form_values.loai_phieu_thu == '2' %}selected{% endif %}>2 - Chi cho khách hàng</option>
+                            <option value="2" {% if form_values.loai_phieu_thu == '2' %}selected{% endif %}>2 - Chi cho nhà cc</option>
                             {% else %}
                             <option value="1" {% if form_values.loai_phieu_thu|default:'1' == '1' %}selected{% endif %}>1 - Thu tiền chi tiết theo hóa đơn</option>
                             <option value="2" {% if form_values.loai_phieu_thu == '2' %}selected{% endif %}>2 - Thu của khách hàng</option>

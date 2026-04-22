@@ -155,9 +155,15 @@
         const selected = Array.from(document.querySelectorAll('input[name="selected_nhap"]:checked'));
         return selected.length === 1 ? selected[0].dataset.detailUrl : '';
     }
-    function getSelectedNhapId() {
-        const selected = Array.from(document.querySelectorAll('input[name="selected_nhap"]:checked'));
-        return selected.length === 1 ? selected[0].value : '';
+    function getSelectedNhapIds() {
+        return Array.from(document.querySelectorAll('input[name="selected_nhap"]:checked')).map(cb => cb.value);
+    }
+    function getSelectedNhapLabels() {
+        // Lấy số phiếu của các dòng đang chọn để hiện lên popup cho đẹp
+        return Array.from(document.querySelectorAll('input[name="selected_nhap"]:checked')).map(cb => {
+            const row = cb.closest('tr');
+            return row ? row.querySelector('strong').textContent.trim() : '';
+        }).filter(t => t !== '');
     }
     function getSelectedNhapInput() {
         const selected = Array.from(document.querySelectorAll('input[name="selected_nhap"]:checked'));
@@ -180,12 +186,12 @@
         modal.show();
     });
     document.getElementById('btnNhapCopy').addEventListener('click', function() {
-        const id = getSelectedNhapId();
-        if (!id) {
+        const ids = getSelectedNhapIds();
+        if (ids.length !== 1) {
             alert('Vui lòng chọn đúng 1 phiếu nhập để chép dữ liệu.');
             return;
         }
-        window.location.href = '{% url "phieu_nhap_them" %}?copy_from=' + encodeURIComponent(id);
+        window.location.href = '{% url "phieu_nhap_them" %}?copy_from=' + encodeURIComponent(ids[0]);
     });
     document.getElementById('btnNhapEdit').addEventListener('click', function() {
         const input = getSelectedNhapInput();
@@ -196,14 +202,38 @@
         window.location.href = input.dataset.editUrl;
     });
     document.getElementById('btnNhapDelete').addEventListener('click', function() {
-        const input = getSelectedNhapInput();
-        if (!input) {
-            alert('Vui lòng chọn đúng 1 phiếu nhập để xóa.');
+        const ids = getSelectedNhapIds();
+        if (ids.length === 0) {
+            alert('Vui lòng chọn ít nhất 1 phiếu nhập để xóa.');
             return;
         }
-        window.erpShowConfirmDialog('Bạn chắc chắn muốn xóa phiếu đã chọn?<br><span style=\"color:#6b7280; font-size:13px;\">Hành động này không thể hoàn tác.</span>', function() {
-            const form = document.getElementById('formNhapDelete');
-            form.action = input.dataset.deleteUrl;
+        
+        const labels = getSelectedNhapLabels();
+        const displayLabel = labels.length <= 3 ? labels.join(', ') : (labels.slice(0, 3).join(', ') + '...');
+        const url = '{% url "phieu_nhap_xoa_nhieu" %}';
+        
+        const message = `Bạn chắc chắn muốn xóa <strong>${ids.length}</strong> phiếu nhập kho (${displayLabel}) đã chọn?<br><span style="color:#6b7280; font-size:13px;">Hành động này không thể hoàn tác.</span>`;
+
+        // Dùng erpShowConfirmDialog để có thể chạy callback tùy biến gửi kèm IDs
+        window.erpShowConfirmDialog(message, function() {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = url;
+            const csrf = document.createElement('input');
+            csrf.type = 'hidden';
+            csrf.name = 'csrfmiddlewaretoken';
+            csrf.value = '{{ csrf_token }}';
+            form.appendChild(csrf);
+            
+            ids.forEach(id => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = 'ids[]';
+                input.value = id;
+                form.appendChild(input);
+            });
+            
+            document.body.appendChild(form);
             form.submit();
         });
     });
