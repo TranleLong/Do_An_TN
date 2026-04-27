@@ -55,11 +55,11 @@
                                 <span class="badge badge-success">Đã duyệt</span>
                             {% endif %}
                         </td>
-                        <td class="text-center">
+                        <td class="text-center" style="min-width: 130px;">
                             <a href="{% url 'kiem_ke_dieu_chinh_detail' item.pk %}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
-                            <form method="post" action="{% url 'kiem_ke_dieu_chinh_xoa' item.pk %}" class="d-inline ms-1" onsubmit="return confirm('Xóa phiếu điều chỉnh {{ item.so_phieu }}?');">
+                            <form method="post" action="{% url 'kiem_ke_dieu_chinh_xoa' item.pk %}" class="d-inline" onsubmit="return confirm('Xóa phiếu này?');">
                                 {% csrf_token %}
-                                <button type="submit" class="btn btn-sm btn-outline-danger">Xóa</button>
+                                <button type="submit" class="btn btn-sm btn-danger ms-1">Xóa</button>
                             </form>
                         </td>
                     </tr>

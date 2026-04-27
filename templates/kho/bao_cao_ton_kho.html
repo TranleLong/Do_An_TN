@@ -181,43 +181,54 @@
         <table class="table table-bordered table-hover report-table">
             <thead>
                 <tr>
+                    <th class="text-center" style="width: 50px;">Stt</th>
                     <th class="text-center">Mã vật tư</th>
                     <th class="text-center">Tên vật tư</th>
                     <th class="text-center">ĐVT</th>
-                    <th class="text-right-num">SL đầu kỳ</th>
-                    <th class="text-right-num">SL nhập</th>
-                    <th class="text-right-num">SL xuất</th>
-                    <th class="text-right-num">SL cuối kỳ</th>
-                    <th class="text-right-num">Giá trị tồn</th>
+                    <th class="text-right-num">Tồn đầu</th>
+                    <th class="text-right-num">Dư đầu</th>
+                    <th class="text-right-num">Sl nhập</th>
+                    <th class="text-right-num">Tiền nhập</th>
+                    <th class="text-right-num">Sl xuất</th>
+                    <th class="text-right-num">Tiền xuất</th>
+                    <th class="text-right-num">Tồn cuối</th>
+                    <th class="text-right-num">Dư cuối</th>
                 </tr>
             </thead>
             <tbody>
                 {% for item in data %}
                 <tr>
+                    <td class="text-center text-muted">{{ forloop.counter }}</td>
                     <td><strong>{{ item.ma_hang }}</strong></td>
                     <td>{{ item.ten_hang }}</td>
                     <td class="text-center">{{ item.dvt }}</td>
                     <td class="text-right-num">{{ item.sl_dau_ky|intcomma }}</td>
+                    <td class="text-right-num">{{ item.gt_dau_ky|floatformat:0|vnd }}</td>
                     <td class="text-right-num">{{ item.sl_nhap|intcomma }}</td>
+                    <td class="text-right-num">{{ item.gt_nhap|floatformat:0|vnd }}</td>
                     <td class="text-right-num">{{ item.sl_xuat|intcomma }}</td>
+                    <td class="text-right-num">{{ item.gt_xuat|floatformat:0|vnd }}</td>
                     <td class="text-right-num fw-semibold">{{ item.sl_cuoi_ky|intcomma }}</td>
                     <td class="text-right-num fw-semibold">{{ item.gt_cuoi_ky|floatformat:0|vnd }}</td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="8" class="text-center py-4 text-muted">Không có dữ liệu phát sinh trong kỳ báo cáo.</td>
+                    <td colspan="12" class="text-center py-4 text-muted">Không có dữ liệu phát sinh trong kỳ báo cáo.</td>
                 </tr>
                 {% endfor %}
             </tbody>
             {% if data %}
             <tfoot>
                 <tr style="background: #f5f7fa; font-weight: 700;">
-                    <td colspan="3" class="text-end">Tổng cộng</td>
-                    <td class="text-right-num">{{ total_sl_dau_ky|intcomma }}</td>
-                    <td class="text-right-num">{{ total_sl_nhap|intcomma }}</td>
-                    <td class="text-right-num">{{ total_sl_xuat|intcomma }}</td>
-                    <td class="text-right-num">{{ total_sl_cuoi_ky|intcomma }}</td>
-                    <td class="text-right-num">{{ total_gt_cuoi_ky|floatformat:0|vnd }}</td>
+                    <td colspan="4" class="text-center text-primary">Tổng cộng</td>
+                    <td class="text-right-num text-primary">{{ total_sl_dau_ky|intcomma }}</td>
+                    <td class="text-right-num text-primary">{{ total_gt_dau_ky|floatformat:0|vnd }}</td>
+                    <td class="text-right-num text-primary">{{ total_sl_nhap|intcomma }}</td>
+                    <td class="text-right-num text-primary">{{ total_gt_nhap|floatformat:0|vnd }}</td>
+                    <td class="text-right-num text-primary">{{ total_sl_xuat|intcomma }}</td>
+                    <td class="text-right-num text-primary">{{ total_gt_xuat|floatformat:0|vnd }}</td>
+                    <td class="text-right-num text-primary">{{ total_sl_cuoi_ky|intcomma }}</td>
+                    <td class="text-right-num text-primary">{{ total_gt_cuoi_ky|floatformat:0|vnd }}</td>
                 </tr>
             </tfoot>
             {% endif %}

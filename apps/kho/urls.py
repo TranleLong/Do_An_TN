@@ -7,6 +7,8 @@ urlpatterns = [
     path('ton-kho/', views.ton_kho_list, name='ton_kho_list'),
     path('ton-kho/thiet-lap-muc-ton/', views.thiet_lap_muc_ton_kho, name='thiet_lap_muc_ton_kho'),
     path('so-do-kho/', views.so_do_kho, name='so_do_kho'),
+    path('so-do-kho/gan-vi-tri/ajax/', views.gan_vi_tri_thu_cong, name='gan_vi_tri_thu_cong'),
+    path('so-do-kho/chuyen-vi-tri/ajax/', views.chuyen_vi_tri_thu_cong, name='chuyen_vi_tri_thu_cong'),
     path('vi-tri/<int:pk>/chi-tiet/', views.chi_tiet_vi_tri, name='chi_tiet_vi_tri'),
 
     # ─── Phiếu xuất kho (Thủ kho thao tác)

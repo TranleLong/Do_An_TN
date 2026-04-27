@@ -61,11 +61,6 @@
             <div class="col-md-3"><small class="text-muted">Nhóm hàng</small><div>{% if kk.nhom_hang %}{{ kk.nhom_hang.ten_nhom }}{% else %}Tất cả{% endif %}</div></div>
         </div>
 
-        {% if kk.trang_thai != '3' %}
-        <div class="alert alert-info">
-            Có thể nhập riêng số lượng hàng lỗi theo từng dòng. Hàng lỗi sẽ được chuyển sang vị trí lỗi khi duyệt phiếu điều chỉnh.
-        </div>
-        {% endif %}
 
         <form method="post" class="mb-3">
             {% csrf_token %}
@@ -89,81 +84,64 @@
                             <th>Mã hàng</th>
                             <th>Tên hàng</th>
                             <th>ĐVT</th>
-                            <th>Loại dòng</th>
-                            <th class="text-end">SL hệ thống</th>
-                            <th class="text-end">SL thực tế</th>
-                            <th class="text-end">SL hàng lỗi</th>
-                            <th class="text-end">SL tốt</th>
-                            <th class="text-end">Chênh lệch</th>
-                            <th>Tình trạng</th>
+                            <th class="text-end" style="width: 100px;">Hệ thống</th>
+                            <th class="text-end" style="width: 120px;">Thực tế</th>
+                            <th class="text-end" style="width: 120px;">Hàng lỗi</th>
+                            <th class="text-end" style="width: 100px;">SL Tốt</th>
+                            <th class="text-end" style="width: 100px;">Chênh lệch</th>
                             <th>Lý do chênh lệch</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for ct in chi_tiet %}
-                        <tr class="kiemke-row-normal">
-                            <td rowspan="2">
-                                {{ ct.hang_hoa.ma_hang }}
+                        <tr>
+                            <td>
+                                <strong>{{ ct.hang_hoa.ma_hang }}</strong>
                                 <input type="hidden" name="ct_id[]" value="{{ ct.pk }}">
                             </td>
-                            <td rowspan="2">{{ ct.hang_hoa.ten_hang }}</td>
-                            <td rowspan="2">{{ ct.hang_hoa.don_vi_tinh.ten_dvt|default:'-' }}</td>
-                            <td><span class="line-tag normal">Hàng bình thường</span></td>
-                            <td class="text-end" rowspan="2">{{ ct.so_luong_so_sach|floatformat:0|intcomma }}</td>
+                            <td>{{ ct.hang_hoa.ten_hang }}</td>
+                            <td class="text-center">{{ ct.hang_hoa.don_vi_tinh.ten_dvt|default:'-' }}</td>
+                            <td class="text-end bg-light">{{ ct.so_luong_so_sach|floatformat:0|intcomma }}</td>
                             <td class="text-end">
                                 {% if kk.trang_thai != '3' %}
-                                <input type="number" name="sl_thuc_te[]" min="0" step="1" class="form-control form-control-sm text-end" value="{{ ct.so_luong_thuc_te|default:0|floatformat:0 }}" style="max-width:130px; margin-left:auto;">
+                                <input type="number" name="sl_thuc_te[]" min="0" step="1" class="form-control form-control-sm text-end input-sl-thuc-te" value="{{ ct.so_luong_thuc_te|default:0|floatformat:0 }}">
                                 {% else %}
                                 {{ ct.so_luong_thuc_te|floatformat:0|intcomma }}
                                 {% endif %}
                             </td>
-                            <td class="text-end text-muted">-</td>
-                            <td class="text-end fw-semibold text-success">
-                                {{ ct.so_luong_tot|default:0|floatformat:0|intcomma }}
-                            </td>
-                            <td class="text-end" rowspan="2">
-                                {% if ct.chenh_lech > 0 %}<span class="text-success">+{{ ct.chenh_lech|floatformat:0|intcomma }}</span>{% elif ct.chenh_lech < 0 %}<span class="text-danger">{{ ct.chenh_lech|floatformat:0|intcomma }}</span>{% else %}<span class="text-muted">0</span>{% endif %}
-                            </td>
-                            <td rowspan="2">
+                            <td class="text-end">
                                 {% if kk.trang_thai != '3' %}
-                                <select name="tinh_trang[]" class="form-control form-control-sm">
-                                    <option value="tot_100" {% if ct.tinh_trang == 'tot_100' %}selected{% endif %}>Tốt 100%</option>
-                                    <option value="hu_hong" {% if ct.tinh_trang == 'hu_hong' %}selected{% endif %}>Hư hỏng</option>
-                                    <option value="thieu_hang" {% if ct.tinh_trang == 'thieu_hang' %}selected{% endif %}>Thiếu hàng</option>
-                                </select>
+                                <input type="number" name="sl_loi[]" min="0" step="1" class="form-control form-control-sm text-end text-danger input-sl-loi" value="{{ ct.so_luong_loi|default:0|floatformat:0 }}">
                                 {% else %}
-                                {{ ct.get_tinh_trang_display }}
+                                <span class="text-danger">{{ ct.so_luong_loi|default:0|floatformat:0|intcomma }}</span>
                                 {% endif %}
                             </td>
-                            <td rowspan="2">
+                            <td class="text-end">
                                 {% if kk.trang_thai != '3' %}
-                                <input type="text" name="ly_do[]" class="form-control form-control-sm" value="{{ ct.ly_do|default:'' }}" placeholder="Nhập lý do nếu có chênh lệch">
+                                <input type="number" name="sl_tot[]" min="0" step="1" class="form-control form-control-sm text-end text-success fw-bold input-sl-tot" value="{{ ct.so_luong_tot|default:0|floatformat:0 }}">
+                                {% else %}
+                                <span class="text-success fw-bold">{{ ct.so_luong_tot|floatformat:0|intcomma }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                {% if ct.chenh_lech > 0 %}<span class="text-success">+{{ ct.chenh_lech|floatformat:0|intcomma }}</span>{% elif ct.chenh_lech < 0 %}<span class="text-danger">{{ ct.chenh_lech|floatformat:0|intcomma }}</span>{% else %}<span class="text-muted">0</span>{% endif %}
+                            </td>
+                            <td>
+                                {% if kk.trang_thai != '3' %}
+                                <input type="text" name="ly_do[]" class="form-control form-control-sm" value="{{ ct.ly_do|default:'' }}" placeholder="Lý do...">
                                 {% else %}
                                 {{ ct.ly_do|default:'-' }}
                                 {% endif %}
                             </td>
                         </tr>
-                        <tr class="kiemke-row-defect">
-                            <td><span class="line-tag defect">Hàng lỗi</span></td>
-                            <td class="text-end text-muted">-</td>
-                            <td class="text-end">
-                                {% if kk.trang_thai != '3' %}
-                                <input type="number" name="sl_loi[]" min="0" step="1" class="form-control form-control-sm text-end" value="{{ ct.so_luong_loi|default:0|floatformat:0 }}" style="max-width:120px; margin-left:auto;">
-                                {% else %}
-                                {{ ct.so_luong_loi|default:0|floatformat:0|intcomma }}
-                                {% endif %}
-                            </td>
-                            <td class="text-end fw-semibold text-danger">{{ ct.so_luong_loi|default:0|floatformat:0|intcomma }}</td>
-                        </tr>
                         {% empty %}
-                        <tr><td colspan="11" class="text-center text-muted py-3">Không có chi tiết kiểm kê</td></tr>
+                        <tr><td colspan="9" class="text-center text-muted py-3">Không có chi tiết kiểm kê</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
             {% if kk.trang_thai != '3' %}
-            <div class="d-flex justify-content-end gap-2">
-                <button type="submit" name="action" value="save_numbers" class="btn btn-outline-primary">Lưu số liệu kiểm kê</button>
+            <div class="d-flex justify-content-end">
                 <button type="submit" name="action" value="confirm_numbers" class="btn btn-primary">Xác nhận đối chiếu</button>
             </div>
             {% endif %}
@@ -194,4 +172,41 @@
         {% endif %}
     </div>
 </div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const table = document.querySelector('table');
+    if (!table) return;
+
+    table.addEventListener('input', function(e) {
+        const target = e.target;
+        if (target.tagName !== 'INPUT' || target.type !== 'number') return;
+
+        const row = target.closest('tr');
+        const inpThucTe = row.querySelector('.input-sl-thuc-te');
+        const inpLoi = row.querySelector('.input-sl-loi');
+        const inpTot = row.querySelector('.input-sl-tot');
+
+        if (!inpThucTe || !inpLoi || !inpTot) return;
+
+        let valThucTe = parseInt(inpThucTe.value) || 0;
+        let valLoi = parseInt(inpLoi.value) || 0;
+        let valTot = parseInt(inpTot.value) || 0;
+
+        if (target === inpThucTe) {
+            // Ưu tiên giữ Hàng lỗi, tính lại Hàng tốt
+            inpTot.value = Math.max(0, valThucTe - valLoi);
+        } else if (target === inpLoi) {
+            // Thay đổi Hàng lỗi: Cập nhật SL Thực tế (giữ nguyên Hàng tốt)
+            // HOẶC Giữ nguyên SL thực tế, tính lại Hàng tốt (tùy nghiệp vụ)
+            // Ở đây chọn: Thực tế = Tốt + Lỗi
+            inpThucTe.value = valTot + valLoi;
+        } else if (target === inpTot) {
+            // Thay đổi Hàng tốt: Cập nhật SL Thực tế
+            inpThucTe.value = valTot + valLoi;
+        }
+    });
+});
+</script>
 {% endblock %}

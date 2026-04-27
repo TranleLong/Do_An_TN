@@ -207,10 +207,10 @@
                         <i class="fas fa-chevron-down ms-auto"></i>
                     </a>
                     <div class="submenu">
-                        <a href="{% url 'dashboard' %}" class="submenu-link {% if active_menu == 'dashboard' %}active{% endif %}">Tổng quan</a>
-                        <a href="{% url 'so_cai' %}" class="submenu-link {% if active_menu == 'so_cai' %}active{% endif %}">Sổ cái</a>
-                        <a href="{% url 'so_nhat_ky_chung' %}" class="submenu-link {% if active_menu == 'so_nhat_ky_chung' %}active{% endif %}">Sổ nhật ký chung</a>
-                        <a href="{% url 'ky_ke_toan' %}" class="submenu-link {% if active_menu == 'ky_ke_toan' %}active{% endif %}">Kỳ kế toán</a>
+                        <a href="{% url 'dashboard' %}" class="submenu-link {% if active_menu == 'dashboard' %}active{% endif %}" style="color: #7389a4;">Tổng quan</a>
+                        <a href="{% url 'so_cai' %}" class="submenu-link {% if active_menu == 'so_cai' %}active{% endif %}" style="color: #7389a4;" >Sổ cái</a>
+                        <a href="{% url 'so_nhat_ky_chung' %}" class="submenu-link {% if active_menu == 'so_nhat_ky_chung' %}active{% endif %}" style="color: #7389a4;" >Sổ nhật ký chung</a>
+                        <a href="{% url 'ky_ke_toan' %}" class="submenu-link {% if active_menu == 'ky_ke_toan' %}active{% endif %}" style="color: #7389a4;">Kỳ kế toán</a>
                     </div>
                 </div>
 
@@ -321,13 +321,13 @@
                         <i class="fas fa-chevron-down ms-auto"></i>
                     </a>
                     <div class="submenu">
-                        <a href="{% url 'kh_list' %}" class="submenu-link {% if active_menu == 'khach_hang' %}active{% endif %}">Khách hàng</a>
-                        <a href="{% url 'hang_hoa_list' %}" class="submenu-link {% if active_menu == 'hang_hoa' %}active{% endif %}">Hàng hóa</a>
-                        <a href="{% url 'kho_list' %}" class="submenu-link {% if active_menu == 'kho' %}active{% endif %}">Kho</a>
-                        <a href="{% url 'nhom_hang_list' %}" class="submenu-link {% if active_menu == 'nhom_hang' %}active{% endif %}">Nhóm hàng</a>
-                        <a href="{% url 'don_vi_tinh_list' %}" class="submenu-link {% if active_menu == 'don_vi_tinh' %}active{% endif %}">Đơn vị tính</a>
-                        <a href="{% url 'tai_khoan_ke_toan_list' %}" class="submenu-link {% if active_menu == 'tai_khoan_ke_toan' %}active{% endif %}">Tài khoản kế toán</a>
-                        <a href="{% url 'vi_tri_kho_list' %}" class="submenu-link {% if active_menu == 'vi_tri_kho' %}active{% endif %}">Vị trí kho</a>
+                        <a href="{% url 'kh_list' %}" class="submenu-link {% if active_menu == 'khach_hang' %}active{% endif %}" style="color: #7389a4;">Khách hàng</a>
+                        <a href="{% url 'hang_hoa_list' %}" class="submenu-link {% if active_menu == 'hang_hoa' %}active{% endif %}" style="color: #7389a4;">Hàng hóa</a>
+                        <a href="{% url 'kho_list' %}" class="submenu-link {% if active_menu == 'kho' %}active{% endif %}" style="color: #7389a4;">Kho</a>
+                        <a href="{% url 'nhom_hang_list' %}" class="submenu-link {% if active_menu == 'nhom_hang' %}active{% endif %}" style="color: #7389a4;">Nhóm hàng</a>
+                        <a href="{% url 'don_vi_tinh_list' %}" class="submenu-link {% if active_menu == 'don_vi_tinh' %}active{% endif %}" style="color: #7389a4;">Đơn vị tính</a>
+                        <a href="{% url 'tai_khoan_ke_toan_list' %}" class="submenu-link {% if active_menu == 'tai_khoan_ke_toan' %}active{% endif %}" style="color: #7389a4;">Tài khoản kế toán</a>
+                        <a href="{% url 'vi_tri_kho_list' %}" class="submenu-link {% if active_menu == 'vi_tri_kho' %}active{% endif %}" style="color: #7389a4;">Vị trí kho</a>
                     </div>
                 </div>
             </nav>
@@ -1298,7 +1298,7 @@
                 }
                 return;
             }
-            // Reset style về danger (normal delete)
+            // Reset style mặc định (nguy hiểm/xóa)
             var header = document.getElementById('gdmHeader');
             var iconWrap = document.getElementById('gdmIconWrap');
             var icon = document.getElementById('gdmIcon');
@@ -1306,27 +1306,52 @@
             var confirmBtn = document.getElementById('gdmConfirmBtn');
             var titleEl = document.getElementById('globalDeleteModalLabel');
 
-            header.style.background = 'linear-gradient(180deg,#fff5f5,#ffe9e9)';
-            iconWrap.style.background = '#ffe0e0';
-            iconWrap.style.color = '#c62828';
-            icon.className = 'fas fa-trash-can';
-            titleEl.textContent = 'Xác nhận xóa';
+            // Kiểm tra xem đây là hành động "Duyệt" hay "Xoá"
+            var isApproval = /duy[ệe]t|x[áa]c nh[ậa]n/i.test(label || '');
+
+            if (isApproval) {
+                header.style.background = 'linear-gradient(180deg,#f0fdf4,#dcfce7)';
+                iconWrap.style.background = '#dcfce7';
+                iconWrap.style.color = '#15803d';
+                icon.className = 'fas fa-check-circle';
+                titleEl.textContent = 'Xác nhận thực hiện';
+                confirmBtn.className = 'btn btn-success';
+                confirmBtn.innerHTML = '<i class="fas fa-check me-1"></i> Thực hiện';
+            } else {
+                header.style.background = 'linear-gradient(180deg,#fff5f5,#ffe9e9)';
+                iconWrap.style.background = '#ffe0e0';
+                iconWrap.style.color = '#c62828';
+                icon.className = 'fas fa-trash-can';
+                titleEl.textContent = 'Xác nhận xóa';
+                confirmBtn.className = 'btn btn-danger';
+                confirmBtn.innerHTML = '<i class="fas fa-trash me-1"></i> Xóa';
+            }
+            
             confirmBtn.style.display = '';
-            confirmBtn.className = 'btn btn-danger';
-            confirmBtn.innerHTML = '<i class="fas fa-trash me-1"></i> Xóa';
+
+            var actionText = isApproval ? 'thực hiện' : 'xóa';
+            var highlightColor = isApproval ? '#15803d' : '#c62828';
 
             var countText = count > 1 ? ('<strong>' + count + ' dòng</strong>') : '';
-            var labelHtml = label ? ('<strong style="color:#c62828;">' + label + '</strong>') : '';
+            var labelHtml = label ? ('<strong style="color:' + highlightColor + ';">' + label + '</strong>') : '';
+            
             if (countText && labelHtml) {
-                body.innerHTML = 'Bạn có chắc chắn muốn xóa ' + countText + ' dòng (' + labelHtml + ') không?<br><span style="color:#6b7280; font-size:13px;">Hành động này không thể hoàn tác.</span>';
+                body.innerHTML = 'Bạn có chắc chắn muốn ' + actionText + ' ' + countText + ' dòng (' + labelHtml + ') không?<br><span style="color:#6b7280; font-size:13px;">Hành động này không thể hoàn tác.</span>';
             } else if (labelHtml) {
-                body.innerHTML = 'Bạn có chắc chắn muốn xóa ' + labelHtml + ' không?<br><span style="color:#6b7280; font-size:13px;">Hành động này không thể hoàn tác.</span>';
+                body.innerHTML = 'Bạn có chắc chắn muốn ' + labelHtml + ' không?';
             } else {
-                body.innerHTML = 'Bạn có chắc chắn muốn xóa dữ liệu đã chọn không?<br><span style="color:#6b7280; font-size:13px;">Hành động này không thể hoàn tác.</span>';
+                body.innerHTML = 'Bạn có chắc chắn muốn ' + actionText + ' dữ liệu đã chọn không?';
             }
 
             _pendingAction = onConfirm;
             m.bs.show();
+        }
+
+        // ─── Hiện modal cho Form (giữ nguyên dữ liệu form) ───────
+        function showFormConfirm(sourceForm, label) {
+            showConfirm([], label, 1, function () {
+                sourceForm.submit();
+            });
         }
 
         // ─── Hiện modal dạng lỗi (readonly, chỉ đóng) ────────────
@@ -1367,20 +1392,6 @@
             count = count || urls.length || 1;
             showConfirm(urls, label, count, function () {
                 var csrf = getCSRF();
-                // Với 1 URL duy nhất: submit form để Django xử lý redirect + messages
-                if (urls.length === 1) {
-                    var form = document.createElement('form');
-                    form.method = 'POST';
-                    form.action = urls[0];
-                    var csrfInput = document.createElement('input');
-                    csrfInput.type = 'hidden';
-                    csrfInput.name = 'csrfmiddlewaretoken';
-                    csrfInput.value = csrf;
-                    form.appendChild(csrfInput);
-                    document.body.appendChild(form);
-                    form.submit();
-                    return;
-                }
                 // Nhiều URL: fetch song song rồi reload
                 Promise.all(urls.map(function (url) {
                     return fetch(url, {
@@ -1483,10 +1494,14 @@
                 el.removeAttribute('onclick');
                 el.addEventListener('click', function (e) {
                     e.preventDefault();
-                    // Tìm form cha hoặc link
                     var parentForm = el.closest('form');
                     if (parentForm) {
-                        window.erpConfirmDelete([parentForm.action], label, 1);
+                        showFormConfirm(parentForm, label);
+                    } else {
+                        var href = el.getAttribute('href');
+                        if (href && href !== '#') {
+                            window.erpConfirmDelete([href], label, 1);
+                        }
                     }
                 });
             });

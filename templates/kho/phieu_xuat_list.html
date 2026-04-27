@@ -47,7 +47,7 @@
                         <th class="fw-semibold">Kho xuất</th>
                         <th class="fw-semibold">Người tạo</th>
                         <th class="text-end fw-semibold">Tổng giá vốn</th>
-                        <th class="text-center fw-semibold">Trạng thái</th>
+                        <th class="fw-semibold">Trạng thái</th>
                     </tr>
                 </thead>
                 <tbody class="border-top-0">
@@ -59,20 +59,14 @@
                         </td>
                         <td>{{ item.ngay_lap|date:"d/m/Y" }}</td>
                         <td>{{ item.ngay_hach_toan|date:"d/m/Y" }}</td>
-                        <td>
-                            <span class="badge bg-light text-dark border"><i class="fas fa-tag me-1 text-muted"></i> {{ item.get_loai_xuat_display }}</span>
-                        </td>
+                        <td>{{ item.get_loai_xuat_display }}</td>
                         <td>{{ item.kho.ten_kho }}</td>
                         <td>{{ item.nguoi_tao.username }}</td>
                         <td class="text-end text-danger fw-bold">{{ item.tong_gia_von|vnd }} đ</td>
-                        <td class="text-center">
-                            {% if item.trang_thai == '1' %}
-                                <span class="badge bg-warning text-dark"><i class="fas fa-edit me-1"></i>1 - Lập phiếu</span>
-                            {% elif item.trang_thai == '2' %}
-                                <span class="badge bg-success"><i class="fas fa-boxes me-1"></i>2 - Sổ kho</span>
-                            {% else %}
-                                <span class="badge bg-info"><i class="fas fa-book me-1"></i>3 - Sổ cái</span>
-                            {% endif %}
+                        <td>
+                            {% if item.trang_thai == '1' %}<span class="badge badge-warning">1 - Lập phiếu</span>
+                            {% elif item.trang_thai == '2' %}<span class="badge badge-success">2 - Sổ kho</span>
+                            {% else %}<span class="badge badge-info">3 - Sổ cái</span>{% endif %}
                         </td>
                     </tr>
                     {% empty %}

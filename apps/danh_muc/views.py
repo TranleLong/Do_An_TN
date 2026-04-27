@@ -1253,3 +1253,45 @@ def nha_cung_cap_kh_api_lookup(request):
         'total': total,
         'total_pages': total_pages,
     })
+@login_required
+def vi_tri_kho_api_lookup(request):
+    q = request.GET.get('q', '').strip()
+    kho_id = request.GET.get('kho_id', '').strip()
+    page = int(request.GET.get('page', 1))
+    page_size = int(request.GET.get('page_size', 5))
+    
+    from apps.kho.models import TonKhoViTri
+
+    items = ViTriKho.objects.filter(trang_thai='hoat_dong')
+    if kho_id:
+        items = items.filter(kho_id=kho_id)
+    if q:
+        items = items.filter(ma_vi_tri__icontains=q)
+    
+    # Tính toán độ ưu tiên: Ô nào chưa có hàng (trống) sẽ được đẩy lên đầu
+    # Lưu ý: Đây là xử lý memory-intensive nếu data quá lớn, nhưng với 100-200 ô kệ thì ổn.
+    results_all = []
+    for vt in items.order_by('ma_vi_tri'):
+        da_dung = TonKhoViTri.objects.filter(vi_tri=vt).aggregate(s=Sum('so_luong'))['s'] or 0
+        con_trong = (vt.suc_chua_toi_da or 50) - da_dung
+        results_all.append({
+            'id': vt.id,
+            'ma_vi_tri': vt.ma_vi_tri,
+            'da_dung': int(da_dung),
+            'suc_chua': vt.suc_chua_toi_da or 50,
+            'con_trong': int(con_trong),
+            'is_empty': da_dung == 0
+        })
+    
+    # Sắp xếp: Trống lên đầu
+    results_all.sort(key=lambda x: x['is_empty'], reverse=True)
+    
+    paginator = Paginator(results_all, page_size)
+    page_obj = paginator.get_page(page)
+    
+    return JsonResponse({
+        'results': list(page_obj.object_list),
+        'total': paginator.count,
+        'page': page_obj.number,
+        'total_pages': paginator.num_pages
+    })

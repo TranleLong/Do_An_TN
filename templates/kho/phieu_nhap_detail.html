@@ -80,6 +80,7 @@
                         <th>Tên phụ tùng</th>
                         <th class="text-center">ĐVT</th>
                         <th class="text-right">Số lượng nhập</th>
+                        <th class="text-center">Vị trí (Pallet)</th>
                         <th class="text-right">Đơn giá nhập</th>
                         <th class="text-center">TK Nợ</th>
                         <th class="text-center">TK Có</th>
@@ -94,6 +95,13 @@
                         <td>{{ ct.hang_hoa.ten_hang }}</td>
                         <td class="text-center">{{ ct.hang_hoa.don_vi_tinh.ten|default:"-" }}</td>
                         <td class="text-right fw-semibold text-success">+{{ ct.so_luong_nhan|floatformat:0|vnd }}</td>
+                        <td class="text-center" style="font-size:12px;">
+                            {% for alc in ct.allocations.all %}
+                                <div class="text-info"><i class="fas fa-map-marker-alt"></i> {{ alc.vi_tri.ma_vi_tri }} <span class="badge badge-light badge-sm">{{ alc.so_luong }}</span></div>
+                            {% empty %}
+                                <span class="text-muted">-</span>
+                            {% endfor %}
+                        </td>
                         <td class="text-right">{{ ct.don_gia|floatformat:0|vnd }} đ</td>
                         <td class="text-center">{{ ct.tk_no|default:"-" }}</td>
                         <td class="text-center">{{ ct.tk_co|default:"-" }}</td>
@@ -107,7 +115,7 @@
                     <tr style="background: rgba(0,0,0,0.04);">
                         <td colspan="4" class="text-right fw-semibold">Tổng cộng:</td>
                         <td class="text-right fw-bold text-success">{{ chi_tiet|length }} Loại</td>
-                        <td colspan="3"></td>
+                        <td colspan="4"></td>
                         <td class="text-right fw-bold text-warning" style="font-size: 1.1rem;">
                             {{ phieu.tong_tien|floatformat:0|vnd }} đ
                         </td>

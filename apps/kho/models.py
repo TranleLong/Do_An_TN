@@ -1,5 +1,4 @@
 """Models dữ liệu app Kho (chỉ khai báo cấu trúc bảng)."""
-
 import datetime
 
 from django.contrib.auth.models import User
@@ -70,7 +69,7 @@ class PhieuNhap(AccountingPeriodLockMixin, models.Model):
     LOAI_NHAP = [
         ('1', 'Mua nhà cung cấp'),
         ('2', 'Khách hàng trả hàng'),
-        ('3', 'Điều chỉnh tồn kho'),
+        ('3', 'Nhập chênh lệch kiểm kê'),
     ]
     TRANG_THAI = [
         ('1', '1 - Lập phiếu'),
@@ -182,6 +181,17 @@ class PhieuNhap_CT(models.Model):
         self.thanh_tien = round((self.don_gia - ck) * self.so_luong_nhan, 0)
         super().save(*args, **kwargs)
 
+class PhieuNhap_CT_Allocation(models.Model):
+    phieu_nhap_ct = models.ForeignKey(PhieuNhap_CT, on_delete=models.CASCADE, related_name='allocations')
+    vi_tri = models.ForeignKey(ViTriKho, on_delete=models.CASCADE, verbose_name='Vị trí ô kệ')
+    so_luong = models.IntegerField(default=0, verbose_name='Số lượng phân bổ')
+    ma_vi_tri = models.CharField(max_length=50, verbose_name='Mã vị trí', default='')
+
+    class Meta:
+        db_table = 'kho_phieunhap_ct_allocation'
+        verbose_name = 'Phân bổ vị trí chi tiết'
+
+
 
 class PhieuXuat(AccountingPeriodLockMixin, models.Model):
     accounting_period_date_field = 'ngay_hach_toan'
@@ -192,6 +202,7 @@ class PhieuXuat(AccountingPeriodLockMixin, models.Model):
         ('tra_ncc', 'Trả nhà cung cấp'),
         ('noi_bo', 'Xuất nội bộ'),
         ('hu_hong', 'Hư hỏng / Hao hụt'),
+        ('kiem_ke', 'Xuất chênh lệch kiểm kê'),
     ]
     TRANG_THAI = [
         ('1', '1 - Lập phiếu'),
@@ -332,6 +343,7 @@ class PhieuDieuChinhKiemKe_CT(models.Model):
     hang_hoa = models.ForeignKey(HangHoa, on_delete=models.PROTECT, verbose_name='Hàng hóa')
     so_luong_he_thong = models.IntegerField(verbose_name='SL hệ thống')
     so_luong_thuc_te = models.IntegerField(verbose_name='SL thực tế')
+    so_luong_loi = models.IntegerField(default=0, verbose_name='SL hàng lỗi')
     chenh_lech = models.IntegerField(verbose_name='Chênh lệch')
     ly_do = models.CharField(max_length=255, blank=True, verbose_name='Lý do điều chỉnh')
 

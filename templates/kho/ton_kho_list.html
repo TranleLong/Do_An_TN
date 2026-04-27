@@ -4,110 +4,6 @@
 
 {% block extra_css %}
 <style>
-    .inventory-stage {
-        background:
-            radial-gradient(circle at 10% 0%, rgba(45, 108, 223, 0.08), transparent 38%),
-            radial-gradient(circle at 90% 100%, rgba(15, 92, 171, 0.08), transparent 35%),
-            #eff3f9;
-        border-radius: 14px;
-        padding: 14px;
-    }
-    .inventory-shell {
-        background: linear-gradient(180deg, #f9fbff 0%, #f4f7fc 100%);
-        border: 1px solid #d8e2f0;
-        border-radius: 12px;
-        padding: 18px;
-        box-shadow: 0 8px 22px rgba(18, 38, 58, 0.06);
-    }
-    .inventory-kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(170px, 1fr));
-        gap: 10px;
-        margin-bottom: 14px;
-    }
-    .inventory-kpi {
-        border: 1px solid #d9e4f3;
-        border-radius: 10px;
-        background: #fff;
-        padding: 11px 12px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-    }
-    .inventory-kpi-label {
-        font-size: 11px;
-        text-transform: uppercase;
-        font-weight: 700;
-        color: #69809a;
-        letter-spacing: .02em;
-    }
-    .inventory-kpi-value {
-        font-size: 28px;
-        line-height: 1;
-        font-weight: 800;
-        color: #16385b;
-        margin-top: 4px;
-    }
-    .inventory-kpi-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 9px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 15px;
-    }
-    .inventory-head {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: 16px;
-        margin-bottom: 14px;
-    }
-    .inventory-title {
-        font-size: 28px;
-        font-weight: 800;
-        color: #12263a;
-        margin: 0;
-        line-height: 1.1;
-    }
-    .inventory-desc {
-        color: #60758c;
-        margin: 6px 0 0;
-        font-size: 14px;
-    }
-    .inventory-actions {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-    .inventory-btn {
-        border: 1px solid #d9e0ea;
-        border-radius: 8px;
-        background: #fff;
-        color: #1e2f44;
-        font-weight: 700;
-        font-size: 13px;
-        padding: 10px 14px;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        text-decoration: none;
-        transition: all .16s ease;
-    }
-    .inventory-btn:hover {
-        border-color: #a9bdd6;
-        background: #f5f9ff;
-    }
-    .inventory-btn.primary {
-        background: linear-gradient(180deg, #1f73c4 0%, #0d5cab 100%);
-        border-color: #0d5cab;
-        color: #fff;
-    }
-    .inventory-btn.primary:hover {
-        background: linear-gradient(180deg, #1a69b3 0%, #0a4f94 100%);
-    }
     .inventory-filters {
         background: #fff;
         border: 1px solid #d7e1ee;
@@ -282,6 +178,7 @@
     .inventory-table td {
         vertical-align: middle;
         border-bottom: 1px solid #eef3f8;
+        white-space: nowrap;
     }
     .inventory-table tbody tr:hover {
         background: #f8fbff;
@@ -309,7 +206,6 @@
         color: #195ca8;
     }
     .inventory-code {
-        color: #0d5cab;
         font-weight: 700;
         text-decoration: none;
     }
@@ -403,27 +299,24 @@
 {% endblock %}
 
 {% block content %}
-<div class="inventory-stage">
-<div class="inventory-shell">
-    <div class="inventory-head">
-        <div>
-            <h1 class="inventory-title">Tồn kho tổng hợp</h1>
-            <p class="inventory-desc">
-                Theo dõi tồn theo hàng hóa và kho, phục vụ kiểm soát nhập - xuất - tồn theo UC10.1.
-            </p>
-        </div>
-        <div class="inventory-actions">
-            <button type="button" class="inventory-btn" id="btnSetMucTon">
-                <i class="fas fa-sliders-h"></i> Thiết lập mức tồn
-            </button>
-            <a href="{% url 'tinh_gia_xuat' %}" class="inventory-btn">
-                <i class="fas fa-calculator"></i> Tính giá bình quân
-            </a>
-            <button type="submit" form="formTonKhoFilter" name="export" value="excel" class="inventory-btn primary">
-                <i class="fas fa-download"></i> Xuất Excel
-            </button>
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <i class="fas fa-cubes text-success"></i> Tồn kho tổng hợp
+            <div class="text-muted small mt-1 fw-normal" style="font-size: 0.8rem; letter-spacing: normal; text-transform: none;">Theo dõi tồn theo hàng hóa và kho, phục vụ kiểm soát nhập - xuất - tồn theo UC10.1.</div>
         </div>
     </div>
+    <div class="px-3 pt-3">
+        <div class="erp-toolbar" role="toolbar" aria-label="Thanh thao tác">
+            <button type="button" class="erp-toolbar-btn" id="btnSetMucTon" title="Thiết lập mức tồn" aria-label="Thiết lập mức tồn"><i class="fas fa-sliders-h"></i></button>
+            <span class="erp-toolbar-sep"></span>
+            <a href="{% url 'tinh_gia_xuat' %}" class="erp-toolbar-btn" title="Tính giá bình quân" aria-label="Tính giá bình quân"><i class="fas fa-calculator"></i></a>
+            <button type="submit" form="formTonKhoFilter" name="export" value="excel" class="erp-toolbar-btn" title="Xuất Excel" aria-label="Xuất Excel"><i class="fas fa-file-export"></i></button>
+            <button type="button" class="erp-toolbar-btn" onclick="window.location.reload()" title="Làm mới" aria-label="Làm mới"><i class="fas fa-rotate-right"></i></button>
+        </div>
+    </div>
+    
+    <div class="card-body">
 
     <form method="get" id="formTonKhoFilter" class="inventory-filters flex">
         <div class="inventory-filter-grid">
@@ -521,7 +414,7 @@
                         </td>
                         <td>{{ item.hang_hoa.nhom_hang.ten_nhom|default:'-' }}</td>
                         <td>{{ item.kho.ten_kho }}</td>
-                        <td>{{ item.vi_tri_hien_tai }}</td>
+                        <td class="location-cell" data-full-text="{{ item.vi_tri_hien_tai }}"></td>
                         <td class="text-end fw-semibold">
                             {% if item.so_luong_thuong > 0 %}
                                 {{ item.so_luong_thuong|vnd }}
@@ -798,6 +691,27 @@
 
         const modal = new bootstrap.Modal(document.getElementById('modalSetMucTon'));
         modal.show();
+    });
+
+    // Xử lý rút gọn cột Vị trí kệ
+    document.querySelectorAll('.location-cell').forEach(cell => {
+        let text = cell.getAttribute('data-full-text') || '';
+        if (text && text.includes(',')) {
+            let parts = text.split(',');
+            if (parts.length > 1) {
+                let first = parts[0].trim();
+                let more = parts.length - 1;
+                cell.innerHTML = first + ` <span class="badge bg-light border text-primary ms-1" style="cursor:pointer; padding:4px 8px; font-weight: 700;" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-placement="top" data-bs-content="${text}" title="Tất cả vị trí">... xem thêm (${more})</span>`;
+            }
+        } else {
+            cell.innerText = text || '-';
+        }
+    });
+
+    // Khởi tạo Bootstrap Popover
+    var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'))
+    var popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+      return new bootstrap.Popover(popoverTriggerEl)
     });
 </script>
 {% endblock %}

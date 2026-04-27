@@ -17,6 +17,7 @@ urlpatterns = [
     path('tai-khoan-ke-toan/api/lookup/', views.tai_khoan_api_lookup, name='tai_khoan_api_lookup'),
     path('nha-cung-cap-kh/api/lookup/', views.nha_cung_cap_kh_api_lookup, name='nha_cung_cap_kh_api_lookup'),
     path('vi-tri-kho/', views.vi_tri_kho_list, name='vi_tri_kho_list'),
+    path('vi-tri-kho/api/lookup/', views.vi_tri_kho_api_lookup, name='vi_tri_kho_api_lookup'),
 
     path('khach-hang/', views.kh_list, name='kh_list'),
     path('khach-hang/them/', views.kh_form, name='kh_them'),

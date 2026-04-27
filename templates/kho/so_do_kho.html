@@ -20,13 +20,55 @@
         background: #f9fafb;
         border: 2px solid #9ca3af;
         border-radius: 6px;
-        min-height: 280px;
+        min-height: 160px;
         padding: 10px;
         font-weight: 700;
         color: #374151;
         display: grid;
         place-items: center;
         text-align: center;
+    }
+    .left-col {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 180px;
+        flex-shrink: 0;
+    }
+    .hang-cho-zone {
+        background: #eff6ff;
+        border: 2px solid #93c5fd;
+        border-radius: 6px;
+        padding: 10px;
+        font-weight: 700;
+        color: #1e40af;
+        text-align: center;
+        flex: 1;
+        min-height: 120px;
+    }
+    .hang-cho-title {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #1e40af;
+        margin-bottom: 6px;
+    }
+    .hang-cho-stock {
+        margin-top: 8px;
+        border-top: 1px dashed #93c5fd;
+        padding-top: 8px;
+        width: 100%;
+        text-align: left;
+    }
+    .hang-cho-item {
+        display: block;
+        border: 1px solid #bfdbfe;
+        background: #dbeafe;
+        color: #1e3a8a;
+        border-radius: 6px;
+        padding: 4px 6px;
+        margin-bottom: 4px;
+        font-size: 0.72rem;
+        font-weight: 700;
     }
     .returns-zone.clickable {
         cursor: pointer;
@@ -111,6 +153,8 @@
         padding: 4px;
         margin-bottom: 4px;
         background: #f9fafb;
+        max-height: 145px;
+        overflow-y: auto;
     }
     .shelf-mini.pick {
         border-color: #fca5a5;
@@ -192,30 +236,34 @@
 {% block content %}
 <div class="card">
     <div class="card-header">
-        <div class="card-title"><i class="fas fa-map-marked-alt text-primary"></i> Sơ đồ nhà kho (chỉ hiển thị vị trí có hàng)</div>
-        <form method="get" class="d-flex gap-2">
-            <select name="kho_id" class="form-control" style="width:200px;" onchange="this.form.submit()">
+        <div class="card-title"><i class="fas fa-map-marked-alt text-primary" style="white-space: nowrap"></i> Sơ đồ kho</div>
+        <form method="get" class="d-flex" style="gap: 10px;">
+            <select name="kho_id" class="form-select form-select-sm" style="width: 160px; flex-shrink: 0;" onchange="this.form.submit()">
                 <option value="">-- Tất cả kho --</option>
                 {% for k in kho_list %}
                 <option value="{{ k.pk }}" {% if k.pk|stringformat:"s" == kho_sel %}selected{% endif %}>{{ k.ten_kho }}</option>
                 {% endfor %}
             </select>
-            <select name="hien_thi" class="form-control" style="width:220px;" onchange="this.form.submit()">
-                <option value="tat_ca" {% if hien_thi == 'tat_ca' %}selected{% endif %}>Hiển thị tất cả vị trí</option>
-                <option value="co_hang" {% if hien_thi == 'co_hang' %}selected{% endif %}>Chỉ hiển thị vị trí có hàng</option>
+            <select name="hien_thi" class="form-select form-select-sm" style="width: 150px; flex-shrink: 0;" onchange="this.form.submit()">
+                <option value="tat_ca" {% if hien_thi == 'tat_ca' %}selected{% endif %}>Hiện tất cả vị</option>
+                <option value="co_hang" {% if hien_thi == 'co_hang' %}selected{% endif %}>Chỉ hiện có hàng</option>
             </select>
+            <div class="input-group input-group-sm flex-grow-1" style="max-width: 500px;">
+                <span class="input-group-text bg-white"><i class="fas fa-filter text-muted"></i></span>
+                <input type="text" name="loc_side" value="{{ request.GET.loc_side }}" class="form-control" placeholder="Bên (A, B)">
+                <input type="text" name="loc_day" value="{{ request.GET.loc_day }}" class="form-control" placeholder="Dãy (1, 2)">
+                <input type="text" name="loc_ke" value="{{ request.GET.loc_ke }}" class="form-control" placeholder="Kệ (1)">
+                <input type="text" name="loc_tang" value="{{ request.GET.loc_tang }}" class="form-control" placeholder="Tầng (1)">
+                <button class="btn btn-primary" type="submit" style="padding-left: 12px; padding-right: 12px;">Lọc</button>
+                <a href="{% url 'so_do_kho' %}?kho_id={{ kho_sel }}&hien_thi={{ hien_thi }}" class="btn btn-outline-secondary" title="Xóa bộ lọc"><i class="fas fa-undo"></i></a>
+            </div>
+            
+            <button type="button" class="btn btn-success btn-sm ms-auto" style="white-space: nowrap;" data-bs-toggle="modal" data-bs-target="#modalGanViTri"><i class="fas fa-box-open me-1"></i> Gán vị trí</button>
+            <button type="button" class="btn btn-warning btn-sm" style="white-space: nowrap;" data-bs-toggle="modal" data-bs-target="#modalChuyenViTri"><i class="fas fa-exchange-alt me-1"></i> Chuyển vị trí</button>
         </form>
     </div>
 
     <div class="card-body">
-        <div class="alert alert-info" style="margin-bottom: 16px;">
-            <i class="fas fa-info-circle"></i>
-            {% if hien_thi == 'co_hang' %}
-            Chế độ hiển thị: chỉ ô vị trí đang có hàng mới xuất hiện. Ô trống sẽ ẩn đi.
-            {% else %}
-            Chế độ hiển thị: hiển thị toàn bộ vị trí, kể cả ô trống (vị trí mới tạo sẽ thấy ngay).
-            {% endif %}
-        </div>
 
         {% for block in kho_maps %}
         <div class="card" style="margin-bottom: 14px; border: 1px solid rgba(37, 99, 235, 0.15);">
@@ -232,6 +280,7 @@
                 {% if block.display_side_blocks %}
                 <div class="warehouse-floor">
                     <div class="floor-top">
+                        <div class="left-col">
                         <div class="returns-zone {% if block.vi_tri_hang_loi %}clickable js-vi-tri-chip{% endif %}" {% if block.vi_tri_hang_loi %}data-vi-tri-id="{{ block.vi_tri_hang_loi.id }}" data-ma-vi-tri="{{ block.vi_tri_hang_loi.ma_vi_tri }}"{% endif %}>
                             <div>
                                 <div>Hàng trả về &amp;<br>Xử lý lại</div>
@@ -256,6 +305,22 @@
                                 {% endif %}
                             </div>
                         </div>
+
+                        <!-- VÙNG HÀNG CHỜI (hàng nhập chưa gán vị trí) -->
+                        <div class="hang-cho-zone">
+                            <div class="hang-cho-title"><i class="fas fa-clock"></i> Hàng chờ<br><small style="font-weight:600; font-size:0.68rem; color:#3b82f6;">Chưa gán vị trí</small></div>
+                            {% if block.overflow_items %}
+                            <div class="hang-cho-stock">
+                                {% for item in block.overflow_items %}
+                                <span class="hang-cho-item">{{ item.hang_hoa.ma_hang }} • {{ item.so_luong|vnd }}</span>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div style="font-size:0.72rem; color:#6b7280; font-weight:600; margin-top:8px;">Không có hàng chờ</div>
+                            {% endif %}
+                        </div>
+                        </div>
+
 
                         <div class="rack-areas">
                             <div class="rack-zone">
@@ -349,6 +414,138 @@
     </div>
 </div>
 
+<div class="modal fade" id="modalGanViTri" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-map-pin text-primary"></i> Gán / Chuyển vị trí hàng hoá</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formGanViTri">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">1. Chọn Kho đích</label>
+                        <select name="kho_id" class="form-select" id="gKhoId" required onchange="filterHangHoaOptions()">
+                            <option value="">-- Chọn kho --</option>
+                            {% for k in kho_list %}
+                            <option value="{{ k.pk }}">{{ k.ten_kho }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">2. Chọn Hàng hoá (hoạch định lại vị trí)</label>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center bg-white" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="border-color: #dee2e6;">
+                                <span id="textHangHoa" class="text-truncate">-- Vui lòng chọn kho trước --</span>
+                                <i class="fas fa-chevron-down ms-2 text-muted" style="font-size: 12px;"></i>
+                            </button>
+                            <ul class="dropdown-menu w-100 shadow" id="menuHangHoa" style="max-height: 280px; overflow-y: auto;">
+                                <li><span class="dropdown-item text-muted">-- Vui lòng chọn kho trước --</span></li>
+                            </ul>
+                            <input type="hidden" name="hang_hoa_id" id="gHangHoaId">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">3. Chọn Vị trí đích đến</label>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center bg-white" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="border-color: #dee2e6;">
+                                <span id="textViTri" class="text-truncate">-- Vui lòng chọn kho trước --</span>
+                                <i class="fas fa-chevron-down ms-2 text-muted" style="font-size: 12px;"></i>
+                            </button>
+                            <ul class="dropdown-menu w-100 shadow" id="menuViTri" style="max-height: 280px; overflow-y: auto;">
+                                <li><span class="dropdown-item text-muted">-- Vui lòng chọn kho trước --</span></li>
+                            </ul>
+                            <input type="hidden" name="vi_tri_id" id="gViTriId">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">4. Số lượng chuyển / gán vào tủ kệ</label>
+                        <input type="number" class="form-control" name="so_luong" min="1" required placeholder="Nhập số lượng nguyên dương">
+                        <div class="form-text mt-1 text-muted"><i class="fas fa-info-circle"></i> Nếu lượng gán cao hơn lượng chưa gán, hệ thống sẽ tự động chuyển từ các vị trí cũ sang vị trí mới này.</div>
+                    </div>
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-primary" id="btnSubmitGan"><i class="fas fa-check me-1"></i> Xác nhận gán</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- MODAL CHUYỂN VỊ TRÍ -->
+<div class="modal fade" id="modalChuyenViTri" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-exchange-alt text-warning"></i> Chuyển vị trí hàng hoá</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formChuyenViTri">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">1. Chọn Kho</label>
+                        <select name="kho_id" class="form-select" id="cKhoId" required onchange="filterHangHoaChuyenOptions()">
+                            <option value="">-- Chọn kho --</option>
+                            {% for k in kho_list %}
+                            <option value="{{ k.pk }}">{{ k.ten_kho }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">2. Chọn Hàng hoá cần chuyển</label>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center bg-white" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="border-color: #dee2e6;">
+                                <span id="cTextHangHoa" class="text-truncate">-- Vui lòng chọn kho trước --</span>
+                                <i class="fas fa-chevron-down ms-2 text-muted" style="font-size: 12px;"></i>
+                            </button>
+                            <ul class="dropdown-menu w-100 shadow" id="cMenuHangHoa" style="max-height: 280px; overflow-y: auto;">
+                                <li><span class="dropdown-item text-muted">-- Vui lòng chọn kho trước --</span></li>
+                            </ul>
+                            <input type="hidden" name="hang_hoa_id" id="cHangHoaId">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">3. Chọn Vị trí nguồn <small class="text-muted fw-normal">(nơi lấy hàng)</small></label>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center bg-white" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="border-color: #dee2e6;">
+                                <span id="cTextViTriNguon" class="text-truncate">-- Vui lòng chọn hàng hoá trước --</span>
+                                <i class="fas fa-chevron-down ms-2 text-muted" style="font-size: 12px;"></i>
+                            </button>
+                            <ul class="dropdown-menu w-100 shadow" id="cMenuViTriNguon" style="max-height: 280px; overflow-y: auto;">
+                                <li><span class="dropdown-item text-muted">-- Vui lòng chọn hàng hoá trước --</span></li>
+                            </ul>
+                            <input type="hidden" name="vi_tri_nguon_id" id="cViTriNguonId">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">4. Chọn Vị trí đích <small class="text-muted fw-normal">(nơi chuyển tới)</small></label>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary w-100 text-start d-flex justify-content-between align-items-center bg-white" type="button" data-bs-toggle="dropdown" aria-expanded="false" style="border-color: #dee2e6;">
+                                <span id="cTextViTriDich" class="text-truncate">-- Vui lòng chọn kho trước --</span>
+                                <i class="fas fa-chevron-down ms-2 text-muted" style="font-size: 12px;"></i>
+                            </button>
+                            <ul class="dropdown-menu w-100 shadow" id="cMenuViTriDich" style="max-height: 280px; overflow-y: auto;">
+                                <li><span class="dropdown-item text-muted">-- Vui lòng chọn kho trước --</span></li>
+                            </ul>
+                            <input type="hidden" name="vi_tri_dich_id" id="cViTriDichId">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">5. Số lượng cần chuyển</label>
+                        <input type="number" class="form-control" name="so_luong" min="1" required placeholder="Nhập số lượng cần chuyển">
+                    </div>
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-warning" id="btnSubmitChuyen"><i class="fas fa-exchange-alt me-1"></i> Xác nhận chuyển</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const modal = document.getElementById('slotModal');
@@ -413,6 +610,248 @@ document.addEventListener('DOMContentLoaded', function() {
             closeModal();
         }
     });
+
+    const ganForm = document.getElementById('formGanViTri');
+    if (ganForm) {
+        ganForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            
+            if (!formData.get('hang_hoa_id')) { alert('Vui lòng chọn Hàng hoá!'); return; }
+            if (!formData.get('vi_tri_id')) { alert('Vui lòng chọn Vị trí!'); return; }
+            
+            const btn = document.getElementById('btnSubmitGan');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gán...';
+            
+            fetch("{% url 'gan_vi_tri_thu_cong' %}", {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if(data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert('Lỗi: ' + data.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check me-1"></i> Xác nhận gán';
+                }
+            })
+            .catch(err => {
+                alert('Có lỗi mạng khi gán vị trí!');
+                console.error(err);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check me-1"></i> Xác nhận gán';
+            });
+        });
+    }
+
+    // Logic tạo bộ lọc danh sách hàng hóa và vị trí theo kho
+    const itemsData = [
+        {% for item in items %}
+        { kho_id: "{{ item.kho_id }}", id: "{{ item.hang_hoa_id }}", label: "{{ item.hang_hoa.ma_hang }} - {{ item.hang_hoa.ten_hang|escapejs }} (Tồn: {{ item.so_luong }})" },
+        {% endfor %}
+    ];
+    
+    const viTriData = [
+        {% for block in kho_maps %}
+            {% for vt in block.vi_tri_list_data %}
+                { 
+                  kho_id: "{{ block.kho.id }}", 
+                  id: "{{ vt.id }}", 
+                  label: "{{ vt.ma_vi_tri }} (Khả dụng: {{ vt.kha_dung }} | Đã chứa: {{ vt.da_chua }} {% if vt.suc_chua_toi_da > 0 %}/ Sức chứa: {{ vt.suc_chua_toi_da }}{% endif %})" 
+                },
+            {% endfor %}
+        {% endfor %}
+    ];
+
+    // Dữ liệu vị trí có hàng (dùng cho Chuyển vị trí - lọc vị trí nguồn)
+    const tonViTriData = [
+        {% for block in kho_maps %}
+            {% for tvt in block.ton_vitri_js_data %}
+                { kho_id: "{{ tvt.kho_id }}", hang_hoa_id: "{{ tvt.hang_hoa_id }}", vi_tri_id: "{{ tvt.vi_tri_id }}", ma_vi_tri: "{{ tvt.ma_vi_tri }}", so_luong: {{ tvt.so_luong }} },
+            {% endfor %}
+        {% endfor %}
+    ];
+
+    function selectDropdownOption(inputId, textId, idValue, textValue) {
+        document.getElementById(inputId).value = idValue;
+        const textSpan = document.getElementById(textId);
+        textSpan.textContent = textValue;
+        textSpan.classList.add("text-primary", "fw-bold");
+    }
+
+    window.filterHangHoaOptions = function() {
+        const khoId = document.getElementById('gKhoId').value;
+        const hhMenu = document.getElementById('menuHangHoa');
+        const vtMenu = document.getElementById('menuViTri');
+        
+        document.getElementById('gHangHoaId').value = '';
+        document.getElementById('gViTriId').value = '';
+        document.getElementById('textHangHoa').innerHTML = '-- Chọn hàng hoá --';
+        document.getElementById('textHangHoa').classList.remove("text-primary", "fw-bold");
+        document.getElementById('textViTri').innerHTML = '-- Chọn vị trí --';
+        document.getElementById('textViTri').classList.remove("text-primary", "fw-bold");
+        
+        hhMenu.innerHTML = '';
+        vtMenu.innerHTML = '';
+        
+        if (!khoId) {
+            hhMenu.innerHTML = '<li><span class="dropdown-item text-muted">-- Vui lòng chọn kho trước --</span></li>';
+            vtMenu.innerHTML = '<li><span class="dropdown-item text-muted">-- Vui lòng chọn kho trước --</span></li>';
+            return;
+        }
+        
+        const filteredItems = itemsData.filter(i => i.kho_id === khoId);
+        if(filteredItems.length === 0) {
+            hhMenu.innerHTML = '<li><span class="dropdown-item text-muted">Kho này chưa có hàng hoá</span></li>';
+        } else {
+            filteredItems.forEach(i => {
+                const li = document.createElement('li');
+                li.innerHTML = `<button type="button" class="dropdown-item py-2 border-bottom" style="font-size: 0.95rem;">${i.label}</button>`;
+                li.querySelector('button').onclick = () => selectDropdownOption('gHangHoaId', 'textHangHoa', i.id, i.label);
+                hhMenu.appendChild(li);
+            });
+        }
+        
+        const filteredViTri = viTriData.filter(v => v.kho_id === khoId);
+        if(filteredViTri.length === 0) {
+            vtMenu.innerHTML = '<li><span class="dropdown-item text-muted">Kho này chưa có vị trí</span></li>';
+        } else {
+            filteredViTri.forEach(v => {
+                const li = document.createElement('li');
+                li.innerHTML = `<button type="button" class="dropdown-item py-2 border-bottom" style="font-size: 0.95rem;">${v.label}</button>`;
+                li.querySelector('button').onclick = () => selectDropdownOption('gViTriId', 'textViTri', v.id, v.label);
+                vtMenu.appendChild(li);
+            });
+        }
+    };
+
+    // ── LOGIC CHUYỂN VỊ TRÍ ──────────────────────────────────
+    window.filterHangHoaChuyenOptions = function() {
+        const khoId = document.getElementById('cKhoId').value;
+        const hhMenu = document.getElementById('cMenuHangHoa');
+        const vtNguonMenu = document.getElementById('cMenuViTriNguon');
+        const vtDichMenu = document.getElementById('cMenuViTriDich');
+
+        document.getElementById('cHangHoaId').value = '';
+        document.getElementById('cViTriNguonId').value = '';
+        document.getElementById('cViTriDichId').value = '';
+        document.getElementById('cTextHangHoa').innerHTML = '-- Chọn hàng hoá --';
+        document.getElementById('cTextHangHoa').classList.remove('text-primary', 'fw-bold');
+        document.getElementById('cTextViTriNguon').innerHTML = '-- Chọn vị trí nguồn --';
+        document.getElementById('cTextViTriNguon').classList.remove('text-primary', 'fw-bold');
+        document.getElementById('cTextViTriDich').innerHTML = '-- Chọn vị trí đích --';
+        document.getElementById('cTextViTriDich').classList.remove('text-primary', 'fw-bold');
+
+        hhMenu.innerHTML = '';
+        vtNguonMenu.innerHTML = '<li><span class="dropdown-item text-muted">-- Chọn hàng hoá trước --</span></li>';
+        vtDichMenu.innerHTML = '';
+
+        if (!khoId) {
+            hhMenu.innerHTML = '<li><span class="dropdown-item text-muted">-- Vui lòng chọn kho trước --</span></li>';
+            vtDichMenu.innerHTML = '<li><span class="dropdown-item text-muted">-- Vui lòng chọn kho trước --</span></li>';
+            return;
+        }
+
+        // Hàng hóa: chỉ lấy những hàng có trong tonViTriData của kho này
+        const hangHoaCoTrongViTriSet = new Set(
+            tonViTriData.filter(t => t.kho_id === khoId).map(t => t.hang_hoa_id)
+        );
+        const filteredItems = itemsData.filter(i => i.kho_id === khoId && hangHoaCoTrongViTriSet.has(i.id));
+        if (filteredItems.length === 0) {
+            hhMenu.innerHTML = '<li><span class="dropdown-item text-muted">Kho này chưa có hàng hoá ở vị trí nào</span></li>';
+        } else {
+            filteredItems.forEach(i => {
+                const li = document.createElement('li');
+                li.innerHTML = `<button type="button" class="dropdown-item py-2 border-bottom" style="font-size: 0.95rem;">${i.label}</button>`;
+                li.querySelector('button').onclick = () => {
+                    selectDropdownOption('cHangHoaId', 'cTextHangHoa', i.id, i.label);
+                    filterViTriNguonOptions(khoId, i.id);
+                };
+                hhMenu.appendChild(li);
+            });
+        }
+
+        // Vị trí đích: tất cả vị trí trong kho
+        const filteredViTri = viTriData.filter(v => v.kho_id === khoId);
+        if (filteredViTri.length === 0) {
+            vtDichMenu.innerHTML = '<li><span class="dropdown-item text-muted">Kho này chưa có vị trí</span></li>';
+        } else {
+            filteredViTri.forEach(v => {
+                const li = document.createElement('li');
+                li.innerHTML = `<button type="button" class="dropdown-item py-2 border-bottom" style="font-size: 0.95rem;">${v.label}</button>`;
+                li.querySelector('button').onclick = () => selectDropdownOption('cViTriDichId', 'cTextViTriDich', v.id, v.label);
+                vtDichMenu.appendChild(li);
+            });
+        }
+    };
+
+    function filterViTriNguonOptions(khoId, hangHoaId) {
+        const vtNguonMenu = document.getElementById('cMenuViTriNguon');
+        document.getElementById('cViTriNguonId').value = '';
+        document.getElementById('cTextViTriNguon').innerHTML = '-- Chọn vị trí nguồn --';
+        document.getElementById('cTextViTriNguon').classList.remove('text-primary', 'fw-bold');
+        vtNguonMenu.innerHTML = '';
+
+        // Chỉ lấy những vị trí trong kho đó MÀ có hàng hóa này
+        const filteredNguon = tonViTriData.filter(t => t.kho_id === khoId && t.hang_hoa_id === hangHoaId);
+        if (filteredNguon.length === 0) {
+            vtNguonMenu.innerHTML = '<li><span class="dropdown-item text-muted">Hàng hoá này chưa được gán vào vị trí nào</span></li>';
+        } else {
+            filteredNguon.forEach(t => {
+                const label = `${t.ma_vi_tri} (Số lượng hiện có: ${t.so_luong})`;
+                const li = document.createElement('li');
+                li.innerHTML = `<button type="button" class="dropdown-item py-2 border-bottom" style="font-size: 0.95rem;">${label}</button>`;
+                li.querySelector('button').onclick = () => selectDropdownOption('cViTriNguonId', 'cTextViTriNguon', t.vi_tri_id, label);
+                vtNguonMenu.appendChild(li);
+            });
+        }
+    }
+
+    const chuyenForm = document.getElementById('formChuyenViTri');
+    if (chuyenForm) {
+        chuyenForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+
+            if (!formData.get('hang_hoa_id')) { alert('Vui lòng chọn Hàng hoá!'); return; }
+            if (!formData.get('vi_tri_nguon_id')) { alert('Vui lòng chọn Vị trí nguồn!'); return; }
+            if (!formData.get('vi_tri_dich_id')) { alert('Vui lòng chọn Vị trí đích!'); return; }
+
+            const btn = document.getElementById('btnSubmitChuyen');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang chuyển...';
+
+            fetch("{% url 'chuyen_vi_tri_thu_cong' %}", {
+                method: 'POST',
+                body: formData,
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert('Lỗi: ' + data.message);
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-exchange-alt me-1"></i> Xác nhận chuyển';
+                }
+            })
+            .catch(err => {
+                alert('Có lỗi mạng khi chuyển vị trí!');
+                console.error(err);
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-exchange-alt me-1"></i> Xác nhận chuyển';
+            });
+        });
+    }
 });
 </script>
 {% endblock %}
