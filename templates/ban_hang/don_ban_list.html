@@ -42,7 +42,7 @@
                         <th>Số đơn hàng</th>
                         <th>Mã khách</th>
                         <th>Tên khách</th>
-                        <th class="text-right">Tiền hàng</th>
+                        <th class="text-right">Tổng tiền</th>
                         <th>Mã ngoại tệ</th>
                         <th>Diễn giải</th>
                         <th>Trạng thái</th>
@@ -56,14 +56,16 @@
                         <td><a href="{% url 'don_ban_detail' item.pk %}"><strong>{{ item.so_don }}</strong></a></td>
                         <td>{{ item.khach_hang.ma_kh|default:"-" }}</td>
                         <td>{{ item.ten_kh }}</td>
-                        <td class="text-right fw-semibold">{{ item.tong_tien_hang|vnd }}</td>
+                        <td class="text-right fw-semibold">{{ item.tong_thanh_toan|vnd }}</td>
                         <td>{{ item.ma_ngoai_te }}</td>
                         <td>{{ item.ghi_chu|default:"-"|truncatechars:40 }}</td>
                         <td>
                             {% if item.trang_thai == '1' %}
                             <span class="badge badge-warning">1 - Lập chứng từ</span>
                             {% elif item.trang_thai == '2' %}
-                            <span class="badge badge-danger">2 - Treo</span>
+                            <span class="badge badge-info">2 - Giao 1 phần</span>
+                            {% elif item.trang_thai == '3' %}
+                            <span class="badge badge-success">3 - Hoàn thành</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -98,7 +100,8 @@
                         <select name="trang_thai" class="form-control">
                             <option value="">-- Tất cả --</option>
                             <option value="1" {% if trang_thai_filter == '1' %}selected{% endif %}>1 - Lập chứng từ</option>
-                            <option value="2" {% if trang_thai_filter == '2' %}selected{% endif %}>2 - Treo</option>
+                            <option value="2" {% if trang_thai_filter == '2' %}selected{% endif %}>2 - Giao 1 phần</option>
+                            <option value="3" {% if trang_thai_filter == '3' %}selected{% endif %}>3 - Hoàn thành</option>
                         </select>
                     </div>
                     <div class="col-md-4">

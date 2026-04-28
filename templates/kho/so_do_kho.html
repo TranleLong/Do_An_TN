@@ -236,7 +236,7 @@
 {% block content %}
 <div class="card">
     <div class="card-header">
-        <div class="card-title"><i class="fas fa-map-marked-alt text-primary" style="white-space: nowrap"></i> Sơ đồ kho</div>
+        <div class="card-title" style="white-space: nowrap; margin-right: 10px;"><i class="fas fa-map-marked-alt text-primary"></i> Sơ đồ kho</div>
         <form method="get" class="d-flex" style="gap: 10px;">
             <select name="kho_id" class="form-select form-select-sm" style="width: 160px; flex-shrink: 0;" onchange="this.form.submit()">
                 <option value="">-- Tất cả kho --</option>
@@ -654,7 +654,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Logic tạo bộ lọc danh sách hàng hóa và vị trí theo kho
     const itemsData = [
         {% for item in items %}
-        { kho_id: "{{ item.kho_id }}", id: "{{ item.hang_hoa_id }}", label: "{{ item.hang_hoa.ma_hang }} - {{ item.hang_hoa.ten_hang|escapejs }} (Tồn: {{ item.so_luong }})" },
+        { 
+            kho_id: "{{ item.kho_id }}", 
+            id: "{{ item.hang_hoa_id }}", 
+            ma_hang: "{{ item.hang_hoa.ma_hang }}",
+            ten_hang: "{{ item.hang_hoa.ten_hang|escapejs }}",
+            tong_ton: {{ item.so_luong|default:0 }} 
+        },
         {% endfor %}
     ];
     
@@ -707,9 +713,18 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        const filteredItems = itemsData.filter(i => i.kho_id === khoId);
+        const filteredItems = itemsData.filter(i => i.kho_id === khoId).map(i => {
+            const daGan = tonViTriData.filter(t => t.kho_id === khoId && t.hang_hoa_id === i.id).reduce((sum, t) => sum + t.so_luong, 0);
+            const chuaGan = i.tong_ton - daGan;
+            return {
+                ...i,
+                chuaGan: chuaGan,
+                label: `${i.ma_hang} - ${i.ten_hang} (Chưa gán: ${chuaGan} / Tổng tồn: ${i.tong_ton})`
+            };
+        }).filter(i => i.chuaGan > 0);
+        
         if(filteredItems.length === 0) {
-            hhMenu.innerHTML = '<li><span class="dropdown-item text-muted">Kho này chưa có hàng hoá</span></li>';
+            hhMenu.innerHTML = '<li><span class="dropdown-item text-muted">Kho này không có hàng hoá nào đang cần gán vị trí</span></li>';
         } else {
             filteredItems.forEach(i => {
                 const li = document.createElement('li');
@@ -768,10 +783,11 @@ document.addEventListener('DOMContentLoaded', function() {
             hhMenu.innerHTML = '<li><span class="dropdown-item text-muted">Kho này chưa có hàng hoá ở vị trí nào</span></li>';
         } else {
             filteredItems.forEach(i => {
+                const labelText = `${i.ma_hang} - ${i.ten_hang} (Tổng Tồn: ${i.tong_ton})`;
                 const li = document.createElement('li');
-                li.innerHTML = `<button type="button" class="dropdown-item py-2 border-bottom" style="font-size: 0.95rem;">${i.label}</button>`;
+                li.innerHTML = `<button type="button" class="dropdown-item py-2 border-bottom" style="font-size: 0.95rem;">${labelText}</button>`;
                 li.querySelector('button').onclick = () => {
-                    selectDropdownOption('cHangHoaId', 'cTextHangHoa', i.id, i.label);
+                    selectDropdownOption('cHangHoaId', 'cTextHangHoa', i.id, labelText);
                     filterViTriNguonOptions(khoId, i.id);
                 };
                 hhMenu.appendChild(li);

@@ -218,7 +218,8 @@
                 <label class="form-label">Trạng thái</label>
                 <select name="trang_thai" class="form-control">
                     <option value="1" {% if don.trang_thai|default:'1' == '1' %}selected{% endif %}>1 - Lập chứng từ</option>
-                    <option value="2" {% if don.trang_thai == '2' %}selected{% endif %}>2 - Treo</option>
+                    <option value="2" {% if don.trang_thai == '2' %}selected{% endif %}>2 - Giao 1 phần</option>
+                    <option value="3" {% if don.trang_thai == '3' %}selected{% endif %}>3 - Hoàn thành</option>
                 </select>
             </div>
 
@@ -265,6 +266,7 @@
                             <td>
                                 <div class="lookup-box">
                                     <input type="text" class="form-control lookup-input lookup-display hang-display" list="hang_lookup_list" placeholder="Nhập mã hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
+                                    <button type="button" class="lookup-icon-btn btn-search-hang" title="Tra cứu hàng hóa"><i class="fas fa-search"></i></button>
                                     <select name="hang_id[]" class="form-control hang-select" style="display:none;" required>
                                         <option value="">-- Chọn --</option>
                                         {% for h in hang_list %}
@@ -291,6 +293,7 @@
                             <td>
                                 <div class="lookup-box">
                                     <input type="text" class="form-control lookup-input lookup-display hang-display" list="hang_lookup_list" placeholder="Nhập mã hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
+                                    <button type="button" class="lookup-icon-btn btn-search-hang" title="Tra cứu hàng hóa"><i class="fas fa-search"></i></button>
                                     <select name="hang_id[]" class="form-control hang-select" style="display:none;" required>
                                         <option value="">-- Chọn --</option>
                                         {% for h in hang_list %}
@@ -627,7 +630,7 @@
 
     function loadHangResults() {
         const q = $('#hangSearchInput').val().trim();
-        $.get('{% url "hang_hoa_lookup_api" %}', { q: q, page: 1, page_size: 20, only_available: 1, kho_id: $('select[name="kho"]').val() }, function(resp) {
+        $.get('{% url "hang_hoa_lookup_api" %}', { q: q, page: 1, page_size: 20, kho_id: $('select[name="kho"]').val() }, function(resp) {
             const rows = resp.results || [];
             if (!rows.length) {
                 $('#hangSearchResults').html('<div class="p-3 text-muted text-center">Không tìm thấy hàng hóa</div>');
@@ -751,11 +754,8 @@
             $(this).val(formatMoneyInputValue($(this).val()));
         }
         if ($(this).hasClass('so-luong')) {
-            const ton = parseFloat($row.find('.ton-kho').val() || 0);
             const sl = parseFloat($(this).val() || 0);
-            if (sl > ton) {
-                $(this).val(ton);
-            }
+            // Không giới hạn số lượng đặt theo số lượng tồn kho nữa để cho phép tạo đơn lớn hơn tồn kho (phục vụ tính năng giao hàng từng đợt)
         }
         if ($(this).hasClass('don-gia')) {
             $row.data('manual-price', true);

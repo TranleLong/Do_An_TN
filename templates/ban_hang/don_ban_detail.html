@@ -9,9 +9,11 @@
             <i class="fas fa-file-invoice-dollar text-success"></i> Chi tiết đơn bán hàng: {{ don.so_don }}
             
             {% if don.trang_thai == '1' %}
-            <span class="badge badge-warning ml-2">1 - Lập chứng từ</span>
+            <span class="badge badge-warning ml-2">{{don.get_trang_thai_display}}</span>
             {% elif don.trang_thai == '2' %}
-            <span class="badge badge-danger ml-2">2 - Treo</span>
+            <span class="badge badge-info ml-2">{{don.get_trang_thai_display}}</span>
+            {% elif don.trang_thai == '3' %}
+            <span class="badge badge-success ml-2">{{don.get_trang_thai_display}}</span>
             {% endif %}
         </div>
         <div>
@@ -41,6 +43,11 @@
         </div>
 
         <h6 class="text-muted text-uppercase mb-3 mt-4" style="font-size: 0.75rem; font-weight: 600;">Chi tiết vật tư/phụ tùng xuất bán</h6>
+        <div class="mb-3">
+            <a href="{% url 'hoa_don_ban_them' %}?don_ban={{ don.pk }}" class="btn btn-success btn-sm">
+                <i class="fas fa-file-invoice-dollar me-1"></i> Lập hóa đơn giao đợt tiếp
+            </a>
+        </div>
         <div class="table-responsive">
             <table class="table">
                 <thead>
@@ -49,7 +56,9 @@
                         <th>Mã phụ tùng</th>
                         <th>Tên phụ tùng</th>
                         <th class="text-center">ĐVT</th>
-                        <th class="text-right">Số lượng</th>
+                        <th class="text-right">SL Đặt</th>
+                        <th class="text-right" style="color:#198754;">Đã giao</th>
+                        <th class="text-right" style="color:#dc3545;">Còn lại</th>
                         <th class="text-right">Đơn giá</th>
                         <th class="text-right">C.Khấu</th>
                         <th class="text-right">Thuế VAT</th>
@@ -63,14 +72,18 @@
                         <td><strong>{{ ct.hang_hoa.ma_hang }}</strong></td>
                         <td>{{ ct.hang_hoa.ten_hang }}</td>
                         <td class="text-center">{{ ct.hang_hoa.don_vi_tinh.ten|default:"-" }}</td>
-                        <td class="text-right fw-semibold">{{ ct.so_luong|floatformat:0|vnd }}</td>
-                        <td class="text-right">{{ ct.don_gia|vnd }} đ</td>
+                        <td class="text-right fw-semibold">{{ ct.so_luong|floatformat:0 }}</td>
+                        <td class="text-right fw-semibold" style="color:#198754;">{{ ct.so_luong_da_giao }}</td>
+                        <td class="text-right fw-semibold {% if ct.so_luong_con_lai > 0 %}text-danger{% else %}text-success{% endif %}">
+                            {{ ct.so_luong_con_lai }}
+                        </td>
+                        <td class="text-right">{{ ct.don_gia|floatformat:0 }} đ</td>
                         <td class="text-right">{{ ct.chiet_khau }}%</td>
                         <td class="text-right">{{ ct.thue_vat }}%</td>
-                        <td class="text-right fw-bold text-success">{{ ct.thanh_tien|vnd }} đ</td>
+                        <td class="text-right fw-bold text-success">{{ ct.thanh_tien|floatformat:0 }} đ</td>
                     </tr>
                     {% empty %}
-                    <tr><td colspan="9" class="text-center text-muted">Không có chi tiết mặt hàng.</td></tr>
+                    <tr><td colspan="11" class="text-center text-muted">Không có chi tiết mặt hàng.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

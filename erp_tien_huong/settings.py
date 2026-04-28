@@ -26,7 +26,6 @@ INSTALLED_APPS = [
     'apps.danh_muc',
     'apps.kho',
     'apps.ban_hang',
-    'apps.mua_hang',
     'apps.so_cai.apps.SoCaiConfig',
 ]
 

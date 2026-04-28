@@ -196,20 +196,20 @@
         <div class="form-row">
             <div class="col col-2 form-group">
                 <label class="form-label">Số phiếu <span class="text-danger">*</span></label>
-                <input type="text" name="so_phieu" class="form-control" value="{{ so_phieu_default }}" required>
+                <input type="text" name="so_phieu" class="form-control" value="{{ so_phieu_default }}">
             </div>
             <div class="col col-2 form-group">
                 <label class="form-label">Ngày lập <span class="text-danger">*</span></label>
-                <input type="date" name="ngay_lap" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+                <input type="date" name="ngay_lap" class="form-control" value="{{ today|date:'Y-m-d' }}">
             </div>
             <div class="col col-2 form-group">
                 <label class="form-label">Ngày hạch toán <span class="text-danger">*</span></label>
-                <input type="date" name="ngay_hach_toan" class="form-control" value="{{ today|date:'Y-m-d' }}" required>
+                <input type="date" name="ngay_hach_toan" class="form-control" value="{{ today|date:'Y-m-d' }}">
                 <small class="text-muted">Ngày dùng để ghi nhận Sổ cái kế toán.</small>
             </div>
             <div class="col col-2 form-group">
                 <label class="form-label">Loại chứng từ <span class="text-danger">*</span></label>
-                <select name="loai_nhap" id="loaiChungTu" class="form-control" required style="font-weight:600;">
+                <select name="loai_nhap" id="loaiChungTu" class="form-control" style="font-weight:600;">
                     <option value="1" {% if editing_phieu and editing_phieu.loai_nhap == '1' %}selected{% endif %}>1 - Mua nhà cung cấp</option>
                     <option value="2" {% if editing_phieu and editing_phieu.loai_nhap == '2' %}selected{% endif %}>2 - Khách hàng trả hàng</option>
                     <option value="3" {% if editing_phieu and editing_phieu.loai_nhap == '3' %}selected{% endif %}>3 - Nhập chênh lệch kiểm kê</option>
@@ -217,7 +217,7 @@
             </div>
             <div class="col col-4 form-group">
                 <label class="form-label">Kho nhận <span class="text-danger">*</span></label>
-                <select name="kho" class="form-control" required>
+                <select name="kho" class="form-control">
                     {% for k in kho_list %}
                     <option value="{{ k.pk }}">{{ k.ten_kho }}</option>
                     {% endfor %}
@@ -289,8 +289,8 @@
                         <td>
                             <input type="hidden" name="doi_tra_ct_id[]" value="">
                             <div class="lookup-wrap">
-                                <input type="text" class="form-control hang-display lookup-input" placeholder="Nhập mã hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" required>
-                                <select name="hang_id[]" class="form-control hang-select" style="display:none;" required>
+                                <input type="text" class="form-control hang-display lookup-input" placeholder="Nhập mã hàng hoặc bấm kính lúp" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                                <select name="hang_id[]" class="form-control hang-select" style="display:none;">
                                     <option value="">-- Chọn vật tư --</option>
                                     {% for h in hang_list %}
                                     <option value="{{ h.pk }}" data-ma="{{ h.ma_hang }}" data-ten="{{ h.ten_hang }}" data-dvt="{{ h.don_vi_tinh.ten|default:'' }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
@@ -301,8 +301,8 @@
                         </td>
                         <td><input type="text" class="form-control hang-ten-display" readonly></td>
                         <td><input type="text" class="form-control hang-dvt-display text-center" readonly></td>
-                        <td><input type="number" name="so_luong_nhan[]" class="form-control so-luong calc-input" min="1" step="1" required></td>
-                        <td><input type="text" name="don_gia[]" class="form-control don-gia calc-input money-input" inputmode="numeric" value="0" required></td>
+                        <td><input type="number" name="so_luong_nhan[]" class="form-control so-luong calc-input" min="1" step="1"></td>
+                        <td><input type="text" name="don_gia[]" class="form-control don-gia calc-input money-input" inputmode="numeric" value="0"></td>
                         <td>
                             <div class="lookup-wrap">
                                 <input name="tk_no[]" class="form-control tk-no lookup-input" placeholder="VD: 156" autocomplete="off" />
@@ -1274,7 +1274,14 @@
     $(document).on('click', '.btn-select-hang', function(e) {
         e.preventDefault();
         const hangId = String($(this).data('hang-id') || '');
+        const ma = $(this).find('.hang-row-code').text() || '';
+        const ten = $(this).find('.hang-row-name').text() || '';
+        const dvt = $(this).find('.hang-row-dvt').text() || '';
+
         if (currentHangSelectElement && hangId) {
+            if (currentHangSelectElement.find(`option[value="${hangId}"]`).length === 0) {
+                currentHangSelectElement.append(`<option value="${hangId}" data-ma="${ma}" data-ten="${ten}" data-dvt="${dvt}">${ma} - ${ten}</option>`);
+            }
             currentHangSelectElement.val(hangId).trigger('change');
         }
         if (hangModalInstance) {
@@ -1320,6 +1327,20 @@
             $('#phieuDoiTraSelect').focus();
             return;
         }
+
+        // Tự động sử dụng dữ liệu Gợi ý Vị trí của hệ thống nếu người dùng không Phân bổ thủ công
+        $('#chiTietBody .item-row').each(function() {
+            let hiddenInput = $(this).find('.vi-tri-allocations');
+            let goiYData = $(this).find('.goi-y-vi-tri').data('goi-y-api');
+            if (!hiddenInput.val() && goiYData && goiYData.length > 0) {
+                let autoAllocations = goiYData.map(item => ({
+                    vt_id: item.vi_tri_id,
+                    ma_vt: item.ma_vi_tri,
+                    qty: item.de_xuat_so_luong
+                }));
+                hiddenInput.val(JSON.stringify(autoAllocations));
+            }
+        });
     });
 
     $(document).on('change', '.hang-select', function() {
@@ -1382,3 +1403,4 @@
     });
 </script>
 {% endblock %}
+

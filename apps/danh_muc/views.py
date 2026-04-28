@@ -323,7 +323,7 @@ def kh_list(request):
         'so_dien_thoai': so_dien_thoai,
         'loai_kh': loai_kh,
         'trang_thai': trang_thai,
-        'page_title': 'Danh sách khách hàng', 'active_menu': 'khach_hang',
+        'page_title': 'Danh sách đối tác', 'active_menu': 'khach_hang',
     })
 
 
@@ -861,6 +861,13 @@ def hang_hoa_api(request):
             if tk:
                 ton = tk.so_luong
                 gia_von = float(tk.gia_von_tb)
+        else:
+            from django.db.models import Sum
+            ton = TonKho.objects.filter(hang_hoa=h).aggregate(s=Sum('so_luong'))['s'] or 0
+            # Tính giá vốn tạm thời từ tk bất kì nếu cần, hoặc để 0. Thường giá vốn lấy theo kho
+            tk_avg = TonKho.objects.filter(hang_hoa=h).exclude(gia_von_tb=0).first()
+            if tk_avg:
+                gia_von = float(tk_avg.gia_von_tb)
         return JsonResponse({
             'id': h.id,
             'ma_hang': h.ma_hang,

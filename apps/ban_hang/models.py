@@ -22,9 +22,10 @@ class DonBan(AccountingPeriodLockMixin, models.Model):
         ('chuyen_khoan', 'Chuyển khoản'),
         ('no', 'Ghi nợ'),
     ]
-    TRANG_THAI = [
+    TRANG_THAI_DON_BAN = [
         ('1', '1 - Lập chứng từ'),
-        ('2', '2 - Treo'),
+        ('2', '2 - Giao 1 phần'),
+        ('3', '3 - Hoàn thành'),
     ]
     so_don = models.CharField(max_length=30, unique=True, verbose_name='Số đơn bán')
     ngay_chung_tu = models.DateField(default=datetime.date.today, verbose_name='Ngày chứng từ')
@@ -59,7 +60,7 @@ class DonBan(AccountingPeriodLockMixin, models.Model):
     con_no = models.DecimalField(max_digits=18, decimal_places=0, default=0,
                                   verbose_name='Còn nợ')
     han_thanh_toan = models.DateField(null=True, blank=True, verbose_name='Hạn thanh toán')
-    trang_thai = models.CharField(max_length=20, choices=TRANG_THAI, default='1',
+    trang_thai = models.CharField(max_length=20, choices=TRANG_THAI_DON_BAN, default='1',
                                    verbose_name='Trạng thái')
     ghi_chu = models.TextField(blank=True, verbose_name='Ghi chú')
     ngay_tao = models.DateTimeField(auto_now_add=True)
@@ -97,6 +98,7 @@ class DonBan_CT(models.Model):
                                  related_name='chi_tiet', verbose_name='Đơn bán')
     hang_hoa = models.ForeignKey(HangHoa, on_delete=models.PROTECT, verbose_name='Hàng hóa')
     so_luong = models.IntegerField(verbose_name='Số lượng')
+    so_luong_da_giao = models.IntegerField(default=0, verbose_name='Số lượng đã giao')
     don_gia = models.DecimalField(max_digits=18, decimal_places=0, verbose_name='Đơn giá')
     chiet_khau = models.DecimalField(max_digits=5, decimal_places=2, default=0,
                                       verbose_name='CK (%)')
@@ -115,6 +117,10 @@ class DonBan_CT(models.Model):
     class Meta:
         db_table = 'ban_hang_donban_ct'
         verbose_name = 'Chi tiết đơn bán'
+
+    @property
+    def so_luong_con_lai(self):
+        return max(0, int(self.so_luong or 0) - int(self.so_luong_da_giao or 0))
 
     def save(self, *args, **kwargs):
         ck = self.don_gia * self.chiet_khau / 100

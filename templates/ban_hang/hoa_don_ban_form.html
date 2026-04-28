@@ -481,6 +481,9 @@
 {% endblock %}
 
 {% block extra_js %}
+{% if copy_data %}
+    {{ copy_data|json_script:"copyHdData" }}
+{% endif %}
 <script>
     let khModal = null;
     let donModal = null;
@@ -497,7 +500,8 @@
         return Number.isNaN(num) ? 0 : num;
     }
     function formatMoneyInputValue(val) {
-        return Math.round(parseMoneyInput(val)).toLocaleString('vi-VN');
+        const num = Math.round(parseMoneyInput(val));
+        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     }
     function escapeHtml(str) {
         return String(str || '')
@@ -669,6 +673,60 @@
         }
 
         return false;
+    }
+
+    function applyHdCopyData() {
+        const node = document.getElementById('copyHdData');
+        if (!node) return;
+        const data = JSON.parse(node.textContent || '{}');
+
+        if (data.ma_giao_dich) $('select[name="ma_giao_dich"]').val(String(data.ma_giao_dich)).trigger('change');
+        if (data.ngay_lap) $('input[name="ngay_lap"]').val(data.ngay_lap);
+        if (data.ngay_hach_toan) $('input[name="ngay_hach_toan"]').val(data.ngay_hach_toan);
+        if (data.ma_ngoai_te) $('select[name="ma_ngoai_te"]').val(String(data.ma_ngoai_te)).trigger('change');
+        if (data.ty_gia !== undefined) $('input[name="ty_gia"]').val(data.ty_gia || 1);
+        
+        if (data.khach_hang_id) $('#khach_hang').val(String(data.khach_hang_id)).trigger('change');
+        if (data.khach_hang_label) $('#kh_display').val(data.khach_hang_label);
+        
+        if (data.ten_kh !== undefined) $('#ten_kh').val(data.ten_kh || '');
+        if (data.dia_chi !== undefined) $('#dia_chi').val(data.dia_chi || '');
+        if (data.so_dien_thoai !== undefined) $('#so_dien_thoai').val(data.so_dien_thoai || '');
+        if (data.mst !== undefined) $('#mst').val(data.mst || '');
+        
+        if (data.nguoi_mua_hang !== undefined) $('#nguoi_mua_hang').val(data.nguoi_mua_hang || '');
+        if (data.ma_nv_ban_hang !== undefined) {
+            $('#ma_nv_ban_hang').val(String(data.ma_nv_ban_hang || '')).trigger('change');
+            updateNvDisplay();
+        }
+        
+        if (data.tk_no !== undefined) $('#tk_no').val(data.tk_no || '');
+        if (data.dien_giai !== undefined) $('#dien_giai').val(data.dien_giai || '');
+
+        if (Array.isArray(data.rows) && data.rows.length > 0) {
+            const $body = $('#chiTietBody');
+            const $seed = $body.find('.item-row:first').clone();
+            $body.empty();
+            
+            data.rows.forEach(function(item) {
+                const $row = $seed.clone();
+                $row.find('select[name="hang_id[]"]').val(String(item.hang_id || ''));
+                $row.find('.hang-display').val(item.hang_label || '');
+                bindHangDisplayByRow($row);
+                
+                if (item.kho_id) $row.find('select[name="kho_id[]"]').val(String(item.kho_id));
+                $row.find('.so-luong').val(Math.round(item.so_luong || 1));
+                $row.find('.gia-ban').val(formatMoneyInputValue(item.gia_ban || 0));
+                $row.find('.ty-le-ck').val(item.ty_le_chiet_khau || 0);
+                $row.find('.thue-suat').val(item.thue_suat || 0);
+                
+                $row.find('input[name="tk_doanh_thu[]"]').val(item.tk_doanh_thu || '');
+                $row.find('input[name="tk_gia_von[]"]').val(item.tk_gia_von || '');
+                $row.find('input[name="tk_kho[]"]').val(item.tk_kho || '');
+                
+                $body.append($row);
+            });
+        }
     }
 
     function loadKhResults() {
@@ -882,10 +940,26 @@
             
             $row.find('select[name="hang_id[]"]').val(hangId);
             $row.find('.kho-select').val(String(r.kho_id));
-            $row.find('.so-luong').val(Math.round(r.so_luong || 0));
+            $row.find('.so-luong').val(Math.round(r.so_luong_giao_lan_nay != null ? r.so_luong_giao_lan_nay : (r.so_luong || 0)));
             $row.find('.gia-ban').val(formatMoneyInputValue(r.gia_ban || 0));
             $row.find('.ty-le-ck').val(r.ty_le_ck || 0);
             $row.find('.thue-suat').val(r.thue_suat || 10);
+            
+            // Mark manually set from order so that it won't be replaced by capNhatGiaBanTheoHang API default price
+            $row.data('manual-price', true);
+            $row.data('manual-discount', true);
+
+            // Hiển thị badge tiến độ giao hàng nếu có thông tin từ đơn
+            if (r.so_luong_don != null) {
+                const badgeHtml = '<div class="mt-1" style="font-size:11px; line-height:1.4;">'
+                    + '<span class="badge bg-secondary me-1" title="Số lượng đặt">ĐH: ' + (r.so_luong_don || 0) + '</span>'
+                    + '<span class="badge bg-success me-1" title="Đã giao">✓ ' + (r.so_luong_da_giao || 0) + '</span>'
+                    + '<span class="badge bg-warning text-dark me-1" title="Còn lại">⟳ ' + (r.so_luong_con_lai || 0) + '</span>'
+                    + '<span class="badge bg-info text-dark" title="Tồn kho">Tồn: ' + (r.ton_kho_hien_tai || 0) + '</span>'
+                    + '</div>';
+                $row.find('.so-luong').after(badgeHtml);
+            }
+
             $body.append($row);
             bindHangDisplayByRow($row);
         });
@@ -1178,6 +1252,7 @@
     });
 
     $(document).ready(function() {
+        applyHdCopyData();
         syncFromSelectedCustomer();
         updateNvDisplay();
         validateHoaDonPeriod();
@@ -1193,6 +1268,42 @@
         });
         tinhTongHoaDon();
         apDungQuyTacMaGiaoDich();
+
+        // Tự động kế thừa đơn hàng nếu đến từ nút "Lập hóa đơn giao đợt tiếp"
+        {% if don_ban_prefill_id %}
+        const prefillDonId = '{{ don_ban_prefill_id }}';
+        if (prefillDonId) {
+            $('#ma_giao_dich').val('2').trigger('change');
+            $.get('{% url "don_ban_api_detail" 0 %}'.replace('/0/', '/' + prefillDonId + '/'), function(resp) {
+                if (resp.khach_hang_id) {
+                    const khId = String(resp.khach_hang_id);
+                    if (!$('#khach_hang option[value="' + khId + '"]').length) {
+                        $('#khach_hang').append('<option value="' + khId + '" data-ma="' + (resp.ma_kh || '') + '" data-ten="' + (resp.ten_kh || '') + '" data-sdt="' + (resp.so_dien_thoai || '') + '" data-mst="' + (resp.mst || '') + '" data-dia-chi="' + (resp.dia_chi || '') + '">' + (resp.ma_kh || '') + ' - ' + (resp.ten_kh || '') + '</option>');
+                    }
+                    $('#khach_hang').val(khId).trigger('change');
+                }
+                $('#don_ban').val(String(resp.id || ''));
+                $('#ten_kh').val(resp.ten_kh || '');
+                $('#dia_chi').val(resp.dia_chi || '');
+                $('#so_dien_thoai').val(resp.so_dien_thoai || '');
+                $('#mst').val(resp.mst || '');
+                $('#nguoi_mua_hang').val(resp.nguoi_mua_hang || '');
+                if (resp.ma_nv_ban_hang) {
+                    const nvMa = String(resp.ma_nv_ban_hang);
+                    let $opt = $('#ma_nv_ban_hang option[value="' + nvMa + '"]');
+                    if (!$opt.length) {
+                        $('#ma_nv_ban_hang').append('<option value="' + nvMa + '" data-ma="' + nvMa + '" data-ten="">' + nvMa + '</option>');
+                        $opt = $('#ma_nv_ban_hang option[value="' + nvMa + '"]');
+                    }
+                    $opt.prop('selected', true);
+                    $('#ma_nv_ban_hang').trigger('change');
+                }
+                $('#ma_ngoai_te').val(resp.ma_ngoai_te || 'VND').trigger('change');
+                $('#ty_gia').val(resp.ty_gia || 1);
+                rebuildRowsFromDon(resp);
+            });
+        }
+        {% endif %}
     });
 </script>
 
@@ -1222,7 +1333,7 @@
             </td>
             <td><input type="text" class="form-control ton-kho-display text-center text-primary fw-bold" readonly tabindex="-1" value="0"></td>
             <td><input type="number" name="so_luong[]" class="form-control so-luong calc-input" min="1" step="1" value="1" required></td>
-            <td><input type="number" name="gia_ban[]" class="form-control gia-ban calc-input" min="0" value="0" required></td>
+            <td><input type="text" name="gia_ban[]" class="form-control gia-ban calc-input money-input" inputmode="numeric" value="0" required></td>
             <td><input type="number" name="ty_le_ck[]" class="form-control ty-le-ck calc-input" min="0" max="100" step="0.01" value="0"></td>
             <td><input type="number" name="thue_suat[]" class="form-control thue-suat calc-input" min="0" step="0.01" value="10"></td>
             <td>

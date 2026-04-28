@@ -438,6 +438,9 @@ def _rollback_phieu_nhap_inventory(phieu):
             vt.save(update_fields=['so_luong', 'ngay_cap_nhat'])
             con_lai_can_tru -= tru
 
+        # Xóa hẳn các bản ghi TonKhoViTri = 0 để _resync không khôi phục lại TonKho
+        TonKhoViTri.objects.filter(hang_hoa=ct.hang_hoa, kho=phieu.kho, so_luong__lte=0).delete()
+
     phieu.trang_thai = '1'
     phieu.save(update_fields=['trang_thai'])
     return True, ''
@@ -456,7 +459,7 @@ def _rollback_phieu_xuat_inventory(phieu):
         ton.so_luong = int(ton.so_luong or 0) + int(ct.so_luong or 0)
         ton.save(update_fields=['so_luong', 'ngay_cap_nhat'])
         
-        vt = TonKhoViTri.objects.select_for_update().filter(hang_hoa=ct.hang_hoa, kho=phieu.kho).exclude(vi_tri__ma_vi_tri__startswith='HL-').first()
+        vt = TonKhoViTri.objects.select_for_update().filter(hang_hoa=ct.hang_hoa, kho=phieu.kho).exclude(vi_tri__ma_vi_tri__startswith='HL-').order_by('-so_luong').first()
         if not vt:
             vi_tri_kho = ViTriKho.objects.filter(kho=phieu.kho, trang_thai='hoat_dong').first()
             if vi_tri_kho:
@@ -1336,28 +1339,32 @@ def so_do_kho(request):
                 ton_by_slot[key] = []
             ton_by_slot[key].append(r)
 
-        # Tính toán hàng chưa gán vị trí (CHỈ tính hàng thường, TUYỆT ĐỐI không bao gồm hàng lỗi)
-        assigned_totals = (
-            TonKhoViTri.objects
-            .filter(kho=kho)
-            .exclude(vi_tri__ma_vi_tri__istartswith='HL-')
-            .values('hang_hoa_id')
-            .annotate(total_assigned=Sum('so_luong'))
-        )
-        assigned_map = {r['hang_hoa_id']: (r['total_assigned'] or 0) for r in assigned_totals}
+        # Tính toán hàng chờ chưa gán dựa vào bảng Phiếu Nhập và Allocation (phù hợp với quy trình CSDL)
+        from django.db.models import Sum, IntegerField
+        from django.db.models.functions import Coalesce
+        from collections import defaultdict
         
+        pn_ct_qs = PhieuNhap_CT.objects.filter(phieu_nhap__kho=kho).annotate(
+            allocated_qty=Coalesce(Sum('allocations__so_luong'), 0, output_field=IntegerField())
+        )
+        
+        overflow_map = defaultdict(int)
+        hang_hoa_objects = {}
+        for ct in pn_ct_qs:
+            unassigned = int(ct.so_luong_nhan or 0) - int(ct.allocated_qty)
+            if unassigned > 0:
+                overflow_map[ct.hang_hoa_id] += unassigned
+                hang_hoa_objects[ct.hang_hoa_id] = ct.hang_hoa
+                
         overflow_items = []
-        for tk in ton_items:
-            # TonKho.so_luong là tồn thường theo thiết kế model.
-            assigned_qty = int(assigned_map.get(tk.hang_hoa_id, 0))
-            unassigned_qty = int(tk.so_luong or 0) - assigned_qty
-            
-            # CHỈ hiện nếu unassigned_qty > 0 (nghĩa là hàng thường chưa được gán hết)
-            if unassigned_qty > 0:
-                overflow_items.append({
-                    'hang_hoa': tk.hang_hoa,
-                    'so_luong': unassigned_qty
-                })
+        for hh_id, qty in overflow_map.items():
+            overflow_items.append({
+                'hang_hoa': hang_hoa_objects[hh_id],
+                'so_luong': qty
+            })
+        
+        # Sắp xếp cho gọn gàng (theo mã hàng)
+        overflow_items.sort(key=lambda x: x['hang_hoa'].ma_hang)
 
         # Dữ liệu JS để lọc vị trí nguồn cho chức năng "Chuyển vị trí"
         # Chỉ lấy các vị trí KỆ (không lấy vị trí hàng lỗi HL- theo yêu cầu)
@@ -1680,6 +1687,9 @@ def phieu_nhap_them(request):
     if request.method == 'POST':
         data = request.POST
         kho_id = data.get('kho')
+        if not kho_id:
+            k = Kho.objects.first()
+            kho_id = k.id if k else None
         loai_nhap = _normalize_loai_nhap(data.get('loai_nhap', '1'))
         if loai_nhap not in ('1', '2'):
             loai_nhap = '1'
@@ -1716,6 +1726,80 @@ def phieu_nhap_them(request):
             so_phieu = so_phieu_input or _gen_so_phieu('NK')
         ngay_lap = data.get('ngay_lap') or data.get('ngay_nhap') or data.get('ngay_chung_tu') or date.today()
         ngay_hach_toan = data.get('ngay_hach_toan') or data.get('ngay_chung_tu') or ngay_lap
+
+        # │ Đọc dữ liệu chi tiết + PRE-VALIDATE sức chứa vị trí TRƯỚC khi tạo phiếu │
+        hang_ids = data.getlist('hang_id[]')
+        doi_tra_ct_ids = data.getlist('doi_tra_ct_id[]')
+        sl_nhans = data.getlist('so_luong_nhan[]')
+        don_gias = data.getlist('don_gia[]')
+        tk_nos = data.getlist('tk_no[]')
+        tk_cos = data.getlist('tk_co[]')
+        vi_tri_allocations = data.getlist('vi_tri_allocations[]')
+
+        _pre_usage = {}
+        for i, alloc_json in enumerate(vi_tri_allocations):
+            if not alloc_json: continue
+            try:
+                alloc_list = json.loads(alloc_json)
+            except (json.JSONDecodeError, ValueError):
+                continue
+            for item in alloc_list:
+                vt_id = item.get('vt_id')
+                qty = int(item.get('qty') or 0)
+                if not vt_id or qty <= 0: continue
+                from .models import ViTriKho
+                vt = ViTriKho.objects.filter(id=vt_id).first()
+                if not vt or not (getattr(vt, 'suc_chua_toi_da', 0) or 0): continue
+                suc_chua = vt.suc_chua_toi_da
+                if vt_id not in _pre_usage:
+                    _pre_usage[vt_id] = (TonKhoViTri.objects.filter(vi_tri=vt).aggregate(s=Sum('so_luong'))['s'] or 0, vt.ma_vi_tri)
+                da_dung, ma_vt = _pre_usage[vt_id]
+                ten_hang = ''
+                if i < len(hang_ids) and hang_ids[i]:
+                    _hh = HangHoa.objects.filter(id=hang_ids[i]).first()
+                    ten_hang = _hh.ma_hang if _hh else ''
+                if da_dung + qty > suc_chua:
+                    # Re-render form với dữ liệu cũ — KHÔNG tạo phiếu
+                    ma_ncc_hop_le = KhachHang.objects.filter(trang_thai=True, la_nha_cung_cap=True).values_list('ma_kh', flat=True)
+                    _ncc_obj = NhaCungCap.objects.filter(id=ncc_id).first() if ncc_id else None
+                    _rows = []
+                    for j, hid in enumerate(hang_ids):
+                        if not hid: continue
+                        _rows.append({
+                            'hang_id': hid,
+                            'hang_label': '',
+                            'so_luong_nhan': int(sl_nhans[j]) if j < len(sl_nhans) and sl_nhans[j] else 0,
+                            'don_gia': int(_parse_money_input(don_gias[j] if j < len(don_gias) else '0')),
+                            'tk_no': tk_nos[j] if j < len(tk_nos) else '',
+                            'tk_co': tk_cos[j] if j < len(tk_cos) else '',
+                            'vi_tri_allocations': vi_tri_allocations[j] if j < len(vi_tri_allocations) else '',
+                        })
+                    messages.error(request, f'Vị trí "{ma_vt}" không đủ sức chứa (còn trống {suc_chua - da_dung}, yêu cầu {qty}, dòng hàng "{ten_hang}"). Vui lòng chọn lại vị trí.')
+                    return render(request, 'kho/phieu_nhap_form.html', {
+                        'kho_list': Kho.objects.filter(trang_thai=True),
+                        'ncc_list': NhaCungCap.objects.filter(trang_thai=True, ma_ncc__in=ma_ncc_hop_le).order_by('ma_ncc'),
+                        'hang_list': HangHoa.objects.all().order_by('ma_hang'),
+                        'tai_khoan_list': TaiKhoanKeToan.objects.filter(trang_thai=True).order_by('ma_tk'),
+                        'so_phieu_default': so_phieu,
+                        'today': date.today(),
+                        'copy_data': {
+                            'rows': _rows,
+                            'ngay_lap': str(ngay_lap),
+                            'ngay_hach_toan': str(ngay_hach_toan),
+                            'loai_nhap': loai_nhap,
+                            'kho_id': str(kho_id or ''),
+                            'ncc_id': str(ncc_id or ''),
+                            'ncc_label': f'{_ncc_obj.ma_ncc} - {_ncc_obj.ten_ncc}' if _ncc_obj else '',
+                            'ghi_chu': data.get('ghi_chu', ''),
+                        },
+                        'doi_tra_pending_payload': _build_doi_tra_pending_payload(),
+                        'page_title': 'Tạo phiếu nhập kho',
+                        'active_menu': 'phieu_nhap',
+                    })
+                _pre_usage[vt_id] = (da_dung + qty, ma_vt)
+        # └──────────────────────────────────────────────────────────────────┘
+
+        # Tất cả validation đã pass — tiến hành tạo phiếu
         phieu = PhieuNhap.objects.create(
             so_phieu=so_phieu,
             ngay_lap=ngay_lap,
@@ -1736,17 +1820,10 @@ def phieu_nhap_them(request):
             phieu.ghi_chu = f"{(phieu.ghi_chu + ' ') if phieu.ghi_chu else ''}{link_tag}".strip()
             phieu.save(update_fields=['ghi_chu'])
 
-        # Xử lý chi tiết
-        hang_ids = data.getlist('hang_id[]')
-        doi_tra_ct_ids = data.getlist('doi_tra_ct_id[]')
-        sl_nhans = data.getlist('so_luong_nhan[]')
-        don_gias = data.getlist('don_gia[]')
-        tk_nos = data.getlist('tk_no[]')
-        tk_cos = data.getlist('tk_co[]')
-        vi_tri_allocations = data.getlist('vi_tri_allocations[]')
         so_dong_hop_le = 0
         doi_tra_so_luong_con_lai = {}
         doi_tra_ct_map = {}
+
 
         if phieu_doi_tra:
             for ct in phieu_doi_tra.chi_tiet.all():
@@ -1804,10 +1881,13 @@ def phieu_nhap_them(request):
                     try:
                         alloc_list = json.loads(alloc_json)
                         for item in alloc_list:
+                            vt_id = item['vt_id']
+                            qty = int(item['qty'] or 0)
+                            if qty <= 0: continue
                             PhieuNhap_CT_Allocation.objects.create(
                                 phieu_nhap_ct=ct_obj,
-                                vi_tri_id=item['vt_id'],
-                                so_luong=int(item['qty'] or 0),
+                                vi_tri_id=vt_id,
+                                so_luong=qty,
                                 ma_vi_tri=item.get('ma_vt') or ''
                             )
                     except (json.JSONDecodeError, KeyError, ValueError):
@@ -1842,7 +1922,6 @@ def phieu_nhap_them(request):
                     return redirect('phieu_nhap_detail', pk=phieu.pk)
 
             if trang_thai_mong_muon == '3':
-                # Kiểm tra chênh lệch kiểm kê trước khi xác nhận nhập
                 hang_ids = list(phieu.chi_tiet.values_list('hang_hoa_id', flat=True))
                 conflicted = _check_kiem_ke_diff(phieu.kho_id, hang_ids)
                 if conflicted:
@@ -1851,7 +1930,6 @@ def phieu_nhap_them(request):
                     return redirect('phieu_nhap_detail', pk=phieu.pk)
 
                 try:
-                    # Tự động ghi bước 2 nếu chưa ghi
                     if phieu.trang_thai == '1':
                         ok = phieu.xac_nhan_nhap_kho()
                         if not ok:
@@ -1890,8 +1968,13 @@ def phieu_nhap_them(request):
                 {
                     'hang_id': str(ct.hang_hoa_id),
                     'hang_label': f'{ct.hang_hoa.ma_hang} - {ct.hang_hoa.ten_hang}',
+                    'so_luong_dat': int(ct.so_luong_dat or 0),
                     'so_luong_nhan': int(ct.so_luong_nhan or 0),
                     'don_gia': float(ct.don_gia or 0),
+                    'chiet_khau': float(ct.chiet_khau or 0),
+                    'thue_vat': float(ct.thue_vat or 10),
+                    'so_lo': ct.so_lo or '',
+                    'han_su_dung': ct.han_su_dung.isoformat() if ct.han_su_dung else '',
                     'tk_no': ct.tk_no or '',
                     'tk_co': ct.tk_co or '',
                     'vi_tri_allocations': json.dumps([{'vt_id': a.vi_tri_id, 'ma_vt': a.vi_tri.ma_vi_tri, 'qty': a.so_luong} for a in ct.allocations.all()])
@@ -1986,6 +2069,8 @@ def phieu_nhap_sua(request, pk):
         tk_cos = data.getlist('tk_co[]')
         vi_tri_allocations = data.getlist('vi_tri_allocations[]')
         so_dong_hop_le = 0
+        vi_tri_usage_cache = {}
+        allocation_errors = []
 
         for i in range(len(hang_ids)):
             if hang_ids[i] and sl_nhans[i] and don_gias[i]:
@@ -2015,10 +2100,27 @@ def phieu_nhap_sua(request, pk):
                     try:
                         alloc_list = json.loads(alloc_json)
                         for item in alloc_list:
+                            vt_id = item['vt_id']
+                            qty = int(item['qty'] or 0)
+                            if qty <= 0: continue
+                            
+                            from .models import ViTriKho
+                            vt = ViTriKho.objects.filter(id=vt_id).first()
+                            if vt and (getattr(vt, 'suc_chua_toi_da', 0) or 0) > 0:
+                                suc_chua = vt.suc_chua_toi_da
+                                da_dung = TonKhoViTri.objects.filter(vi_tri=vt).aggregate(s=Sum('so_luong'))['s'] or 0
+                                tracked_usage = vi_tri_usage_cache.get(vt_id, da_dung)
+                                
+                                if tracked_usage + qty > suc_chua:
+                                    allocation_errors.append(f'Dòng "{ct_obj.hang_hoa.ma_hang}": Vị trí "{vt.ma_vi_tri}" vượt sức chứa (còn trống {suc_chua - tracked_usage}, yêu cầu {qty}). Bỏ qua vị trí này.')
+                                    continue
+                                    
+                                vi_tri_usage_cache[vt_id] = tracked_usage + qty
+
                             PhieuNhap_CT_Allocation.objects.create(
                                 phieu_nhap_ct=ct_obj,
-                                vi_tri_id=item['vt_id'],
-                                so_luong=int(item['qty'] or 0),
+                                vi_tri_id=vt_id,
+                                so_luong=qty,
                                 ma_vi_tri=item.get('ma_vt') or ''
                             )
                     except (json.JSONDecodeError, KeyError, ValueError):
@@ -2031,6 +2133,16 @@ def phieu_nhap_sua(request, pk):
             return redirect('phieu_nhap_sua', pk=pk)
 
         phieu.tinh_tong()
+
+        if allocation_errors:
+            for err in set(allocation_errors):
+                messages.error(request, err)
+            messages.warning(request, 'Đã lưu cấu trúc phiếu nhưng có một số vị trí lỗi bị bỏ qua. Vui lòng kiểm tra lại!')
+            if phieu.trang_thai in ('2', '3'):
+                phieu.trang_thai = '1'
+                phieu.save(update_fields=['trang_thai'])
+            return redirect('phieu_nhap_sua', pk=phieu.pk)
+
         if linked_doi_tra_id:
             phieu.trang_thai = trang_thai_mong_muon
             phieu.save(update_fields=['trang_thai'])
@@ -2258,6 +2370,9 @@ def phieu_xuat_them(request):
     if request.method == 'POST':
         data = request.POST
         kho_id = data.get('kho')
+        if not kho_id:
+            k = Kho.objects.first()
+            kho_id = k.id if k else None
         trang_thai_mong_muon = str(data.get('trang_thai', '1') or '1').strip()
         if trang_thai_mong_muon not in ('1', '2', '3'):
             trang_thai_mong_muon = '1'
@@ -2349,6 +2464,7 @@ def phieu_xuat_them(request):
                     'hang_id': str(ct.hang_hoa_id),
                     'hang_label': f'{ct.hang_hoa.ma_hang} - {ct.hang_hoa.ten_hang}',
                     'so_luong': int(ct.so_luong or 0),
+                    'gia_von': float(ct.gia_von or 0),
                     'tk_no': ct.tk_no or '',
                     'tk_co': ct.tk_co or '',
                 }
@@ -2483,6 +2599,8 @@ def phieu_xuat_sua(request, pk):
                 'so_luong': int(ct.so_luong or 0),
                 'tk_no': ct.tk_no or '',
                 'tk_co': ct.tk_co or '',
+                'gia_von': float(ct.gia_von or 0),
+                'tong_gia_von': float(ct.tong_gia_von or 0),
             }
             for ct in phieu.chi_tiet.all()
         ],
@@ -3514,7 +3632,7 @@ def kiem_ke_dieu_chinh_detail(request, pk):
                     )
                     for r in tang_rows:
                         gia_von = gia_von_map.get(r.hang_hoa_id, Decimal('0'))
-                        PhieuNhap_CT.objects.create(
+                        ct_obj = PhieuNhap_CT.objects.create(
                             phieu_nhap=pn,
                             hang_hoa=r.hang_hoa,
                             so_luong_dat=0,
@@ -3525,11 +3643,48 @@ def kiem_ke_dieu_chinh_detail(request, pk):
                             tk_no='156',
                             tk_co='711',
                         )
+
+                        # ── Xử lý allocation để tránh x2 với TonKhoViTri ──
+                        chenh_lech = int(r.chenh_lech or 0)
+                        suc_chua = getattr(vi_tri, 'suc_chua_toi_da', 0) or 0
+                        da_dung = TonKhoViTri.objects.filter(
+                            vi_tri=vi_tri, kho=phieu.kho
+                        ).aggregate(s=Sum('so_luong'))['s'] or 0
+
+                        if suc_chua <= 0 or da_dung <= suc_chua:
+                            # TH1: vị trí còn đủ chỗ (hoặc không giới hạn)
+                            # TonKhoViTri đã được cập nhật ở trên, tạo allocation để khớp
+                            PhieuNhap_CT_Allocation.objects.create(
+                                phieu_nhap_ct=ct_obj,
+                                vi_tri=vi_tri,
+                                so_luong=chenh_lech,
+                                ma_vi_tri=vi_tri.ma_vi_tri,
+                            )
+                        else:
+                            # TH2: vị trí đã đầy → hoàn trả TonKhoViTri về trước
+                            #       Hàng chờ sẽ thấy CT không có allocation → hiển thị đúng
+                            ton_vt_now = TonKhoViTri.objects.filter(
+                                kho=phieu.kho, vi_tri=vi_tri, hang_hoa=r.hang_hoa
+                            ).first()
+                            if ton_vt_now:
+                                ton_vt_now.so_luong = max(0, int(ton_vt_now.so_luong or 0) - chenh_lech)
+                                ton_vt_now.save(update_fields=['so_luong', 'ngay_cap_nhat'])
+                            # Cộng thẳng vào TonKho tổng để số không bị mất
+                            # (_sync_tonkho_from_vitri sẽ trừ lại khi revert nên không dùng)
+                            ton_kho_total = TonKho.objects.select_for_update().filter(
+                                kho=phieu.kho, hang_hoa=r.hang_hoa
+                            ).first()
+                            if ton_kho_total:
+                                ton_kho_total.so_luong = int(ton_kho_total.so_luong or 0) + chenh_lech
+                                ton_kho_total.save(update_fields=['so_luong'])
+                        # ────────────────────────────────────────────────────
+
                     pn.tinh_tong()
                     try:
                         post_to_ledger('phieu_nhap', pn.id, user=request.user)
                     except LedgerPostingError:
                         pass
+
 
                 if giam_rows:
                     px = PhieuXuat.objects.create(
@@ -4029,10 +4184,10 @@ def gan_vi_tri_thu_cong(request):
         
     try:
         with transaction.atomic():
-            da_gan_vi_tri_khac = TonKhoViTri.objects.filter(kho_id=kho_id, hang_hoa_id=hang_hoa_id).exclude(vi_tri=vt).aggregate(s=Sum('so_luong'))['s'] or 0
+            da_gan_vi_tri_khac = TonKhoViTri.objects.filter(kho_id=kho_id, hang_hoa_id=hang_hoa_id).exclude(vi_tri__ma_vi_tri__istartswith='HL-').exclude(vi_tri=vt).aggregate(s=Sum('so_luong'))['s'] or 0
             
             # Khống chế không được gán VƯỢT tồn kho tổng
-            tong_da_gan = TonKhoViTri.objects.filter(kho_id=kho_id, hang_hoa_id=hang_hoa_id).aggregate(s=Sum('so_luong'))['s'] or 0
+            tong_da_gan = TonKhoViTri.objects.filter(kho_id=kho_id, hang_hoa_id=hang_hoa_id).exclude(vi_tri__ma_vi_tri__istartswith='HL-').aggregate(s=Sum('so_luong'))['s'] or 0
             if tong_da_gan > tk.so_luong: tong_da_gan = tk.so_luong # Safeguard
             chua_gan = tk.so_luong - tong_da_gan
             
@@ -4044,7 +4199,7 @@ def gan_vi_tri_thu_cong(request):
 
             # Nếu cần rút từ các vị trí khác (vì hàng đã lỡ gán hết)
             if luong_can_rut > 0:
-                cac_vi_tri_khac = TonKhoViTri.objects.filter(kho_id=kho_id, hang_hoa_id=hang_hoa_id).exclude(vi_tri=vt).order_by('-so_luong')
+                cac_vi_tri_khac = TonKhoViTri.objects.filter(kho_id=kho_id, hang_hoa_id=hang_hoa_id).exclude(vi_tri__ma_vi_tri__istartswith='HL-').exclude(vi_tri=vt).order_by('-so_luong')
                 for vk in cac_vi_tri_khac:
                     if luong_can_rut <= 0: break
                     tru = min(vk.so_luong, luong_can_rut)
@@ -4061,7 +4216,44 @@ def gan_vi_tri_thu_cong(request):
                 tkvt.save(update_fields=['so_luong'])
             else:
                 TonKhoViTri.objects.create(kho_id=kho_id, hang_hoa_id=hang_hoa_id, vi_tri=vt, so_luong=so_luong)
-        return JsonResponse({'success': True, 'message': 'Gán/Chuyển vị trí thành công (đã tự cấn trừ lượng đã gán cũ nếu cần)!'})
+
+            # ── Cập nhật PhieuNhap_CT_Allocation để "Hàng chờ" giảm đúng ──
+            # Lấy tất cả dòng CT của hàng hóa này trong kho, theo thứ tự FIFO (phiếu cũ trước)
+            pn_ct_list = (
+                PhieuNhap_CT.objects
+                .filter(phieu_nhap__kho_id=kho_id, hang_hoa_id=hang_hoa_id)
+                .order_by('phieu_nhap__ngay_lap', 'id')
+            )
+            con_phai_ghi = so_luong
+            for ct in pn_ct_list:
+                if con_phai_ghi <= 0:
+                    break
+                # Số lượng đã allocation của dòng này
+                da_alloc = (
+                    PhieuNhap_CT_Allocation.objects.filter(phieu_nhap_ct=ct)
+                    .aggregate(s=Sum('so_luong'))['s'] or 0
+                )
+                con_trong_ct = int(ct.so_luong_nhan or 0) - int(da_alloc)
+                if con_trong_ct <= 0:
+                    continue
+                ghi_vao = min(con_trong_ct, con_phai_ghi)
+                # Tạo hoặc cộng vào allocation của vị trí này
+                alloc_obj = PhieuNhap_CT_Allocation.objects.filter(
+                    phieu_nhap_ct=ct, vi_tri=vt
+                ).first()
+                if alloc_obj:
+                    alloc_obj.so_luong += ghi_vao
+                    alloc_obj.save(update_fields=['so_luong'])
+                else:
+                    PhieuNhap_CT_Allocation.objects.create(
+                        phieu_nhap_ct=ct,
+                        vi_tri=vt,
+                        so_luong=ghi_vao,
+                        ma_vi_tri=vt.ma_vi_tri,
+                    )
+                con_phai_ghi -= ghi_vao
+
+        return JsonResponse({'success': True, 'message': 'Gán vị trí thành công!'})
     except Exception as e:
         return JsonResponse({'success': False, 'message': str(e)})
 
@@ -4103,10 +4295,14 @@ def chuyen_vi_tri_thu_cong(request):
         return JsonResponse({'success': False, 'message': f'Vị trí nguồn {vt_nguon.ma_vi_tri} chỉ có {ton_nguon} SP, không đủ để chuyển {so_luong}'})
 
     # Kiểm tra sức chứa vị trí đích
-    da_dung_dich = TonKhoViTri.objects.filter(vi_tri=vt_dich).aggregate(s=Sum('so_luong'))['s'] or 0
+    hang_hoa_obj = tkvt_nguon.hang_hoa if tkvt_nguon else None
+    muc_chiem_cho = max(1, int(getattr(hang_hoa_obj, 'muc_chiem_cho', 1) or 1)) if hang_hoa_obj else 1
+    tong_dung_luong_can = so_luong * muc_chiem_cho
+    
+    da_dung_dich = sum((int(r.so_luong) * max(1, int(getattr(r.hang_hoa, 'muc_chiem_cho', 1) or 1))) for r in TonKhoViTri.objects.filter(vi_tri=vt_dich).select_related('hang_hoa'))
     suc_chua_dich = int(vt_dich.suc_chua_toi_da or 0)
-    if suc_chua_dich > 0 and (da_dung_dich + so_luong > suc_chua_dich):
-        return JsonResponse({'success': False, 'message': f'Vị trí đích {vt_dich.ma_vi_tri} không đủ chỗ. Trống: {suc_chua_dich - da_dung_dich}, Bạn cần: {so_luong}'})
+    if suc_chua_dich > 0 and (da_dung_dich + tong_dung_luong_can > suc_chua_dich):
+        return JsonResponse({'success': False, 'message': f'Vị trí đích {vt_dich.ma_vi_tri} không đủ chỗ. Trống: {suc_chua_dich - da_dung_dich} dung lượng, Bạn cần: {tong_dung_luong_can}'})
 
     try:
         with transaction.atomic():

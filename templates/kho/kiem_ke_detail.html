@@ -118,7 +118,7 @@
                             </td>
                             <td class="text-end">
                                 {% if kk.trang_thai != '3' %}
-                                <input type="number" name="sl_tot[]" min="0" step="1" class="form-control form-control-sm text-end text-success fw-bold input-sl-tot" value="{{ ct.so_luong_tot|default:0|floatformat:0 }}">
+                                <input type="number" name="sl_tot[]" min="0" step="1" style="min-width: 70px;" class="form-control form-control-sm text-end text-success fw-bold input-sl-tot" value="{{ ct.so_luong_tot|default:0|floatformat:0 }}">
                                 {% else %}
                                 <span class="text-success fw-bold">{{ ct.so_luong_tot|floatformat:0|intcomma }}</span>
                                 {% endif %}
