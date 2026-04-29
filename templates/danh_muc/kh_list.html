@@ -39,7 +39,8 @@
                             <input type="checkbox" name="selected_kh" class="erp-row-select" value="{{ item.pk }}"
                                    data-edit-url="{% url 'kh_sua' item.pk %}"
                                    data-delete-url="{% url 'kh_xoa' item.pk %}"
-                                   data-history-url="{% url 'kh_lich_su_mua_hang' item.pk %}">
+
+                                   # Đã loại bỏ url 'kh_lich_su_mua_hang' vì không còn app mua_hang
                         </td>
                         <td><strong>{{ item.ma_kh }}</strong></td>
                         <td>

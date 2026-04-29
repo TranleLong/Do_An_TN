@@ -470,45 +470,8 @@ def kh_xoa(request, pk):
     return redirect('kh_list')
 
 
-@login_required
-def kh_lich_su_mua_hang(request, pk):
-    kh = get_object_or_404(KhachHang, pk=pk)
-    so_don = request.GET.get('so_don', '').strip()
-    tu_ngay = request.GET.get('tu_ngay', '').strip()
-    den_ngay = request.GET.get('den_ngay', '').strip()
-    trang_thai = request.GET.get('trang_thai', '').strip()
-    tt_thanh_toan = request.GET.get('tt_thanh_toan', '').strip()
 
-    items = DonBan.objects.filter(khach_hang=kh).order_by('-ngay_chung_tu', '-id')
-
-    if so_don:
-        items = items.filter(so_don__icontains=so_don)
-    if tu_ngay:
-        items = items.filter(ngay_chung_tu__gte=tu_ngay)
-    if den_ngay:
-        items = items.filter(ngay_chung_tu__lte=den_ngay)
-    if trang_thai:
-        items = items.filter(trang_thai=trang_thai)
-    if tt_thanh_toan == 'da_tt':
-        items = items.filter(con_no__lte=0)
-    elif tt_thanh_toan == 'chua_tt':
-        items = items.filter(con_no__gt=0)
-
-    paginator = Paginator(items, 20)
-    page_obj = paginator.get_page(request.GET.get('page'))
-
-    return render(request, 'danh_muc/kh_lich_su_mua_hang.html', {
-        'kh': kh,
-        'items': page_obj,
-        'page_obj': page_obj,
-        'so_don': so_don,
-        'tu_ngay': tu_ngay,
-        'den_ngay': den_ngay,
-        'trang_thai_filter': trang_thai,
-        'tt_thanh_toan': tt_thanh_toan,
-        'page_title': f'Lịch sử mua hàng - {kh.ten_kh}',
-        'active_menu': 'khach_hang',
-    })
+    # Đã loại bỏ hàm kh_lich_su_mua_hang vì không còn app mua_hang
 
 
 @login_required

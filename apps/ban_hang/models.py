@@ -11,17 +11,6 @@ from apps.so_cai.periods import AccountingPeriodLockMixin
 class DonBan(AccountingPeriodLockMixin, models.Model):
     accounting_period_date_field = 'ngay_chung_tu'
     accounting_period_label = 'đơn bán hàng'
-
-    LOAI_BAN = [
-        ('ban_le', 'Bán lẻ'),
-        ('ban_buon', 'Bán buôn'),
-        ('ban_gara', 'Bán gara/xưởng'),
-    ]
-    PHUONG_THUC_TT = [
-        ('tien_mat', 'Tiền mặt'),
-        ('chuyen_khoan', 'Chuyển khoản'),
-        ('no', 'Ghi nợ'),
-    ]
     TRANG_THAI_DON_BAN = [
         ('1', '1 - Lập chứng từ'),
         ('2', '2 - Giao 1 phần'),
@@ -30,8 +19,6 @@ class DonBan(AccountingPeriodLockMixin, models.Model):
     so_don = models.CharField(max_length=30, unique=True, verbose_name='Số đơn bán')
     ngay_chung_tu = models.DateField(default=datetime.date.today, verbose_name='Ngày chứng từ')
     ngay_ban = models.DateField(default=datetime.date.today, verbose_name='Ngày bán')
-    loai_ban = models.CharField(max_length=20, choices=LOAI_BAN, default='ban_le',
-                                 verbose_name='Loại bán')
     khach_hang = models.ForeignKey(KhachHang, on_delete=models.SET_NULL, null=True, blank=True,
                                     verbose_name='Khách hàng')
     ten_kh = models.CharField(max_length=200, blank=True, verbose_name='Tên KH')
@@ -44,13 +31,10 @@ class DonBan(AccountingPeriodLockMixin, models.Model):
     kho = models.ForeignKey(Kho, on_delete=models.PROTECT, verbose_name='Kho xuất')
     nhan_vien_ban = models.ForeignKey(User, on_delete=models.SET_NULL, null=True,
                                        verbose_name='Nhân viên bán')
-    phuong_thuc_tt = models.CharField(max_length=20, choices=PHUONG_THUC_TT,
-                                       default='tien_mat', verbose_name='PTTT')
     tong_tien_hang = models.DecimalField(max_digits=18, decimal_places=0, default=0)
     tong_so_luong = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name='Tổng số lượng')
     chiet_khau_dh = models.DecimalField(max_digits=18, decimal_places=0, default=0,
                                          verbose_name='Chiết khấu đơn hàng')
-    ma_ngoai_te = models.CharField(max_length=10, default='VND', verbose_name='Mã ngoại tệ')
     ty_gia = models.DecimalField(max_digits=18, decimal_places=4, default=1, verbose_name='Tỷ giá')
     tong_thue = models.DecimalField(max_digits=18, decimal_places=0, default=0)
     tong_thanh_toan = models.DecimalField(max_digits=18, decimal_places=0, default=0,
@@ -64,7 +48,6 @@ class DonBan(AccountingPeriodLockMixin, models.Model):
                                    verbose_name='Trạng thái')
     ghi_chu = models.TextField(blank=True, verbose_name='Ghi chú')
     ngay_tao = models.DateTimeField(auto_now_add=True)
-
     class Meta:
         db_table = 'ban_hang_donban'
         verbose_name = 'Đơn bán hàng'
@@ -75,7 +58,6 @@ class DonBan(AccountingPeriodLockMixin, models.Model):
         return f"{self.so_don} - {self.ten_kh or 'Khách lẻ'}"
 
     def tinh_tong(self):
-        # Tránh dùng self.chi_tiet.all() vì có thể bị cache trong prefetch_related
         chi_tiet_qs = self.chi_tiet.model.objects.filter(don_ban=self)
         tong_hang = sum(ct.thanh_tien for ct in chi_tiet_qs)
         tong_thue = sum(ct.tien_thue for ct in chi_tiet_qs)
@@ -89,7 +71,6 @@ class DonBan(AccountingPeriodLockMixin, models.Model):
 
     def xac_nhan_don_ban(self):
         from .services import DonBanService
-
         return DonBanService.xac_nhan_don_ban(self)
 
 

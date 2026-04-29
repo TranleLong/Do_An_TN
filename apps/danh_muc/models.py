@@ -96,10 +96,8 @@ class NhaCungCap(models.Model):
         return f"{self.ma_ncc} - {self.ten_ncc}"
 
     def get_cong_no(self):
-        from apps.mua_hang.models import HoaDonMuaVao
-
-        total = HoaDonMuaVao.objects.filter(nha_cung_cap=self).aggregate(no=Sum("con_no"))["no"]
-        return total or 0
+        # Đã loại bỏ liên kết đến apps.mua_hang
+        return 0
 
 
 class NhomHang(models.Model):

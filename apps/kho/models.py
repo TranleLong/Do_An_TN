@@ -244,6 +244,15 @@ class PhieuXuat_CT(models.Model):
                                    verbose_name='Giá vốn/đv')
     tong_gia_von = models.DecimalField(max_digits=18, decimal_places=0, default=0,
                                         verbose_name='Tổng giá vốn')
+    gia_xuat = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name='Giá xuất')
+    tong_tien = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name='Tổng tiền')
+
+    def save(self, *args, **kwargs):
+        # Nếu giá xuất chưa có, mặc định lấy giá vốn
+        if not self.gia_xuat or self.gia_xuat == 0:
+            self.gia_xuat = self.gia_von
+        self.tong_tien = (self.so_luong or 0) * (self.gia_xuat or 0)
+        super().save(*args, **kwargs)
     tk_no = models.CharField(max_length=20, blank=True, verbose_name='TK Nợ')
     tk_co = models.CharField(max_length=20, blank=True, verbose_name='TK Có')
 

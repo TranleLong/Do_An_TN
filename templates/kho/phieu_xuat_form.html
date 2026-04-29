@@ -240,6 +240,8 @@
                         <th style="width: 8%">ĐVT</th>
                         <th style="width: 10%" class="text-center">SL Tồn</th>
                         <th style="width: 12%" class="text-right">Số lượng xuất</th>
+                        <th style="width: 12%" class="text-right">Giá xuất</th>
+                        <th style="width: 14%" class="text-right">Tổng tiền</th>
                         <th style="width: 18%" class="text-center">TK Nợ</th>
                         <th style="width: 18%" class="text-center">TK Có</th>
                         <th style="width: 10%" class="text-center">Thao tác</th>
@@ -264,6 +266,12 @@
                         <td><input type="text" class="form-control ton-kho-display text-center text-primary fw-bold" readonly value="0"></td>
                         <td>
                             <input type="number" name="so_luong[]" class="form-control text-right so-luong-input" min="1" step="1">
+                        </td>
+                        <td>
+                            <input type="number" name="gia_xuat[]" class="form-control text-right gia-xuat-input" min="0" step="1000">
+                        </td>
+                        <td>
+                            <input type="text" name="tong_tien[]" class="form-control text-right tong-tien-display" readonly tabindex="-1">
                         </td>
                         <td>
                             <div class="lookup-wrap">
@@ -385,6 +393,12 @@
             <input type="number" name="so_luong[]" class="form-control text-right so-luong-input" min="1" step="1">
         </td>
         <td>
+            <input type="number" name="gia_xuat[]" class="form-control text-right gia-xuat-input" min="0" step="1000">
+        </td>
+        <td>
+            <input type="text" name="tong_tien[]" class="form-control text-right tong-tien-display" readonly tabindex="-1">
+        </td>
+        <td>
             <div class="lookup-wrap">
                 <input name="tk_no[]" class="form-control lookup-input" placeholder="VD: 632" autocomplete="off" />
                 <button type="button" class="lookup-btn btn-search-tk" title="Chọn TK Nợ" data-field="tk_no"><i class="fas fa-search"></i></button>
@@ -431,6 +445,14 @@
         row.find('input[name="so_luong[]"]').val(Math.round(item.so_luong || 0));
         row.find('input[name="tk_no[]"]').val(item.tk_no || '632');
         row.find('input[name="tk_co[]"]').val(item.tk_co || '156');
+        // Nếu có giá bán từ hóa đơn, tự động điền vào giá xuất
+        if (typeof item.don_gia !== 'undefined' && item.don_gia !== null) {
+            row.find('input[name="gia_xuat[]"]').val(item.don_gia);
+        }
+        // Tự động tính tổng tiền nếu có đủ số lượng và giá xuất
+        const sl = parseFloat(row.find('input[name="so_luong[]"]').val()) || 0;
+        const gia = parseFloat(row.find('input[name="gia_xuat[]"]').val()) || 0;
+        row.find('input[name="tong_tien[]"]').val((sl * gia).toLocaleString());
     }
 
     function bindHangDisplayByRow(row) {
