@@ -190,7 +190,7 @@ def _receipt_payload(doc_id: int) -> LedgerPayload:
     if str(phieu.trang_thai or '').strip() not in ('2', '3'):
         raise LedgerPostingError('Phieu thu chua o trang thai da ghi so (2 - Chuyen so cai).')
 
-    tk_no = '111' if phieu.hinh_thuc_thu == 'tien_mat' else '112'
+    tk_no = '111' if getattr(phieu, 'hinh_thuc_thu', 'tien_mat') == 'tien_mat' else '112'
     so_tien = _as_decimal(phieu.tong_thu)
 
     lines = []

@@ -214,7 +214,7 @@
                     </div>
                 </div>
 
-                <div class="nav-item {% if active_menu == 'don_ban' or active_menu == 'hoa_don_ban' or active_menu == 'doi_tra' or active_menu == 'gia_ban' or active_menu == 'phieu_giao_hang' or active_menu == 'phieu_thu' or active_menu == 'phieu_chi' or active_menu == 'cong_no_kh' or active_menu == 'bao_cao_cong_no_kh_ct' or active_menu == 'bao_cao_bh' %}open{% endif %}">
+                <div class="nav-item {% if active_menu == 'don_ban' or active_menu == 'hoa_don_ban' or active_menu == 'doi_tra' or active_menu == 'gia_ban' or active_menu == 'phieu_giao_hang' or active_menu == 'phieu_thu' or active_menu == 'phieu_chi' or active_menu == 'cong_no_kh' or active_menu == 'bao_cao_bh' %}open{% endif %}">
                     <a href="#" class="nav-link dropdown-toggle" onclick="toggleSubmenu(event, this)">
                         <i class="fas fa-shopping-cart"></i> Phân hệ Bán Hàng
                         <i class="fas fa-chevron-down ms-auto"></i>
@@ -234,7 +234,7 @@
                             </div>
                         </div>
 
-                        <div class="warehouse-group {% if active_menu == 'phieu_thu' or active_menu == 'phieu_chi' or active_menu == 'cong_no_kh' %}open{% endif %}">
+                        <div class="warehouse-group {% if active_menu == 'phieu_thu' or active_menu == 'phieu_chi' %}open{% endif %}">
                             <button type="button" class="warehouse-group-toggle" onclick="toggleWarehouseGroup(event, this)">
                                 <span>Kế toán bán hàng</span>
                                 <i class="fas fa-chevron-down"></i>
@@ -242,17 +242,16 @@
                             <div class="warehouse-group-body">
                                 <a href="{% url 'phieu_thu_list' %}" class="submenu-link {% if active_menu == 'phieu_thu' %}active{% endif %}">Phiếu thu tiền</a>
                                 <a href="{% url 'bh_phieu_chi_list' %}" class="submenu-link {% if active_menu == 'phieu_chi' %}active{% endif %}">Phiếu chi tiền</a>
-                                <a href="{% url 'cong_no_kh' %}" class="submenu-link {% if active_menu == 'cong_no_kh' %}active{% endif %}">Công nợ khách hàng</a>
                             </div>
                         </div>
 
-                        <div class="warehouse-group {% if active_menu == 'bao_cao_cong_no_kh_ct' or active_menu == 'bao_cao_bh' %}open{% endif %}">
+                        <div class="warehouse-group {% if active_menu == 'cong_no_kh' or active_menu == 'bao_cao_bh' %}open{% endif %}">
                             <button type="button" class="warehouse-group-toggle" onclick="toggleWarehouseGroup(event, this)">
                                 <span>Báo cáo &amp; Phân tích</span>
                                 <i class="fas fa-chevron-down"></i>
                             </button>
                             <div class="warehouse-group-body">
-                                <a href="{% url 'bao_cao_cong_no_kh_ct' %}" class="submenu-link {% if active_menu == 'bao_cao_cong_no_kh_ct' %}active{% endif %}">Báo cáo công nợ chi tiết</a>
+                                <a href="{% url 'cong_no_kh' %}" class="submenu-link {% if active_menu == 'cong_no_kh' %}active{% endif %}">Công nợ khách hàng</a>
                                 <a href="{% url 'bao_cao_doanh_thu' %}" class="submenu-link {% if active_menu == 'bao_cao_bh' %}active{% endif %}">Báo cáo doanh thu</a>
                             </div>
                         </div>
@@ -1355,7 +1354,7 @@
         }
 
         // ─── Hiện modal dạng lỗi (readonly, chỉ đóng) ────────────
-        function showError(title, message, iconClass, colorScheme) {
+        window.erpShowErrorDialog = function(title, message, iconClass, colorScheme) {
             var m = getModal();
             if (!m.el || !m.bs) { alert(title + '\n' + message); return; }
 
@@ -1381,6 +1380,10 @@
             confirmBtn.style.display = 'none';
             _pendingAction = null;
             m.bs.show();
+        };
+
+        function showError(title, message, iconClass, colorScheme) {
+            window.erpShowErrorDialog(title, message, iconClass, colorScheme);
         }
 
         // ─── PUBLIC: gọi từ bất kỳ template nào ─────────────────

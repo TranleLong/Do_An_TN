@@ -118,7 +118,7 @@
         padding-bottom: 6px;
     }
     #doiTraTable {
-        min-width: 1680px;
+        min-width: 1900px;
         width: 100%;
         table-layout: auto;
     }
@@ -144,20 +144,50 @@
     #doiTraTable .form-control {
         font-size: 13px;
     }
-    #doiTraTable th:nth-child(1), #doiTraTable td:nth-child(1) { width: 56px; }
-    #doiTraTable th:nth-child(2), #doiTraTable td:nth-child(2) { min-width: 140px; }
-    #doiTraTable th:nth-child(3), #doiTraTable td:nth-child(3) { min-width: 180px; }
-    #doiTraTable th:nth-child(4), #doiTraTable td:nth-child(4) { min-width: 110px; }
-    #doiTraTable th:nth-child(5), #doiTraTable td:nth-child(5) { min-width: 150px; }
-    #doiTraTable th:nth-child(6), #doiTraTable td:nth-child(6) { width: 96px; }
-    #doiTraTable th:nth-child(7), #doiTraTable td:nth-child(7) { width: 120px; }
-    #doiTraTable th:nth-child(8), #doiTraTable td:nth-child(8) { min-width: 150px; }
-    #doiTraTable th:nth-child(9), #doiTraTable td:nth-child(9) { min-width: 170px; }
-    #doiTraTable th:nth-child(10), #doiTraTable td:nth-child(10) { width: 96px; }
-    #doiTraTable th:nth-child(11), #doiTraTable td:nth-child(11) { width: 120px; }
-    #doiTraTable th:nth-child(12), #doiTraTable td:nth-child(12) { width: 120px; }
-    #doiTraTable th:nth-child(13), #doiTraTable td:nth-child(13) { width: 120px; }
-    #doiTraTable th:nth-child(14), #doiTraTable td:nth-child(14) { width: 56px; }
+    #doiTraTable th:nth-child(1),  #doiTraTable td:nth-child(1)  { width: 56px; }
+    #doiTraTable th:nth-child(2),  #doiTraTable td:nth-child(2)  { min-width: 140px; }
+    #doiTraTable th:nth-child(3),  #doiTraTable td:nth-child(3)  { min-width: 180px; }
+    #doiTraTable th:nth-child(4),  #doiTraTable td:nth-child(4)  { min-width: 110px; }
+    #doiTraTable th:nth-child(5),  #doiTraTable td:nth-child(5)  { min-width: 150px; }
+    #doiTraTable th:nth-child(6),  #doiTraTable td:nth-child(6)  { min-width: 90px; }
+    #doiTraTable th:nth-child(7),  #doiTraTable td:nth-child(7)  { min-width: 130px; }
+    #doiTraTable th:nth-child(8),  #doiTraTable td:nth-child(8)  { min-width: 90px; }
+    #doiTraTable th:nth-child(9),  #doiTraTable td:nth-child(9)  { min-width: 150px; }
+    #doiTraTable th:nth-child(10), #doiTraTable td:nth-child(10) { min-width: 180px; }
+    #doiTraTable th:nth-child(11), #doiTraTable td:nth-child(11) { min-width: 90px; }
+    #doiTraTable th:nth-child(12), #doiTraTable td:nth-child(12) { min-width: 130px; }
+    #doiTraTable th:nth-child(13), #doiTraTable td:nth-child(13) { min-width: 90px; }
+    #doiTraTable th:nth-child(14), #doiTraTable td:nth-child(14) { min-width: 130px; }
+    #doiTraTable th:nth-child(15), #doiTraTable td:nth-child(15) { min-width: 130px; }
+    #doiTraTable th:nth-child(16), #doiTraTable td:nth-child(16) { width: 56px; }
+    /* Modal hang hoa doi */
+    .lookup-result-head, .lookup-result-row {
+        display: grid;
+        gap: 8px;
+        padding: 8px 12px;
+        width: 100%;
+        text-align: left;
+    }
+    .lookup-result-head {
+        background: #eef5fb;
+        color: #1f4d83;
+        border-bottom: 1px solid #cfdeef;
+        font-weight: 700;
+        font-size: 13px;
+    }
+    .lookup-result-row {
+        border: 0;
+        border-bottom: 1px solid #e9eef5;
+        background: #fff;
+        cursor: pointer;
+    }
+    .lookup-result-row:hover { background: #f2f8ff; }
+    .lookup-scroll {
+        max-height: 320px;
+        overflow-y: auto;
+        border: 1px solid #dce6f2;
+        border-radius: 4px;
+    }
 </style>
 {% endblock %}
 
@@ -195,7 +225,7 @@
             <div class="col-md-4">
                 <label class="form-label">Lấy thông tin từ: Hóa đơn/Phiếu xuất <span class="text-danger">*</span></label>
                 <div class="lookup-box">
-                    <input type="text" id="hoa_don_display" class="form-control lookup-input lookup-display" list="hoa_don_lookup_list" autocomplete="off" placeholder="Nhập số hóa đơn hoặc bấm kính lúp" value="{% if phieu and phieu.hoa_don_goc %}{{ phieu.hoa_don_goc.so_hoa_don }} - {{ phieu.hoa_don_goc.khach_hang.ten_kh|default:'Khách lẻ' }}{% endif %}">
+                    <input type="text" id="hoa_don_display" class="form-control lookup-input lookup-display" list="hoa_don_lookup_list" autocomplete="off" placeholder="Nhập số hóa đơn hoặc bấm kính lúp" value="{% if phieu and phieu.hoa_don_goc %}{{ phieu.hoa_don_goc.so_hoa_don }} - {{ phieu.hoa_don_goc.khach_hang.ten_kh|default:'Khách lẻ' }}{% else %}{% for hd in hoa_don_list %}{% if hd.pk|stringformat:'s' == form_values.hoa_don_goc %}{{ hd.so_hoa_don }} - {{ hd.khach_hang.ten_kh|default:'Khách lẻ' }}{% endif %}{% endfor %}{% endif %}">
                     <button type="button" class="lookup-icon-btn" id="btnOpenHoaDonLookup" title="Tra cứu hóa đơn"><i class="fas fa-search"></i></button>
                 </div>
                 <select name="hoa_don_goc" id="hoa_don_goc" class="d-none" required>
@@ -270,10 +300,12 @@
                         <th>Kho</th>
                         <th>SL trả</th>
                         <th>Giá bán</th>
+                        <th>Thuế (%)</th>
                         <th>Loại hàng</th>
                         <th class="col-doi">Mã hàng đổi</th>
                         <th class="col-doi">SL đổi</th>
                         <th class="col-doi">Giá bán đổi</th>
+                        <th class="col-doi">Thuế đổi (%)</th>
                         <th class="text-right">Tiền hàng</th>
                         <th class="text-right col-doi">Tiền đổi</th>
                         <th></th>
@@ -303,6 +335,7 @@
                             </td>
                             <td><input type="number" min="1" step="1" name="so_luong_tra[]" class="form-control so-luong-tra calc-input" value="{{ ct.so_luong }}" required></td>
                             <td><input type="number" min="0" step="1" name="don_gia_tra[]" class="form-control don-gia-tra calc-input" value="{{ ct.don_gia }}" required></td>
+                            <td><input type="number" min="0" max="100" step="0.1" name="thue_suat_tra[]" class="form-control thue-suat-tra" value="{{ ct.thue_suat|default:0 }}"></td>
                             <td>
                                 <select name="loai_hang_tra[]" class="form-control">
                                     <option value="binh_thuong" {% if ct.loai_hang_tra == 'binh_thuong' %}selected{% endif %}>Hàng bình thường</option>
@@ -310,15 +343,20 @@
                                 </select>
                             </td>
                             <td class="col-doi">
-                                <select name="hang_doi_id[]" class="form-control hang-doi-select">
-                                    <option value="">-- Chọn hàng đổi --</option>
-                                    {% for h in hang_list %}
-                                    <option value="{{ h.pk }}" {% if ct.hang_hoa_doi_id == h.pk %}selected{% endif %}>{{ h.ma_hang }} - {{ h.ten_hang }}</option>
-                                    {% endfor %}
-                                </select>
+                                <div class="lookup-box">
+                                    <input type="text" class="form-control lookup-input lookup-display hang-doi-display" placeholder="Tìm hàng đổi" readonly style="background-color: #fff; cursor: pointer;">
+                                    <button type="button" class="lookup-icon-btn btn-search-hang-doi" title="Tra cứu hàng đổi"><i class="fas fa-search"></i></button>
+                                    <select name="hang_doi_id[]" class="form-control hang-doi-select" style="display:none;">
+                                        <option value="">-- Chọn hàng đổi --</option>
+                                        {% for h in hang_list %}
+                                        <option value="{{ h.pk }}" data-ma="{{ h.ma_hang }}" data-ten="{{ h.ten_hang }}" data-dvt="{{ h.don_vi_tinh.ten|default:'' }}" data-ton="{{ h.tong_ton|default:0 }}" {% if ct.hang_hoa_doi_id == h.pk %}selected{% endif %}>{{ h.ma_hang }} - {{ h.ten_hang }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                             </td>
                             <td class="col-doi"><input type="number" min="0" step="1" name="so_luong_doi[]" class="form-control so-luong-doi calc-input" value="{{ ct.so_luong_doi|default:0 }}"></td>
                             <td class="col-doi"><input type="number" min="0" step="1" name="gia_ban_doi[]" class="form-control gia-ban-doi calc-input" value="{{ ct.gia_ban_doi|default:0 }}"></td>
+                            <td class="col-doi"><input type="number" min="0" max="100" step="0.1" name="thue_suat_doi[]" class="form-control thue-suat-doi" value="{{ ct.thue_suat_doi|default:0 }}"></td>
                             <td class="text-right tien-tra">0</td>
                             <td class="text-right col-doi tien-doi">0</td>
                             <td><button type="button" class="btn btn-sm btn-danger btn-remove"><i class="fas fa-times"></i></button></td>
@@ -346,6 +384,7 @@
                             </td>
                             <td><input type="number" min="1" step="1" name="so_luong_tra[]" class="form-control so-luong-tra calc-input" value="1" required></td>
                             <td><input type="number" min="0" step="1" name="don_gia_tra[]" class="form-control don-gia-tra calc-input" value="0" required></td>
+                            <td><input type="number" min="0" max="100" step="0.1" name="thue_suat_tra[]" class="form-control thue-suat-tra" value="10"></td>
                             <td>
                                 <select name="loai_hang_tra[]" class="form-control">
                                     <option value="binh_thuong">Hàng bình thường</option>
@@ -353,15 +392,20 @@
                                 </select>
                             </td>
                             <td class="col-doi">
-                                <select name="hang_doi_id[]" class="form-control hang-doi-select">
-                                    <option value="">-- Chọn hàng đổi --</option>
-                                    {% for h in hang_list %}
-                                    <option value="{{ h.pk }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
-                                    {% endfor %}
-                                </select>
+                                <div class="lookup-box">
+                                    <input type="text" class="form-control lookup-input lookup-display hang-doi-display" placeholder="Tìm hàng đổi" readonly style="background-color: #fff; cursor: pointer;">
+                                    <button type="button" class="lookup-icon-btn btn-search-hang-doi" title="Tra cứu hàng đổi"><i class="fas fa-search"></i></button>
+                                    <select name="hang_doi_id[]" class="form-control hang-doi-select" style="display:none;">
+                                        <option value="">-- Chọn hàng đổi --</option>
+                                        {% for h in hang_list %}
+                                        <option value="{{ h.pk }}" data-ma="{{ h.ma_hang }}" data-ten="{{ h.ten_hang }}" data-dvt="{{ h.don_vi_tinh.ten|default:'' }}" data-ton="{{ h.tong_ton|default:0 }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
                             </td>
                             <td class="col-doi"><input type="number" min="0" step="1" name="so_luong_doi[]" class="form-control so-luong-doi calc-input" value="0"></td>
                             <td class="col-doi"><input type="number" min="0" step="1" name="gia_ban_doi[]" class="form-control gia-ban-doi calc-input" value="0"></td>
+                            <td class="col-doi"><input type="number" min="0" max="100" step="0.1" name="thue_suat_doi[]" class="form-control thue-suat-doi" value="10"></td>
                             <td class="text-right tien-tra">0</td>
                             <td class="text-right col-doi tien-doi">0</td>
                             <td><button type="button" class="btn btn-sm btn-danger btn-remove"><i class="fas fa-times"></i></button></td>
@@ -567,11 +611,15 @@
             }
             const slTra = parseFloat(row.querySelector('.so-luong-tra')?.value || 0);
             const giaTra = parseFloat(row.querySelector('.don-gia-tra')?.value || 0);
+            const thueSuatTra = parseFloat(row.querySelector('.thue-suat-tra')?.value || 0);
             const slDoi = parseFloat(row.querySelector('.so-luong-doi')?.value || 0);
             const giaDoi = parseFloat(row.querySelector('.gia-ban-doi')?.value || 0);
+            const thueSuatDoi = parseFloat(row.querySelector('.thue-suat-doi')?.value || 0);
 
-            const tienTra = slTra * giaTra;
-            const tienDoi = slDoi * giaDoi;
+            const tienTraGoc = slTra * giaTra;
+            const tienTra = tienTraGoc * (1 + thueSuatTra / 100);
+            const tienDoiGoc = slDoi * giaDoi;
+            const tienDoi = tienDoiGoc * (1 + thueSuatDoi / 100);
             tongTra += tienTra;
             tongDoi += tienDoi;
 
@@ -653,7 +701,7 @@
         }).join('');
 
         const hangDoiOptions = Array.from(document.querySelectorAll('#doiTraBodyTemplate select[name="hang_doi_id[]"] option')).map(function(opt) {
-            return '<option value="' + opt.value + '">' + opt.text + '</option>';
+            return '<option value="' + escapeHtml(opt.value) + '" data-ma="' + escapeHtml(opt.dataset.ma || '') + '" data-ten="' + escapeHtml(opt.dataset.ten || '') + '" data-dvt="' + escapeHtml(opt.dataset.dvt || '') + '" data-ton="' + escapeHtml(opt.dataset.ton || '') + '">' + escapeHtml(opt.text) + '</option>';
         }).join('');
 
         const defaultQty = line.so_luong_con_lai > 0 ? line.so_luong_con_lai : 0;
@@ -672,10 +720,18 @@
             + '<td><select name="kho_id[]" class="form-control" required>' + khoOptions + '</select></td>'
             + '<td><input type="number" min="1" max="' + line.so_luong_con_lai + '" step="1" name="so_luong_tra[]" class="form-control so-luong-tra calc-input" value="' + defaultQty + '" required></td>'
             + '<td><input type="number" min="0" step="1" name="don_gia_tra[]" class="form-control don-gia-tra calc-input" value="' + line.don_gia_tra + '" required></td>'
+            + '<td><input type="number" min="0" max="100" step="0.1" name="thue_suat_tra[]" class="form-control thue-suat-tra" value="' + (line.thue_suat || 0) + '"></td>'
             + '<td><select name="loai_hang_tra[]" class="form-control"><option value="binh_thuong">Hàng bình thường</option><option value="hang_loi">Hàng lỗi</option></select></td>'
-            + '<td class="col-doi"><select name="hang_doi_id[]" class="form-control hang-doi-select">' + hangDoiOptions + '</select></td>'
+            + '<td class="col-doi">'
+            + '  <div class="lookup-box">'
+            + '    <input type="text" class="form-control lookup-input lookup-display hang-doi-display" placeholder="Tìm hàng đổi" readonly style="background-color: #fff; cursor: pointer;">'
+            + '    <button type="button" class="lookup-icon-btn btn-search-hang-doi" title="Tra cứu hàng đổi"><i class="fas fa-search"></i></button>'
+            + '    <select name="hang_doi_id[]" class="form-control hang-doi-select" style="display:none;">' + hangDoiOptions + '</select>'
+            + '  </div>'
+            + '</td>'
             + '<td class="col-doi"><input type="number" min="0" step="1" name="so_luong_doi[]" class="form-control so-luong-doi calc-input" value="0"></td>'
             + '<td class="col-doi"><input type="number" min="0" step="1" name="gia_ban_doi[]" class="form-control gia-ban-doi calc-input" value="0"></td>'
+            + '<td class="col-doi"><input type="number" min="0" max="100" step="0.1" name="thue_suat_doi[]" class="form-control thue-suat-doi" value="' + (line.thue_suat || 0) + '"></td>'
             + '<td class="text-right tien-tra">0</td>'
             + '<td class="text-right col-doi tien-doi">0</td>'
             + '<td><button type="button" class="btn btn-sm btn-danger btn-remove"><i class="fas fa-times"></i></button></td>';
@@ -702,7 +758,14 @@
             .then(function(resp) { return resp.json(); })
             .then(function(data) {
                 if (data.error) {
-                    alert(data.error);
+                    if (window.erpShowErrorDialog) {
+                        window.erpShowErrorDialog('Không thể chọn hóa đơn', data.error, 'fas fa-triangle-exclamation', 'warning');
+                    } else {
+                        alert(data.error);
+                    }
+                    // Reset field if invalid
+                    document.getElementById('hoa_don_goc').value = '';
+                    document.getElementById('hoa_don_display').value = '';
                     return;
                 }
                 document.getElementById('khach_hang_display').value = data.ma_kh || '';
@@ -738,20 +801,23 @@
     const taiKhoanModalList = document.getElementById('taiKhoanModalList');
     let taiKhoanTarget = null;
 
-    document.getElementById('btnOpenHoaDonLookup').addEventListener('click', function() {
-        renderHoaDonModalList('');
-        if (hoaDonModalSearch) {
-            hoaDonModalSearch.value = '';
-        }
-        if (hoaDonModalEl && window.bootstrap && window.bootstrap.Modal) {
-            bootstrap.Modal.getOrCreateInstance(hoaDonModalEl).show();
-        }
-        setTimeout(function() {
+    const _btnOpenHoaDon = document.getElementById('btnOpenHoaDonLookup');
+    if (_btnOpenHoaDon) {
+        _btnOpenHoaDon.addEventListener('click', function() {
+            renderHoaDonModalList('');
             if (hoaDonModalSearch) {
-                hoaDonModalSearch.focus();
+                hoaDonModalSearch.value = '';
             }
-        }, 100);
-    });
+            if (hoaDonModalEl && window.bootstrap && window.bootstrap.Modal) {
+                bootstrap.Modal.getOrCreateInstance(hoaDonModalEl).show();
+            }
+            setTimeout(function() {
+                if (hoaDonModalSearch) {
+                    hoaDonModalSearch.focus();
+                }
+            }, 100);
+        });
+    }
 
     if (hoaDonModalSearch) {
         hoaDonModalSearch.addEventListener('input', function() {
@@ -932,83 +998,23 @@
         calcTotals();
     });
 
-    document.getElementById('btnPreviewDoiTra').addEventListener('click', function() {
-        calcTotals();
-        const summary = document.querySelector('.summary-box');
-        if (summary) {
-            summary.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    });
 
-    document.getElementById('btnSaveDraft').addEventListener('click', function() {
-        document.getElementById('submit_action').value = 'draft';
-    });
 
-    document.getElementById('btnConfirmDoiTra').addEventListener('click', function() {
-        document.getElementById('submit_action').value = 'confirm';
-    });
-
-    document.getElementById('btnDtFormEdit').addEventListener('click', function() {
-        {% if phieu %}
-        window.location.href = '{% url "phieu_doi_tra_sua" phieu.pk %}';
-        {% else %}
-        alert('Bạn đang ở chế độ lập mới.');
-        {% endif %}
-    });
-
-    document.getElementById('btnDtFormDelete').addEventListener('click', function() {
-        {% if phieu and phieu.trang_thai == '2' %}
-        alert('Phiếu đổi trả đã hoàn tất, không được phép xóa.');
-        return;
-        {% elif phieu %}
-        window.erpShowConfirmDialog('Bạn chắc chắn muốn xóa phiếu đổi trả này?<br><span style=\"color:#6b7280; font-size:13px;\">Hành động này không thể hoàn tác.</span>', function() {
-            document.getElementById('formDtDeleteSingle').submit();
+    const btnSaveDraft = document.getElementById('btnSaveDraft');
+    if (btnSaveDraft) {
+        btnSaveDraft.addEventListener('click', function() {
+            document.getElementById('submit_action').value = 'draft';
         });
-        {% else %}
-        alert('Phiếu chưa lưu nên chưa thể xóa.');
-        {% endif %}
-    });
+    }
 
-    document.getElementById('btnDtFormSearch').addEventListener('click', function() {
-        document.getElementById('btnOpenHoaDonLookup').click();
-    });
+    const btnConfirmDoiTra = document.getElementById('btnConfirmDoiTra');
+    if (btnConfirmDoiTra) {
+        btnConfirmDoiTra.addEventListener('click', function() {
+            document.getElementById('submit_action').value = 'confirm';
+        });
+    }
 
-    document.getElementById('btnDtFormCopy').addEventListener('click', function() {
-        const hd = document.getElementById('hoa_don_goc').value || '';
-        const url = hd ? ('{% url "phieu_doi_tra_them" %}?hoa_don_goc=' + hd) : '{% url "phieu_doi_tra_them" %}';
-        window.location.href = url;
-    });
 
-    document.getElementById('btnDtFormExport').addEventListener('click', function() {
-        alert('Chức năng kết xuất dữ liệu phiếu đổi trả sẽ bổ sung ở bước tiếp theo.');
-    });
-
-    document.getElementById('btnDtFormTemplate').addEventListener('click', function() {
-        alert('Chức năng tải file mẫu phiếu đổi trả sẽ bổ sung ở bước tiếp theo.');
-    });
-
-    document.getElementById('btnDtFormImport').addEventListener('click', function() {
-        alert('Chức năng import phiếu đổi trả sẽ bổ sung ở bước tiếp theo.');
-    });
-
-    document.getElementById('btnDtFormView').addEventListener('click', function() {
-        const summary = document.querySelector('.summary-box');
-        if (summary) {
-            summary.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-    });
-
-    document.getElementById('btnDtFormPrint').addEventListener('click', function() {
-        window.print();
-    });
-
-    document.getElementById('btnDtFormQuery').addEventListener('click', function() {
-        document.getElementById('btnOpenHoaDonLookup').click();
-    });
-
-    document.getElementById('btnDtFormRefresh').addEventListener('click', function() {
-        window.location.reload();
-    });
 
     const selectedHoaDon = document.getElementById('hoa_don_goc').options[document.getElementById('hoa_don_goc').selectedIndex];
     if (selectedHoaDon && selectedHoaDon.value && !document.getElementById('hoa_don_display').value) {
@@ -1024,6 +1030,116 @@
     }
     toggleColumnsByType();
     calcTotals();
+
+    // HANG DOI MODAL LOGIC
+    let hangDoiModal = null;
+    let currentHangDoiSelect = null;
+    let currentHangDoiDisplay = null;
+
+    function loadHangDoiResults() {
+        const keyword = normalizeLookupText(document.getElementById('hangDoiSearchInput').value);
+        const resultContainer = document.getElementById('hangDoiSearchResults');
+        const options = Array.from(document.querySelectorAll('#doiTraBodyTemplate select[name="hang_doi_id[]"] option')).filter(function(opt) {
+            return !!opt.value;
+        });
+
+        let rows = [];
+        options.forEach(function(opt) {
+            const ma = opt.dataset.ma || '';
+            const ten = opt.dataset.ten || '';
+            if (!keyword || normalizeLookupText(ma).includes(keyword) || normalizeLookupText(ten).includes(keyword)) {
+                rows.push({
+                    id: opt.value,
+                    ma_hang: ma,
+                    ten_hang: ten,
+                    dvt: opt.dataset.dvt || '',
+                    ton: opt.dataset.ton || '0'
+                });
+            }
+        });
+
+        if (rows.length === 0) {
+            resultContainer.innerHTML = '<div class="p-3 text-center text-muted">Không tìm thấy hàng hóa.</div>';
+            return;
+        }
+
+        let html = '<div class="lookup-result-head" style="grid-template-columns: 2fr 3fr 1fr 1fr;"><span>Mã hàng</span><span>Tên hàng</span><span>ĐVT</span><span class="text-end">Tồn kho</span></div>';
+        rows.forEach(function(r) {
+            html += '<button type="button" class="lookup-result-row btn-hang-doi-select" data-id="' + escapeHtml(r.id) + '" data-ten="' + escapeHtml(r.ten_hang) + '" style="grid-template-columns: 2fr 3fr 1fr 1fr;">'
+                + '<span><strong>' + escapeHtml(r.ma_hang) + '</strong></span>'
+                + '<span>' + escapeHtml(r.ten_hang) + '</span>'
+                + '<span>' + escapeHtml(r.dvt || '') + '</span>'
+                + '<span class="text-end text-success"><strong>' + escapeHtml(r.ton) + '</strong></span>'
+                + '</button>';
+        });
+        resultContainer.innerHTML = html;
+    }
+
+    document.addEventListener('click', function(e) {
+        let btn = e.target.closest('.btn-search-hang-doi') || e.target.closest('.hang-doi-display');
+        if (btn) {
+            const box = btn.closest('.lookup-box');
+            currentHangDoiSelect = box.querySelector('.hang-doi-select');
+            currentHangDoiDisplay = box.querySelector('.hang-doi-display');
+            if (!hangDoiModal) {
+                hangDoiModal = new bootstrap.Modal(document.getElementById('modalHangHoaDoi'));
+            }
+            hangDoiModal.show();
+            document.getElementById('hangDoiSearchInput').value = '';
+            loadHangDoiResults();
+            setTimeout(function() {
+                document.getElementById('hangDoiSearchInput').focus();
+            }, 100);
+        }
+
+        let selectBtn = e.target.closest('.btn-hang-doi-select');
+        if (selectBtn) {
+            const id = selectBtn.dataset.id;
+            const ten = selectBtn.dataset.ten;
+            if (currentHangDoiSelect) {
+                currentHangDoiSelect.value = id;
+                currentHangDoiSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+                // Tự động lấy giá bán từ API và fill vào ô giá đổi
+                const giaBanApiUrl = '{% url "gia_ban_hang_hoa_api" %}';
+                fetch(giaBanApiUrl + '?hang_id=' + encodeURIComponent(id) + '&so_luong=1')
+                    .then(function(resp) { return resp.json(); })
+                    .then(function(data) {
+                        const row = currentHangDoiSelect.closest('.item-row');
+                        if (row) {
+                            const giaBanDoiInput = row.querySelector('.gia-ban-doi');
+                            if (giaBanDoiInput && (parseFloat(giaBanDoiInput.value) <= 0)) {
+                                giaBanDoiInput.value = Math.round(data.gia_ban_chuan || 0);
+                                giaBanDoiInput.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                        }
+                    })
+                    .catch(function() {});
+            }
+            if (currentHangDoiDisplay) {
+                currentHangDoiDisplay.value = ten;
+            }
+            if (hangDoiModal) {
+                hangDoiModal.hide();
+            }
+        }
+    });
+
+    const hangDoiSearchInput = document.getElementById('hangDoiSearchInput');
+    if (hangDoiSearchInput) {
+        hangDoiSearchInput.addEventListener('input', loadHangDoiResults);
+    }
+
+    // Initialize display values on load
+    document.querySelectorAll('.hang-doi-select').forEach(function(sel) {
+        const box = sel.closest('.lookup-box');
+        if (!box) return;
+        const display = box.querySelector('.hang-doi-display');
+        if (display && sel.value) {
+            const opt = sel.options[sel.selectedIndex];
+            if (opt) display.value = opt.dataset.ten || opt.text;
+        }
+    });
 </script>
 
 <table class="d-none" id="doiTraBodyTemplate">
@@ -1049,6 +1165,7 @@
             </td>
             <td><input type="number" min="1" step="1" name="so_luong_tra[]" class="form-control so-luong-tra calc-input" value="1" required></td>
             <td><input type="number" min="0" step="1" name="don_gia_tra[]" class="form-control don-gia-tra calc-input" value="0" required></td>
+            <td><input type="number" min="0" max="100" step="0.1" name="thue_suat_tra[]" class="form-control thue-suat-tra" value="10"></td>
             <td>
                 <select name="loai_hang_tra[]" class="form-control">
                     <option value="binh_thuong">Hàng bình thường</option>
@@ -1056,19 +1173,39 @@
                 </select>
             </td>
             <td class="col-doi">
-                <select name="hang_doi_id[]" class="form-control hang-doi-select">
-                    <option value="">-- Chọn hàng đổi --</option>
-                    {% for h in hang_list %}
-                    <option value="{{ h.pk }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
-                    {% endfor %}
-                </select>
+                <div class="lookup-box">
+                    <input type="text" class="form-control lookup-input lookup-display hang-doi-display" placeholder="Tìm hàng đổi" readonly style="background-color: #fff; cursor: pointer;">
+                    <button type="button" class="lookup-icon-btn btn-search-hang-doi" title="Tra cứu hàng đổi"><i class="fas fa-search"></i></button>
+                    <select name="hang_doi_id[]" class="form-control hang-doi-select" style="display:none;">
+                        <option value="">-- Chọn hàng đổi --</option>
+                        {% for h in hang_list %}
+                        <option value="{{ h.pk }}" data-ma="{{ h.ma_hang }}" data-ten="{{ h.ten_hang }}" data-dvt="{{ h.don_vi_tinh.ten|default:'' }}" data-ton="{{ h.tong_ton|default:0 }}">{{ h.ma_hang }} - {{ h.ten_hang }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
             </td>
             <td class="col-doi"><input type="number" min="0" step="1" name="so_luong_doi[]" class="form-control so-luong-doi calc-input" value="0"></td>
             <td class="col-doi"><input type="number" min="0" step="1" name="gia_ban_doi[]" class="form-control gia-ban-doi calc-input" value="0"></td>
+            <td class="col-doi"><input type="number" min="0" max="100" step="0.1" name="thue_suat_doi[]" class="form-control thue-suat-doi" value="10"></td>
             <td class="text-right tien-tra">0</td>
             <td class="text-right col-doi tien-doi">0</td>
             <td><button type="button" class="btn btn-sm btn-danger btn-remove"><i class="fas fa-times"></i></button></td>
         </tr>
     </tbody>
 </table>
+
+<div class="modal fade" id="modalHangHoaDoi" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tra cứu hàng hóa đổi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="hangDoiSearchInput" class="form-control mb-2" placeholder="Nhập mã hoặc tên hàng hóa...">
+                <div class="lookup-scroll" id="hangDoiSearchResults"></div>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}

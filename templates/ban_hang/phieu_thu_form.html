@@ -111,7 +111,7 @@
 {% block content %}
 <div class="card">
     <div class="card-header">
-        <div class="card-title"><i class="fas fa-money-bill-wave {% if loai_form == 'chi' %}text-danger{% else %}text-success{% endif %}"></i> {% if loai_form == 'chi' %}Thêm phiếu chi{% else %}Thêm phiếu thu{% endif %}</div>
+        <div class="card-title"><i class="fas fa-money-bill-wave {% if loai_form == 'chi' %}text-danger{% else %}text-success{% endif %}"></i> {% if editing %}Sửa phiếu {% if loai_form == 'chi' %}chi{% else %}thu{% endif %}{% else %}Thêm phiếu {% if loai_form == 'chi' %}chi{% else %}thu{% endif %}{% endif %}</div>
         <a href="{% if loai_form == 'chi' %}{% url 'bh_phieu_chi_list' %}{% else %}{% url 'phieu_thu_list' %}{% endif %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
     </div>
 
@@ -471,7 +471,7 @@
         $('#kh_display').val(ma);
         $('#previewKhMa').text(ma || '--').removeClass('text-muted');
         $('#previewKhTen').text(ten || '').removeClass('text-muted');
-        $('#previewKhTongNo').text(fmtMoney(opt.data('tong-hoa-don') || 0));
+        $('#previewKhTongNo').text(fmtMoney(opt.data('con-no') || 0));
         $('#previewKhDaThu').text(fmtMoney(opt.data('tong-da-thu') || 0));
         $('#previewKhConNo').text(fmtMoney(opt.data('con-no') || 0));
         if (!String($('#dia_chi').val() || '').trim()) {
@@ -662,7 +662,7 @@
     function loadHoaDonResults() {
         const q = $('#hoaDonSearchInput').val().trim();
         const khId = $('#khach_hang').val() || '';
-        $.get('{% url "hoa_don_ban_api_lookup" %}', { q: q, khach_hang_id: khId }, function(resp) {
+        $.get('{% url "hoa_don_ban_api_lookup" %}', { q: q, khach_hang_id: khId, for_thu_tien: 1 }, function(resp) {
             const rows = resp.results || [];
             if (!rows.length) {
                 $('#hoaDonSearchResults').html('<div class="p-3 text-muted text-center">Không tìm thấy đơn bán phù hợp</div>');

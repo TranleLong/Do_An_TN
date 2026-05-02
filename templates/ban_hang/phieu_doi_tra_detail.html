@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load money_filters %}
+
+{% block extra_css %}
+<style>
+    .hoa-don-detail-table-wrap {
+        overflow-x: auto;
+        overflow-y: hidden;
+    }
+    .hoa-don-detail-table {
+        min-width: 1450px;
+        width: 100%;
+    }
+    .money-value {
+        white-space: nowrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-rotate-left text-primary"></i> Chi tiết phiếu đổi trả: {{ phieu.so_phieu }}</div>
+        <div class="d-flex gap-2">
+            <a href="{% url 'phieu_doi_tra_sua' phieu.pk %}" class="btn btn-outline-primary btn-sm"><i class="fas fa-pen-to-square"></i> Sửa</a>
+            <a href="{% url 'phieu_doi_tra_list' %}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Quay lại</a>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <div class="row g-3 mb-3">
+            <div class="col-md-3"><strong>Số phiếu:</strong> {{ phieu.so_phieu }}</div>
+            <div class="col-md-3"><strong>Ngày lập:</strong> {{ phieu.ngay_lap|date:"d/m/Y" }}</div>
+            <div class="col-md-3"><strong>Ngày hạch toán:</strong> {{ phieu.ngay_hach_toan|date:"d/m/Y" }}</div>
+            <div class="col-md-3"><strong>Trạng thái:</strong> {{ phieu.get_trang_thai_display }}</div>
+            <div class="col-md-3"><strong>Mã khách:</strong> {{ phieu.khach_hang.ma_kh|default:'-' }}</div>
+            <div class="col-md-3"><strong>Tên khách:</strong> {{ phieu.khach_hang.ten_kh|default:'-' }}</div>
+            <div class="col-md-3"><strong>TK nợ:</strong> {{ phieu.tk_no|default:'-' }}</div>
+            <div class="col-md-3"><strong>TK có:</strong> {{ phieu.tk_co|default:'-' }}</div>
+            <div class="col-md-3"><strong>Hóa đơn gốc:</strong> {% if phieu.hoa_don_goc %}<a href="{% url 'hoa_don_ban_detail' phieu.hoa_don_goc.pk %}">{{ phieu.hoa_don_goc.so_hoa_don }}</a>{% else %}-{% endif %}</div>
+            <div class="col-md-3"><strong>Hình thức xử lý:</strong> {{ phieu.get_hinh_thuc_xu_ly_display }}</div>
+            <div class="col-md-6"><strong>Diễn giải:</strong> {{ phieu.dien_giai|default:'-' }}</div>
+            <div class="col-md-12"><strong>Lý do trả:</strong> {{ phieu.ly_do_tra|default:'-' }}</div>
+        </div>
+
+        <div class="hoa-don-detail-table-wrap">
+            <table class="table hoa-don-detail-table">
+                <thead>
+                    <tr>
+                        <th>STT</th>
+                        <th>Hàng trả</th>
+                        <th>Kho</th>
+                        <th class="text-end">SL trả</th>
+                        <th class="text-end">Giá trả</th>
+                        <th>Loại hàng</th>
+                        <th>Hàng đổi</th>
+                        <th class="text-end">SL đổi</th>
+                        <th class="text-end">Giá đổi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ct in chi_tiet %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ ct.hang_hoa.ma_hang }} - {{ ct.hang_hoa.ten_hang }}</td>
+                        <td>{{ ct.kho.ma_kho }}</td>
+                        <td class="text-end money-value">{{ ct.so_luong_tra|floatformat:0|vnd }}</td>
+                        <td class="text-end money-value">{{ ct.don_gia_tra|vnd }}</td>
+                        <td>{{ ct.get_loai_hang_tra_display }}</td>
+                        <td>{% if ct.hang_hoa_doi %}{{ ct.hang_hoa_doi.ma_hang }} - {{ ct.hang_hoa_doi.ten_hang }}{% else %}-{% endif %}</td>
+                        <td class="text-end money-value">{% if ct.so_luong_doi %}{{ ct.so_luong_doi|floatformat:0|vnd }}{% else %}0{% endif %}</td>
+                        <td class="text-end money-value">{% if ct.gia_ban_doi %}{{ ct.gia_ban_doi|vnd }}{% else %}0{% endif %}</td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="10" class="text-center text-muted">Không có dữ liệu chi tiết.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="d-flex justify-content-end mt-3">
+            <div style="width: 380px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
+                <div class="d-flex justify-content-between fs-5"><strong>Chênh lệch ({{ phieu.get_hinh_thuc_xu_ly_display }}):</strong><strong class="money-value">{{ phieu.chenh_lech_tien|vnd }}</strong></div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    (function() {
+        const hoaDonTrongKy = {{ hoa_don_trong_ky|yesno:'true,false' }};
+
+        function formatDotNumber(value) {
+            var raw = String(value == null ? '' : value).trim();
+            if (!raw) {
+                return '0';
+            }
+            raw = raw.replace(/\s+/g, '');
+            if (/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(raw)) {
+                raw = raw.replace(/\./g, '').replace(',', '.');
+            } else if (raw.indexOf(',') >= 0 && raw.indexOf('.') >= 0) {
+                raw = raw.replace(/,/g, '');
+            } else if (raw.indexOf(',') >= 0) {
+                raw = raw.replace(/,/g, '.');
+            }
+            var number = Number(raw);
+            if (Number.isNaN(number)) {
+                return value;
+            }
+            return Math.round(number).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
+        document.querySelectorAll('.money-value').forEach(function(el) {
+            el.textContent = formatDotNumber(el.textContent);
+        });
+
+    })();
+</script>
+{% endblock %}

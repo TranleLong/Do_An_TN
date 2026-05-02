@@ -302,7 +302,6 @@ def _save_hoa_don_from_request(request, hoa_don=None):
     hoa_don.ngay_hach_toan = ngay_chung_tu
     ensure_accounting_period_open_for_dates([hoa_don.ngay_lap, hoa_don.ngay_hach_toan], 'hóa đơn bán hàng')
 
-    hoa_don.ma_ngoai_te = data.get('ma_ngoai_te', 'VND')
     hoa_don.ty_gia = _normalize_decimal(data.get('ty_gia'), 4, Decimal('1'))
     hoa_don.khach_hang = kh
     hoa_don.ten_kh = data.get('ten_kh') or (kh.ten_kh if kh else '')
@@ -752,8 +751,6 @@ def _sync_cong_no_from_hoa_don(hoa_don):
             don.nguoi_mua_hang = hoa_don.nguoi_mua_hang
             don.ma_nv_ban_hang = hoa_don.ma_nv_ban_hang or don.ma_nv_ban_hang
             don.kho = kho_default
-            don.phuong_thuc_tt = 'no'
-            don.ma_ngoai_te = hoa_don.ma_ngoai_te or 'VND'
             don.ty_gia = hoa_don.ty_gia or Decimal('1')
             don.tong_tien_hang = hoa_don.tien_hang or Decimal('0')
             don.tong_thue = hoa_don.tong_tien_thue or Decimal('0')
@@ -838,19 +835,16 @@ def don_ban_them(request):
                 'ngay_chung_tu': don_copy.ngay_chung_tu.isoformat() if don_copy.ngay_chung_tu else '',
                 'khach_hang_id': don_copy.khach_hang_id or '',
                 'ten_kh': don_copy.ten_kh or '',
-                'sdt_kh': don_copy.so_dien_thoai_kh or '',
+                'sdt_kh': don_copy.sdt_kh or '',
                 'mst_kh': don_copy.mst_kh or '',
-                'nguoi_mua_hang': don_copy.ngay_giao_du_kien.isoformat() if hasattr(don_copy, 'ngay_giao_du_kien') else '', # Placeholder if not used
+                'nguoi_mua_hang': don_copy.nguoi_mua_hang or '',
                 'ma_nv_ban_hang': don_copy.ma_nv_ban_hang or '',
                 'kho_id': don_copy.kho_id or '',
                 'dia_chi_kh': don_copy.dia_chi_kh or '',
                 'ghi_chu': don_copy.ghi_chu or '',
-                'ma_ngoai_te': don_copy.ma_ngoai_te or 'VND',
                 'ty_gia': str(don_copy.ty_gia) if don_copy.ty_gia else '1',
-                'chiet_khau_dh': str(don_copy.chiet_khau_don_hang) if don_copy.chiet_khau_don_hang else '0',
-                'trang_thai': don_copy.trang_thai or 'nhap',
-                'loai_ban': don_copy.loai_ban or 'ban_le',
-                'phuong_thuc_tt': don_copy.phuong_thuc_thanh_toan or 'tien_mat',
+                'chiet_khau_dh': str(don_copy.chiet_khau_dh) if don_copy.chiet_khau_dh else '0',
+                'trang_thai': '1',  # Reset về Nháp khi chép
                 'rows': [
                     {
                         'hang_hoa_id': ct.hang_hoa_id,
@@ -858,7 +852,6 @@ def don_ban_them(request):
                         'don_gia': str(ct.don_gia),
                         'chiet_khau': str(ct.chiet_khau),
                         'vat': str(ct.thue_vat) if ct.thue_vat else '10',
-                        'ngay_giao': ct.ngay_giao_chi_tiet.isoformat() if ct.ngay_giao_chi_tiet else '',
                     }
                     for ct in don_copy.chi_tiet.all()
                 ]
@@ -869,10 +862,6 @@ def don_ban_them(request):
         kh_id = data.get('khach_hang') or None
         kh = KhachHang.objects.filter(pk=kh_id).first() if kh_id else None
         ma_nv_ban_hang, _nv_obj = _resolve_or_create_sales_employee(data)
-        loai_ban = data.get('loai_ban', 'ban_le')
-        phuong_thuc_tt = data.get('phuong_thuc_tt')
-        if not phuong_thuc_tt:
-            phuong_thuc_tt = 'tien_mat' if loai_ban == 'ban_le' else 'no'
 
         if not ma_nv_ban_hang:
             messages.error(request, 'Mã NV bán hàng là bắt buộc')
@@ -882,20 +871,17 @@ def don_ban_them(request):
             so_don=data.get('so_don') or _gen_so_don('BH'),
             ngay_chung_tu=_parse_date(data.get('ngay_chung_tu')),
             ngay_ban=_parse_date(data.get('ngay_chung_tu')),
-            loai_ban=loai_ban,
             khach_hang=kh,
             ten_kh=data.get('ten_kh') or (kh.ten_kh if kh else 'Khách lẻ'),
             sdt_kh=data.get('sdt_kh', ''),
             dia_chi_kh=data.get('dia_chi_kh', ''),
             mst_kh=data.get('mst_kh', ''),
-            ma_ngoai_te=data.get('ma_ngoai_te', 'VND'),
             ty_gia=_parse_decimal(data.get('ty_gia', 1), Decimal('1')),
             ma_nv_ban_hang=ma_nv_ban_hang,
             xe_kh=data.get('xe_kh', ''),
             nguoi_mua_hang=data.get('nguoi_mua_hang', ''),
             kho_id=data.get('kho'),
             nhan_vien_ban=request.user,
-            phuong_thuc_tt=phuong_thuc_tt,
             chiet_khau_dh=_parse_decimal(data.get('chiet_khau_dh', 0), Decimal('0')),
             ghi_chu=data.get('ghi_chu', ''),
             trang_thai=data.get('trang_thai', '1'),
@@ -1019,24 +1005,18 @@ def don_ban_sua(request, pk):
             messages.error(request, 'Mã NV bán hàng là bắt buộc')
             return redirect('don_ban_sua', pk=pk)
 
-        loai_ban = data.get('loai_ban', don.loai_ban or 'ban_le')
-        phuong_thuc_tt = data.get('phuong_thuc_tt') or ('tien_mat' if loai_ban == 'ban_le' else 'no')
-
         don.ngay_chung_tu = _parse_date(data.get('ngay_chung_tu'))
         don.ngay_ban = don.ngay_chung_tu
-        don.loai_ban = loai_ban
         don.khach_hang = kh
         don.ten_kh = data.get('ten_kh') or (kh.ten_kh if kh else 'Khách lẻ')
         don.sdt_kh = data.get('sdt_kh', '')
         don.dia_chi_kh = data.get('dia_chi_kh', '')
         don.mst_kh = data.get('mst_kh', '')
-        don.ma_ngoai_te = data.get('ma_ngoai_te', 'VND')
         don.ty_gia = _parse_decimal(data.get('ty_gia', 1), Decimal('1'))
         don.ma_nv_ban_hang = ma_nv_ban_hang or (don.ma_nv_ban_hang or '')
         don.xe_kh = data.get('xe_kh', '')
         don.nguoi_mua_hang = data.get('nguoi_mua_hang', '')
         don.kho_id = data.get('kho')
-        don.phuong_thuc_tt = phuong_thuc_tt
         don.chiet_khau_dh = _parse_decimal(data.get('chiet_khau_dh', 0), Decimal('0'))
         don.ghi_chu = data.get('ghi_chu', '')
         don.trang_thai = data.get('trang_thai', don.trang_thai or '1')
@@ -1352,6 +1332,20 @@ def _phieu_thu_khach_hang_cong_no_map():
         khach_hang__trang_thai=True,
     ).distinct()
 
+    doi_tra_hd_map = {
+        row['hoa_don_goc_id']: Decimal(row['tong_chenh_lech'] or 0)
+        for row in PhieuTraHang.objects.filter(
+            trang_thai='2', hoa_don_goc__isnull=False,
+        ).values('hoa_don_goc_id').annotate(tong_chenh_lech=Sum('chenh_lech_tien'))
+    }
+
+    doi_tra_kh_map = {
+        row['khach_hang_id']: Decimal(row['tong_chenh_lech'] or 0)
+        for row in PhieuTraHang.objects.filter(
+            trang_thai='2', hoa_don_goc__isnull=True, khach_hang__isnull=False,
+        ).values('khach_hang_id').annotate(tong_chenh_lech=Sum('chenh_lech_tien'))
+    }
+
     data = {}
     for hd in hd_qs:
         kh_id = hd.khach_hang_id
@@ -1363,7 +1357,8 @@ def _phieu_thu_khach_hang_cong_no_map():
                 'tong_da_thu': Decimal('0'),
                 'con_no': Decimal('0'),
             }
-        data[kh_id]['tong_hoa_don'] += Decimal(hd.tong_cong or 0)
+        # Thêm chênh lệch trả hàng vào tổng hóa đơn (chênh lệch âm = giảm nợ)
+        data[kh_id]['tong_hoa_don'] += Decimal(hd.tong_cong or 0) + doi_tra_hd_map.get(hd.pk, Decimal('0'))
         data[kh_id]['tong_da_thu'] += Decimal(hd.da_thu or 0)
 
     thu_theo_kh_qs = PhieuThu.objects.filter(
@@ -1384,7 +1379,8 @@ def _phieu_thu_khach_hang_cong_no_map():
             }
         data[kh_id]['tong_da_thu'] += Decimal(pt.tong_thu or 0)
 
-    for _, row in data.items():
+    for kh_id, row in data.items():
+        row['tong_hoa_don'] += doi_tra_kh_map.get(kh_id, Decimal('0'))
         row['con_no'] = row['tong_hoa_don'] - row['tong_da_thu']
         if row['con_no'] < 0:
             row['con_no'] = Decimal('0')
@@ -1432,8 +1428,11 @@ def _build_phieu_thu_context(form_values=None, hoa_don_selected=None, editing=Fa
         kh.con_no_hien_tai = info.get('con_no', Decimal('0'))
     hoa_don_list = _phieu_thu_hoa_don_queryset()
     if hoa_don_selected and hoa_don_selected.pk:
-        hoa_don_list = (hoa_don_list | HoaDonBan.objects.select_related('khach_hang').filter(pk=hoa_don_selected.pk)).distinct()
-
+        # Avoid combining distinct with non-distinct
+        qs_1 = HoaDonBan.objects.select_related('khach_hang').exclude(trang_thai='4').filter(con_no__gt=0)
+        qs_2 = HoaDonBan.objects.select_related('khach_hang').filter(pk=hoa_don_selected.pk)
+        hoa_don_list = (qs_1 | qs_2).distinct()
+    
     tai_khoan_list = list(TaiKhoanKeToan.objects.filter(trang_thai=True).order_by('ma_tk'))
 
     return {
@@ -1448,6 +1447,7 @@ def _build_phieu_thu_context(form_values=None, hoa_don_selected=None, editing=Fa
         'active_menu': 'phieu_chi' if is_chi_mode else 'phieu_thu',
         'loai_form': 'chi' if is_chi_mode else 'thu',
         'form_values': form_values,
+        'editing': editing,
     }
 
 
@@ -1477,7 +1477,6 @@ def phieu_thu_them(request, mode='thu'):
             'dia_chi': data.get('dia_chi', ''),
             'ly_do_nop': data.get('ly_do_nop', ''),
             'loai_phieu_thu': loai_phieu,
-            'hinh_thuc_thu': data.get('hinh_thuc_thu', 'tien_mat'),
             'tong_thu': data.get('tong_thu', ''),
             'hoa_don': data.get('hoa_don', '') if loai_phieu == '1' else '',
             'so_tham_chieu': data.get('so_tham_chieu', ''),
@@ -1547,7 +1546,6 @@ def phieu_thu_them(request, mode='thu'):
                         so_phieu=so_phieu,
                         ngay_thu=data.get('ngay_thu') or date.today(),
                         khach_hang_id=kh_id,
-                        hinh_thuc_thu=data.get('hinh_thuc_thu', 'tien_mat'),
                         so_tham_chieu=data.get('so_tham_chieu', ''),
                         tong_thu=tong_thu,
                         hoa_don=hoa_don_obj if loai_phieu == '1' else None,
@@ -1585,13 +1583,10 @@ def phieu_thu_them(request, mode='thu'):
         hoa_don_obj = getattr(phieu_copy, 'hoa_don', None)
         form_values = {
             'ngay_thu': phieu_copy.ngay_thu,
-            'ngay_hach_toan': phieu_copy.ngay_hach_toan,
-            'hinh_thuc_thu': phieu_copy.hinh_thuc_thu,
             'loai_phieu_thu': getattr(phieu_copy, 'loai_phieu_thu', '1'),
             'trang_thai': '1',
             'tong_thu': phieu_copy.tong_thu,
             'so_phieu': '',
-            'so_tk_nh': getattr(phieu_copy, 'so_tk_nh', ''),
             'so_tham_chieu': getattr(phieu_copy, 'so_tham_chieu', ''),
             'ly_do_nop': getattr(phieu_copy, 'ly_do_nop', ''),
             'nguoi_nop_tien': getattr(phieu_copy, 'nguoi_nop_tien', ''),
@@ -1612,7 +1607,6 @@ def phieu_thu_them(request, mode='thu'):
         form_values = {
             'ngay_thu': date.today().isoformat(),
             'ngay_hach_toan': date.today().isoformat(),
-            'hinh_thuc_thu': 'tien_mat',
             'loai_phieu_thu': loai_phieu_get,
             'trang_thai': '1',
             'tong_thu': str(int(Decimal(hoa_don_obj.con_no or 0))) if hoa_don_obj else '',
@@ -1647,7 +1641,6 @@ def phieu_thu_sua(request, pk, mode='thu'):
             'dia_chi': data.get('dia_chi', ''),
             'ly_do_nop': data.get('ly_do_nop', ''),
             'loai_phieu_thu': loai_phieu,
-            'hinh_thuc_thu': data.get('hinh_thuc_thu', phieu.hinh_thuc_thu or 'tien_mat'),
             'tong_thu': data.get('tong_thu', str(phieu.tong_thu) if phieu.tong_thu else ''),
             'hoa_don': str(phieu.hoa_don_id) if phieu.hoa_don else '',
             'so_tham_chieu': data.get('so_tham_chieu', phieu.so_tham_chieu or ''),
@@ -1679,7 +1672,6 @@ def phieu_thu_sua(request, pk, mode='thu'):
         trang_thai_luu = trang_thai_input if trang_thai_input in ('1', '2') else '1'
         
         phieu.ngay_thu = data.get('ngay_thu') or phieu.ngay_thu or date.today()
-        phieu.hinh_thuc_thu = data.get('hinh_thuc_thu', 'tien_mat')
         phieu.so_tham_chieu = data.get('so_tham_chieu', '')
         phieu.tong_thu = tong_thu
         phieu.trang_thai = trang_thai_luu
@@ -1704,7 +1696,6 @@ def phieu_thu_sua(request, pk, mode='thu'):
     form_values = {
         'ngay_thu': phieu.ngay_thu.isoformat() if phieu.ngay_thu else date.today().isoformat(),
         'ngay_hach_toan': date.today().isoformat(),
-        'hinh_thuc_thu': phieu.hinh_thuc_thu or 'tien_mat',
         'loai_phieu_thu': loai_phieu,
         'trang_thai': phieu.trang_thai,
         'tong_thu': str(phieu.tong_thu) if phieu.tong_thu else '',
@@ -1733,15 +1724,9 @@ def phieu_thu_xem(request, pk, mode='thu'):
     if is_chi_mode and raw_note.startswith('[LOAI_PHIEU:CHI]'):
         ghi_chu_hien_thi = raw_note[len('[LOAI_PHIEU:CHI]'):].strip()
 
-    # Tính TK dựa vào hình thức thanh toán
-    hinh_thuc = str(phieu.hinh_thuc_thu or 'tien_mat').strip()
-    tk_tien = '112' if hinh_thuc == 'chuyen_khoan' else '111'
-    if is_chi_mode:
-        phieu_tk_no = tk_tien
-        phieu_tk_co = '131'
-    else:
-        phieu_tk_no = '131'
-        phieu_tk_co = tk_tien
+    # Không còn hinh_thuc_thu, tk_no và tk_co sẽ được hiển thị từ sổ cái hoặc để trống
+    phieu_tk_no = ''
+    phieu_tk_co = ''
 
     return render(request, 'ban_hang/phieu_thu_detail.html', {
         'phieu': phieu,
@@ -1839,8 +1824,14 @@ def _returned_qty_map(hoa_don, exclude_phieu_id=None):
 
 
 def _apply_inventory_and_cong_no_for_doi_tra(phieu):
-    rows = list(phieu.chi_tiet.select_related('hang_hoa', 'hang_hoa_doi', 'kho'))
+    from apps.kho.models import PhieuNhap, PhieuNhap_CT, PhieuXuat, PhieuXuat_CT
+    from apps.kho.views import _gen_so_phieu
 
+    rows = list(phieu.chi_tiet.select_related('hang_hoa', 'hang_hoa_doi', 'kho'))
+    tag = f'[DOI_TRA_PHIEU:{phieu.pk}]'
+    ngay = phieu.ngay_hach_toan or phieu.ngay_lap or date.today()
+
+    # ── 1. Kiểm tra tồn kho hàng đổi trước khi xử lý ──────────────────────
     for ct in rows:
         if int(ct.so_luong_doi or 0) <= 0 or not ct.hang_hoa_doi_id:
             continue
@@ -1849,38 +1840,111 @@ def _apply_inventory_and_cong_no_for_doi_tra(phieu):
             ma_hang = ct.hang_hoa_doi.ma_hang if ct.hang_hoa_doi else 'N/A'
             raise ValueError(f'Không đủ tồn kho cho hàng đổi {ma_hang}.')
 
+    # ── 2. Tạo Phiếu Nhập tự động (nhập hàng KH trả về) ───────────────────
+    kho_nhap_dict = {}
     for ct in rows:
-        ton_tra, _ = TonKho.objects.get_or_create(
-            hang_hoa_id=ct.hang_hoa_id,
-            kho_id=ct.kho_id,
-            defaults={'so_luong': 0, 'gia_von_tb': 0},
+        kho_nhap_dict.setdefault(ct.kho_id, []).append(ct)
+
+    for kho_id, items in kho_nhap_dict.items():
+        pn = PhieuNhap.objects.create(
+            so_phieu=_gen_so_phieu('PN'),
+            ngay_lap=ngay,
+            ngay_hach_toan=ngay,
+            ngay_chung_tu=ngay,
+            ngay_nhap=ngay,
+            loai_nhap='2',  # Khách hàng trả hàng
+            kho_id=kho_id,
+            trang_thai='3',  # Đã vào sổ cái (tự động)
+            nguoi_tao=phieu.nguoi_tao,
+            ghi_chu=f'{tag} Nhập hàng trả từ phiếu đổi/trả {phieu.so_phieu}',
         )
-        ton_tra.so_luong = int(ton_tra.so_luong or 0) + int(ct.so_luong or 0)
-        ton_tra.save(update_fields=['so_luong', 'ngay_cap_nhat'])
-
-        vt = TonKhoViTri.objects.filter(hang_hoa_id=ct.hang_hoa_id, kho_id=ct.kho_id).exclude(vi_tri__ma_vi_tri__startswith='HL-').first()
-        if vt:
-            vt.so_luong = int(vt.so_luong or 0) + int(ct.so_luong or 0)
-            vt.save(update_fields=['so_luong', 'ngay_cap_nhat'])
-
-        if int(ct.so_luong_doi or 0) > 0 and ct.hang_hoa_doi_id:
-            ton_doi = TonKho.objects.get(hang_hoa_id=ct.hang_hoa_doi_id, kho_id=ct.kho_id)
-            ton_doi.so_luong = int(ton_doi.so_luong or 0) - int(ct.so_luong_doi or 0)
-            ton_doi.save(update_fields=['so_luong', 'ngay_cap_nhat'])
-
-            con_lai = int(ct.so_luong_doi or 0)
-            vt_rows = list(
-                TonKhoViTri.objects.select_for_update().filter(hang_hoa_id=ct.hang_hoa_doi_id, kho_id=ct.kho_id, so_luong__gt=0)
-                .exclude(vi_tri__ma_vi_tri__startswith='HL-')
-                .order_by('-so_luong', 'id')
+        tong_pn = 0
+        for ct in items:
+            sl = int(ct.so_luong or 0)
+            gia = int(ct.don_gia or 0)
+            pn_ct = PhieuNhap_CT.objects.create(
+                phieu_nhap=pn,
+                hang_hoa=ct.hang_hoa,
+                so_luong_dat=sl,
+                so_luong_nhan=sl,
+                don_gia=gia,
+                tk_no=phieu.tk_no or '156',
+                tk_co=phieu.tk_co or '511',
             )
-            for vtd in vt_rows:
-                if con_lai <= 0: break
-                tru = min(int(vtd.so_luong or 0), con_lai)
-                vtd.so_luong = int(vtd.so_luong or 0) - tru
-                vtd.save(update_fields=['so_luong', 'ngay_cap_nhat'])
-                con_lai -= tru
+            tong_pn += pn_ct.thanh_tien
+            # Cập nhật TonKho
+            ton_tra, _ = TonKho.objects.get_or_create(
+                hang_hoa_id=ct.hang_hoa_id, kho_id=kho_id,
+                defaults={'so_luong': 0, 'gia_von_tb': 0},
+            )
+            sl_cu = int(ton_tra.so_luong or 0)
+            gv_cu = int(ton_tra.gia_von_tb or 0)
+            gv_moi = (sl_cu * gv_cu + sl * gia) / (sl_cu + sl) if (sl_cu + sl) > 0 else gia
+            ton_tra.so_luong = sl_cu + sl
+            ton_tra.gia_von_tb = round(gv_moi, 0)
+            ton_tra.save()
+            # Không gán vào vị trí cụ thể — hàng trả về sẽ vào "Hàng chờ" để thủ kho gán vị trí sau
+        pn.tong_tien = tong_pn
+        pn.save(update_fields=['tong_tien'])
 
+    # ── 3. Tạo Phiếu Xuất tự động (xuất hàng đổi cho KH) — chỉ khi đổi hàng
+    has_doi = any(int(ct.so_luong_doi or 0) > 0 and ct.hang_hoa_doi_id for ct in rows)
+    if has_doi:
+        kho_xuat_dict = {}
+        for ct in rows:
+            if int(ct.so_luong_doi or 0) > 0 and ct.hang_hoa_doi_id:
+                kho_xuat_dict.setdefault(ct.kho_id, []).append(ct)
+
+        for kho_id, items in kho_xuat_dict.items():
+            px = PhieuXuat.objects.create(
+                so_phieu=_gen_so_phieu('PX'),
+                ngay_lap=ngay,
+                ngay_hach_toan=ngay,
+                ngay_chung_tu=ngay,
+                ngay_xuat=ngay,
+                loai_xuat='ban_hang',
+                kho_id=kho_id,
+                trang_thai='3',
+                nguoi_tao=phieu.nguoi_tao,
+                ghi_chu=f'{tag} Xuất hàng đổi từ phiếu đổi/trả {phieu.so_phieu}',
+            )
+            tong_gv = 0
+            for ct in items:
+                sl_doi = int(ct.so_luong_doi or 0)
+                ton_doi = TonKho.objects.get(hang_hoa_id=ct.hang_hoa_doi_id, kho_id=kho_id)
+                gv_don_vi = int(ton_doi.gia_von_tb or 0)
+                gv_tong = gv_don_vi * sl_doi
+                tong_gv += gv_tong
+                PhieuXuat_CT.objects.create(
+                    phieu_xuat=px,
+                    hang_hoa=ct.hang_hoa_doi,
+                    so_luong=sl_doi,
+                    gia_von=gv_don_vi,
+                    tong_gia_von=gv_tong,
+                    gia_xuat=int(ct.gia_ban_doi or 0),
+                    tk_no='632',
+                    tk_co='156',
+                )
+                # Trừ tồn kho hàng đổi
+                ton_doi.so_luong = int(ton_doi.so_luong or 0) - sl_doi
+                ton_doi.save(update_fields=['so_luong', 'ngay_cap_nhat'])
+                con_lai = sl_doi
+                for vtd in list(
+                    TonKhoViTri.objects.select_for_update()
+                    .filter(hang_hoa_id=ct.hang_hoa_doi_id, kho_id=kho_id, so_luong__gt=0)
+                    .exclude(vi_tri__ma_vi_tri__startswith='HL-')
+                    .order_by('-so_luong', 'id')
+                ):
+                    if con_lai <= 0:
+                        break
+                    tru = min(int(vtd.so_luong or 0), con_lai)
+                    vtd.so_luong = int(vtd.so_luong or 0) - tru
+                    vtd.save(update_fields=['so_luong', 'ngay_cap_nhat'])
+                    con_lai -= tru
+            px.tong_gia_von = tong_gv
+            px.save(update_fields=['tong_gia_von'])
+
+    # ── 4. Cập nhật công nợ hóa đơn gốc ────────────────────────────────────
     if phieu.hoa_don_goc_id:
         don = phieu.hoa_don_goc
         don.con_no = Decimal(don.con_no or 0) + Decimal(phieu.chenh_lech_tien or 0)
@@ -1888,29 +1952,7 @@ def _apply_inventory_and_cong_no_for_doi_tra(phieu):
             don.con_no = Decimal('0')
         don.save(update_fields=['con_no'])
 
-    # Hoan tien mat tu dong: tao phieu chi khi phieu doi/tra da hoan tat va phat sinh tien hoan.
-    so_tien_hoan = abs(Decimal(phieu.chenh_lech_tien or 0)) if Decimal(phieu.chenh_lech_tien or 0) < 0 else Decimal('0')
-    if (
-        so_tien_hoan > 0
-        and str(phieu.hinh_thuc_hoan or '').strip() == '1'
-        and phieu.khach_hang_id
-    ):
-        doi_tra_tag = f'[DOI_TRA_PHIEU:{phieu.pk}]'
-        da_tao_phieu_chi = PhieuThu.objects.filter(ghi_chu__contains=doi_tra_tag).exists()
-        if not da_tao_phieu_chi:
-            PhieuThu.objects.create(
-                so_phieu=_ensure_unique_so_phieu_chi(),
-                ngay_thu=phieu.ngay_hach_toan or phieu.ngay_lap or date.today(),
-                khach_hang_id=phieu.khach_hang_id,
-                hinh_thuc_thu='tien_mat',
-                so_tham_chieu='',
-                tong_thu=so_tien_hoan,
-                don_ban=None,
-                trang_thai='2',
-                ghi_chu=f'{doi_tra_tag} Hoan tien cho phieu doi/tra {phieu.so_phieu}\n[LOAI_PHIEU:CHI] Hoan tien doi/tra',
-                nguoi_tao=phieu.nguoi_tao,
-            )
-
+    # ── 5. Ghi sổ kế toán ───────────────────────────────────────────────────
     try:
         post_to_ledger('hang_ban_tra_lai', phieu.id, phieu.nguoi_tao)
     except LedgerPostingError:
@@ -1922,48 +1964,51 @@ def _apply_inventory_and_cong_no_for_doi_tra(phieu):
 
 def _rollback_inventory_and_cong_no_for_doi_tra(phieu):
     from apps.so_cai.models import JournalEntry
-    from apps.kho.models import TonKhoViTri
+    from apps.kho.models import PhieuNhap, PhieuXuat
 
+    tag = f'[DOI_TRA_PHIEU:{phieu.pk}]'
     rows = list(phieu.chi_tiet.select_related('hang_hoa', 'hang_hoa_doi', 'kho'))
 
+    # Xóa phiếu nhập/xuất tự động đã tạo → tồn kho sẽ rollback theo
+    # Nhưng vì ta đã cập nhật TonKho trực tiếp, cần rollback thủ công
     for ct in rows:
+        # Rollback hàng trả về: trừ lại tồn kho
         ton_tra = TonKho.objects.filter(hang_hoa_id=ct.hang_hoa_id, kho_id=ct.kho_id).first()
         if ton_tra:
-            ton_tra.so_luong = int(ton_tra.so_luong or 0) - int(ct.so_luong or 0)
-            if ton_tra.so_luong < 0:
-                ton_tra.so_luong = 0
+            ton_tra.so_luong = max(0, int(ton_tra.so_luong or 0) - int(ct.so_luong or 0))
             ton_tra.save(update_fields=['so_luong', 'ngay_cap_nhat'])
-
-        vt = TonKhoViTri.objects.filter(hang_hoa_id=ct.hang_hoa_id, kho_id=ct.kho_id).exclude(vi_tri__ma_vi_tri__startswith='HL-').first()
+        vt = TonKhoViTri.objects.filter(
+            hang_hoa_id=ct.hang_hoa_id, kho_id=ct.kho_id
+        ).exclude(vi_tri__ma_vi_tri__startswith='HL-').first()
         if vt:
-            vt.so_luong = int(vt.so_luong or 0) - int(ct.so_luong or 0)
-            if vt.so_luong < 0:
-                vt.so_luong = 0
+            vt.so_luong = max(0, int(vt.so_luong or 0) - int(ct.so_luong or 0))
             vt.save(update_fields=['so_luong', 'ngay_cap_nhat'])
 
+        # Rollback hàng đổi đi: cộng lại tồn kho
         if int(ct.so_luong_doi or 0) > 0 and ct.hang_hoa_doi_id:
             ton_doi, _ = TonKho.objects.get_or_create(
-                hang_hoa_id=ct.hang_hoa_doi_id,
-                kho_id=ct.kho_id,
+                hang_hoa_id=ct.hang_hoa_doi_id, kho_id=ct.kho_id,
                 defaults={'so_luong': 0, 'gia_von_tb': 0},
             )
             ton_doi.so_luong = int(ton_doi.so_luong or 0) + int(ct.so_luong_doi or 0)
             ton_doi.save(update_fields=['so_luong', 'ngay_cap_nhat'])
-            
-            vt_doi = TonKhoViTri.objects.filter(hang_hoa_id=ct.hang_hoa_doi_id, kho_id=ct.kho_id).exclude(vi_tri__ma_vi_tri__startswith='HL-').first()
+            vt_doi = TonKhoViTri.objects.filter(
+                hang_hoa_id=ct.hang_hoa_doi_id, kho_id=ct.kho_id
+            ).exclude(vi_tri__ma_vi_tri__startswith='HL-').first()
             if vt_doi:
                 vt_doi.so_luong = int(vt_doi.so_luong or 0) + int(ct.so_luong_doi or 0)
                 vt_doi.save(update_fields=['so_luong', 'ngay_cap_nhat'])
 
+    # Xóa phiếu nhập/xuất tự động đã tạo
+    PhieuNhap.objects.filter(ghi_chu__contains=tag).delete()
+    PhieuXuat.objects.filter(ghi_chu__contains=tag).delete()
+
+    # Rollback công nợ
     if phieu.hoa_don_goc_id:
         don = phieu.hoa_don_goc
-        don.con_no = Decimal(don.con_no or 0) - Decimal(phieu.chenh_lech_tien or 0)
-        if don.con_no < 0:
-            don.con_no = Decimal('0')
+        don.con_no = max(Decimal('0'), Decimal(don.con_no or 0) - Decimal(phieu.chenh_lech_tien or 0))
         don.save(update_fields=['con_no'])
 
-    doi_tra_tag = f'[DOI_TRA_PHIEU:{phieu.pk}]'
-    PhieuThu.objects.filter(ghi_chu__contains=doi_tra_tag).delete()
     JournalEntry.objects.filter(document_type='hang_ban_tra_lai', document_id=phieu.pk).delete()
 
     phieu.da_cap_nhat_kho_cong_no = False
@@ -1974,15 +2019,24 @@ def _build_doi_tra_context(form_values=None, phieu=None):
     form_values = form_values or {}
     form_values.setdefault('tk_no', '131')
     form_values.setdefault('tk_co', '131')
-    hoa_don_qs = HoaDonBan.objects.select_related('khach_hang').filter(trang_thai__in=('2', '3')).order_by('-ngay_lap', '-id')
+    hoa_don_qs = HoaDonBan.objects.select_related('khach_hang').filter(
+        trang_thai__in=('2', '3'),
+        phieu_doi_tra__isnull=True
+    ).order_by('-ngay_lap', '-id')
     if phieu and phieu.hoa_don_goc_id:
         hoa_don_qs = (hoa_don_qs | HoaDonBan.objects.select_related('khach_hang').filter(pk=phieu.hoa_don_goc_id)).distinct()
+    elif form_values.get('hoa_don_goc'):
+        hoa_don_qs = (hoa_don_qs | HoaDonBan.objects.select_related('khach_hang').filter(pk=form_values['hoa_don_goc'])).distinct()
+    from django.db.models import Sum
+    hang_list = HangHoa.objects.annotate(
+        tong_ton=Sum('tonkho__so_luong')
+    ).filter(tong_ton__gt=0).order_by('ma_hang')
 
     return {
         'phieu': phieu,
         'form_values': form_values,
         'hoa_don_list': hoa_don_qs[:300],
-        'hang_list': HangHoa.objects.all().order_by('ma_hang'),
+        'hang_list': hang_list,
         'kho_list': Kho.objects.filter(trang_thai=True).order_by('ma_kho'),
         'tai_khoan_list': TaiKhoanKeToan.objects.filter(trang_thai=True).order_by('ma_tk'),
         'page_title': 'Sửa phiếu đổi trả' if phieu else 'Lập phiếu đổi trả',
@@ -2018,16 +2072,13 @@ def _save_phieu_doi_tra_from_request(request, phieu=None):
     if hinh_thuc not in ('tra_hang', 'doi_hang'):
         hinh_thuc = 'tra_hang'
 
-    hinh_thuc_hoan_raw = (data.get('hinh_thuc_hoan') or '1').strip()
-    map_hinh_thuc_hoan = {
-        'tien_mat': '1',
-        'bu_tru_no': '2',
-        'doi_hang': '3',
-        '1': '1',
-        '2': '2',
-        '3': '3',
-    }
-    hinh_thuc_hoan = map_hinh_thuc_hoan.get(hinh_thuc_hoan_raw, '1')
+    # Kiểm tra hóa đơn đã có phiếu đổi trả nào khác chưa (mỗi HĐ chỉ đổi trả 1 lần)
+    existing_phieu = PhieuTraHang.objects.filter(hoa_don_goc=hoa_don)
+    if phieu and phieu.pk:
+        existing_phieu = existing_phieu.exclude(pk=phieu.pk)
+    
+    if existing_phieu.exists():
+        raise ValueError('Hóa đơn này đã được lập phiếu đổi/trả. Mỗi hóa đơn chỉ được phép đổi trả 1 lần duy nhất.')
 
     submit_action = (data.get('submit_action') or '').strip().lower()
     trang_thai = '2' if submit_action == 'confirm' else (data.get('trang_thai') or '1').strip()
@@ -2118,7 +2169,12 @@ def _save_phieu_doi_tra_from_request(request, phieu=None):
 
     tong_tien_tra = sum(Decimal(r['so_luong']) * Decimal(r['don_gia']) for r in rows_payload)
     tong_tien_doi = sum(Decimal(r['so_luong_doi']) * Decimal(r['gia_ban_doi']) for r in rows_payload)
-    chenh_lech = tong_tien_doi - tong_tien_tra
+    # Cộng thêm 10% thuế VAT vào tổng tiền (thuế = 10% tổng tiền hàng)
+    thue_vat_tra = round(tong_tien_tra * Decimal('0.1'), 0)
+    thue_vat_doi = round(tong_tien_doi * Decimal('0.1'), 0)
+    tong_tien_tra_co_thue = tong_tien_tra + thue_vat_tra
+    tong_tien_doi_co_thue = tong_tien_doi + thue_vat_doi
+    chenh_lech = tong_tien_doi_co_thue - tong_tien_tra_co_thue
     tong_tien_hoan = abs(chenh_lech)
 
     phieu = phieu or PhieuTraHang()
@@ -2127,16 +2183,14 @@ def _save_phieu_doi_tra_from_request(request, phieu=None):
     phieu.ngay_hach_toan = _parse_date(data.get('ngay_hach_toan') or phieu.ngay_lap)
     phieu.ngay_tra = phieu.ngay_lap
     phieu.hoa_don_goc = hoa_don
-    phieu.hoa_don_goc = hoa_don.don_ban
     phieu.khach_hang = hoa_don.khach_hang
     phieu.tk_no = (data.get('tk_no') or '131').strip()
     phieu.tk_co = (data.get('tk_co') or '131').strip()
     phieu.dien_giai = (data.get('dien_giai') or '').strip()
     phieu.ly_do_tra = (data.get('ly_do_tra') or 'Đổi/trả theo hóa đơn gốc').strip()
     phieu.hinh_thuc_xu_ly = hinh_thuc
-    phieu.hinh_thuc_hoan = hinh_thuc_hoan
-    phieu.tong_tien_tra = tong_tien_tra
-    phieu.tong_tien_doi = tong_tien_doi
+    phieu.tong_tien_tra = tong_tien_tra_co_thue
+    phieu.tong_tien_doi = tong_tien_doi_co_thue
     phieu.chenh_lech_tien = chenh_lech
     phieu.tong_tien_hoan = tong_tien_hoan
     phieu.trang_thai = trang_thai
@@ -2153,6 +2207,17 @@ def _save_phieu_doi_tra_from_request(request, phieu=None):
 
     return phieu
 
+
+@login_required
+def phieu_doi_tra_detail(request, pk):
+    phieu = get_object_or_404(PhieuTraHang.objects.select_related('khach_hang', 'hoa_don_goc'), pk=pk)
+    chi_tiet = phieu.chi_tiet.select_related('hang_hoa', 'kho', 'hang_hoa_doi')
+    return render(request, 'ban_hang/phieu_doi_tra_detail.html', {
+        'page_title': f'Phiếu đổi trả {phieu.so_phieu}',
+        'active_menu': 'phieu_doi_tra',
+        'phieu': phieu,
+        'chi_tiet': chi_tiet,
+    })
 
 @login_required
 def phieu_doi_tra_list(request):
@@ -2210,7 +2275,6 @@ def phieu_doi_tra_them(request):
             'dien_giai': phieu_copy.dien_giai or '',
             'ly_do_tra': phieu_copy.ly_do_tra or '',
             'hinh_thuc_xu_ly': phieu_copy.hinh_thuc_xu_ly or 'tra_hang',
-            'hinh_thuc_hoan': {'tien_mat': '1', 'bu_tru_no': '2', 'doi_hang': '3'}.get(phieu_copy.hinh_thuc_hoan, '1'),
             'trang_thai': '1',
         }
         chi_tiet_copy = list(phieu_copy.chi_tiet.select_related('hang_hoa', 'hang_hoa_doi', 'kho', 'hoa_don_ct_goc'))
@@ -2228,7 +2292,6 @@ def phieu_doi_tra_them(request):
         'tk_no': '131',
         'tk_co': '131',
         'hinh_thuc_xu_ly': 'tra_hang',
-        'hinh_thuc_hoan': '1',
         'trang_thai': '1',
     }
     return render(request, 'ban_hang/doi_tra_form.html', _build_doi_tra_context(form_values))
@@ -2259,7 +2322,6 @@ def phieu_doi_tra_sua(request, pk):
         'dien_giai': phieu.dien_giai,
         'ly_do_tra': phieu.ly_do_tra,
         'hinh_thuc_xu_ly': phieu.hinh_thuc_xu_ly,
-        'hinh_thuc_hoan': {'tien_mat': '1', 'bu_tru_no': '2', 'doi_hang': '3'}.get(phieu.hinh_thuc_hoan, phieu.hinh_thuc_hoan),
         'trang_thai': phieu.trang_thai,
     }
     return render(request, 'ban_hang/doi_tra_form.html', {
@@ -2332,6 +2394,9 @@ def doi_tra_hoa_don_detail_api(request, pk):
     if not hoa_don:
         return JsonResponse({'error': 'Đơn hàng không tồn tại'}, status=404)
 
+    if hoa_don.phieu_doi_tra.exists():
+        return JsonResponse({'error': 'Hóa đơn này đã được lập phiếu đổi/trả. Mỗi hóa đơn chỉ được phép đổi trả 1 lần duy nhất.'}, status=400)
+
     returned_map = _returned_qty_map(hoa_don)
     rows = []
     for ct in hoa_don.chi_tiet.select_related('hang_hoa__don_vi_tinh', 'kho').all():
@@ -2350,6 +2415,7 @@ def doi_tra_hoa_don_detail_api(request, pk):
             'so_luong_da_tra': sl_da_tra,
             'so_luong_con_lai': sl_con_lai,
             'don_gia_tra': int(Decimal(ct.gia_ban or 0)),
+            'thue_suat': float(ct.thue_suat or 0) if hasattr(ct, 'thue_suat') else 0,
         })
 
     return JsonResponse({
@@ -2457,74 +2523,84 @@ def cong_no_kh(request):
     den_ngay = request.GET.get('den_ngay', '').strip()
     selected_khach_hang_id = request.GET.get('khach_hang', '').strip()
 
-    don_qs = DonBan.objects.select_related('khach_hang').prefetch_related('hoa_don_lien_ket').filter(
+    # Query trực tiếp từ HoaDonBan để không bỏ sót KH không có DonBan
+    hd_qs = HoaDonBan.objects.select_related('khach_hang').filter(
         khach_hang__isnull=False,
         khach_hang__trang_thai=True,
-        hoa_don_lien_ket__tk_no='131',
-        hoa_don_lien_ket__trang_thai__in=('2', '3'),
-    ).distinct()
+        tk_no='131',
+        trang_thai__in=('2', '3'),
+    )
     if ma_kh:
-        don_qs = don_qs.filter(khach_hang__ma_kh__icontains=ma_kh)
+        hd_qs = hd_qs.filter(khach_hang__ma_kh__icontains=ma_kh)
     if ten_kh:
-        don_qs = don_qs.filter(khach_hang__ten_kh__icontains=ten_kh)
+        hd_qs = hd_qs.filter(khach_hang__ten_kh__icontains=ten_kh)
     if so_dien_thoai:
-        don_qs = don_qs.filter(khach_hang__so_dien_thoai__icontains=so_dien_thoai)
+        hd_qs = hd_qs.filter(khach_hang__so_dien_thoai__icontains=so_dien_thoai)
     if tu_ngay:
-        don_qs = don_qs.filter(ngay_ban__gte=tu_ngay)
+        hd_qs = hd_qs.filter(ngay_lap__gte=tu_ngay)
     if den_ngay:
-        don_qs = don_qs.filter(ngay_ban__lte=den_ngay)
+        hd_qs = hd_qs.filter(ngay_lap__lte=den_ngay)
 
+    # Tổng đã thu theo từng phiếu thu (liên kết hóa đơn cụ thể)
+    thu_theo_hd_map = {
+        row['hoa_don_id']: Decimal(row['tong'] or 0)
+        for row in PhieuThu.objects.filter(
+            trang_thai='2', hoa_don__isnull=False,
+        ).values('hoa_don_id').annotate(tong=Sum('tong_thu'))
+    }
+
+    # Phiếu thu không liên kết hóa đơn cụ thể
     thu_theo_kh_map = {
         row['khach_hang_id']: Decimal(row['tong'] or 0)
-        for row in (
-            PhieuThu.objects.filter(
-                trang_thai='2',
-                hoa_don__isnull=True,
-                ghi_chu__icontains='[LOAI_PHIEU_THU:2]',
-                khach_hang__isnull=False,
-            )
-            .values('khach_hang_id')
-            .annotate(tong=Sum('tong_thu'))
-        )
+        for row in PhieuThu.objects.filter(
+            trang_thai='2', hoa_don__isnull=True, khach_hang__isnull=False,
+        ).values('khach_hang_id').annotate(tong=Sum('tong_thu'))
+    }
+
+    # Đổi trả có liên kết hóa đơn
+    doi_tra_hd_map = {
+        row['hoa_don_goc_id']: Decimal(row['tong_chenh_lech'] or 0)
+        for row in PhieuTraHang.objects.filter(
+            trang_thai='2', hoa_don_goc__isnull=False,
+        ).values('hoa_don_goc_id').annotate(tong_chenh_lech=Sum('chenh_lech_tien'))
+    }
+
+    # Đổi trả không liên kết hóa đơn cụ thể (tính vào KH)
+    doi_tra_kh_map = {
+        row['khach_hang_id']: Decimal(row['tong_chenh_lech'] or 0)
+        for row in PhieuTraHang.objects.filter(
+            trang_thai='2', hoa_don_goc__isnull=True, khach_hang__isnull=False,
+        ).values('khach_hang_id').annotate(tong_chenh_lech=Sum('chenh_lech_tien'))
     }
 
     tong_hop_map = {}
-    for don in don_qs:
-        kh = don.khach_hang
+    for hd in hd_qs:
+        kh = hd.khach_hang
         if not kh:
             continue
-
-        da_thanh_toan_don = Decimal(don.da_thu or 0)
-        tong_hoa_don_don = Decimal(don.tong_thanh_toan or 0)
-        cong_no_don = tong_hoa_don_don - da_thanh_toan_don
-        if cong_no_don < 0:
-            cong_no_don = Decimal('0')
-        han_thanh_toan = don.han_thanh_toan
-        if not han_thanh_toan and kh.so_ngay_no_max and don.ngay_ban:
-            han_thanh_toan = don.ngay_ban + timedelta(days=int(kh.so_ngay_no_max or 0))
+        # tong_hd là tổng hóa đơn + chênh lệch từ đổi trả (chênh lệch âm = giảm nợ)
+        tong_hd = Decimal(hd.tong_cong or 0) + doi_tra_hd_map.get(hd.pk, Decimal('0'))
+        da_thu_hd = thu_theo_hd_map.get(hd.pk, Decimal('0'))
+        han_thanh_toan = getattr(hd, 'han_thanh_toan', None)
+        if not han_thanh_toan and kh.so_ngay_no_max and hd.ngay_lap:
+            han_thanh_toan = hd.ngay_lap + timedelta(days=int(kh.so_ngay_no_max or 0))
 
         row = tong_hop_map.get(kh.pk)
         if not row:
             row = {
-                'khach_hang_id': kh.pk,
-                'ma_kh': kh.ma_kh,
-                'ten_kh': kh.ten_kh,
-                'so_dien_thoai': kh.so_dien_thoai,
-                'loai_kh': kh.loai_kh,
-                'tong_gia_tri_hoa_don': Decimal('0'),
-                'tong_da_thanh_toan': Decimal('0'),
-                'thu_theo_khach_hang': Decimal('0'),
-                'cong_no_hien_tai': Decimal('0'),
-                'han_thanh_toan': None,
-                'so_ngay_qua_han': 0,
-                'trang_thai': 'khong_no',
+                'khach_hang_id': kh.pk, 'ma_kh': kh.ma_kh, 'ten_kh': kh.ten_kh,
+                'so_dien_thoai': kh.so_dien_thoai, 'loai_kh': kh.loai_kh,
+                'tong_gia_tri_hoa_don': Decimal('0'), 'tong_da_thanh_toan': Decimal('0'),
+                'cong_no_hien_tai': Decimal('0'), 'han_thanh_toan': None,
+                'so_ngay_qua_han': 0, 'trang_thai': 'khong_no',
             }
             tong_hop_map[kh.pk] = row
 
-        row['tong_gia_tri_hoa_don'] += tong_hoa_don_don
-        row['tong_da_thanh_toan'] += da_thanh_toan_don
+        row['tong_gia_tri_hoa_don'] += tong_hd
+        row['tong_da_thanh_toan'] += da_thu_hd
 
-        if cong_no_don > 0 and han_thanh_toan:
+        con_no_hd = tong_hd - da_thu_hd
+        if con_no_hd > 0 and han_thanh_toan:
             if row['han_thanh_toan'] is None or han_thanh_toan < row['han_thanh_toan']:
                 row['han_thanh_toan'] = han_thanh_toan
             if today > han_thanh_toan:
@@ -2532,8 +2608,10 @@ def cong_no_kh(request):
 
     data = []
     for row in tong_hop_map.values():
-        row['thu_theo_khach_hang'] = thu_theo_kh_map.get(row['khach_hang_id'], Decimal('0'))
-        row['tong_da_thanh_toan'] += row['thu_theo_khach_hang']
+        row['tong_da_thanh_toan'] += thu_theo_kh_map.get(row['khach_hang_id'], Decimal('0'))
+        # Đổi trả không liên kết hóa đơn cũng cộng vào tổng giá trị hóa đơn (thường là số âm nên sẽ làm giảm nợ)
+        row['tong_gia_tri_hoa_don'] += doi_tra_kh_map.get(row['khach_hang_id'], Decimal('0'))
+        
         row['cong_no_hien_tai'] = row['tong_gia_tri_hoa_don'] - row['tong_da_thanh_toan']
         if row['cong_no_hien_tai'] < 0:
             row['cong_no_hien_tai'] = Decimal('0')
@@ -2571,107 +2649,77 @@ def cong_no_kh(request):
             selected_khach_hang_id_int = int(selected_khach_hang_id)
         except (TypeError, ValueError):
             selected_khach_hang_id_int = 0
+
+        # Chi tiết theo từng hóa đơn của KH được chọn
+        chi_tiet_hd_qs = HoaDonBan.objects.select_related('khach_hang').filter(
+            khach_hang_id=selected_khach_hang_id_int,
+            trang_thai__in=('2', '3'),
+        ).order_by('-ngay_lap', '-id')
+
+        if chi_tiet_hd_qs.exists():
+            khach_hang_duoc_chon = chi_tiet_hd_qs.first().khach_hang
+
         thu_theo_kh_bo_sung = thu_theo_kh_map.get(selected_khach_hang_id_int, Decimal('0'))
 
-        chi_tiet_qs = don_qs.filter(khach_hang_id=selected_khach_hang_id).order_by('-ngay_ban', '-id')
-        if chi_tiet_qs.exists():
-            khach_hang_duoc_chon = chi_tiet_qs.first().khach_hang
-        for don in chi_tiet_qs:
-            han_thanh_toan = don.han_thanh_toan
-            if not han_thanh_toan and don.khach_hang and don.khach_hang.so_ngay_no_max and don.ngay_ban:
-                han_thanh_toan = don.ngay_ban + timedelta(days=int(don.khach_hang.so_ngay_no_max or 0))
-
-            con_no = Decimal(don.con_no or 0)
-            so_ngay_qua_han = 0
-            if con_no > 0 and han_thanh_toan and today > han_thanh_toan:
-                so_ngay_qua_han = (today - han_thanh_toan).days
-
+        for hd in chi_tiet_hd_qs:
+            tong_hd = Decimal(hd.tong_cong or 0) + doi_tra_hd_map.get(hd.pk, Decimal('0'))
+            da_thu = thu_theo_hd_map.get(hd.pk, Decimal('0'))
+            con_no = max(Decimal('0'), tong_hd - da_thu)
+            han_thanh_toan = getattr(hd, 'han_thanh_toan', None)
+            if not han_thanh_toan and khach_hang_duoc_chon and khach_hang_duoc_chon.so_ngay_no_max and hd.ngay_lap:
+                han_thanh_toan = hd.ngay_lap + timedelta(days=int(khach_hang_duoc_chon.so_ngay_no_max or 0))
+            so_ngay_qua_han = (today - han_thanh_toan).days if con_no > 0 and han_thanh_toan and today > han_thanh_toan else 0
             if con_no <= 0:
                 trang_thai = 'khong_no'
             elif so_ngay_qua_han > 0:
                 trang_thai = 'qua_han'
             else:
                 trang_thai = 'con_no'
-
-            hoa_don_lien_ket = don.hoa_don_lien_ket.order_by('-ngay_lap', '-id').first()
-            ma_hoa_don = hoa_don_lien_ket.so_hoa_don if hoa_don_lien_ket else don.so_don
-            ngay_hoa_don = hoa_don_lien_ket.ngay_lap if hoa_don_lien_ket else don.ngay_ban
-
-            row = {
-                'ma_hoa_don': ma_hoa_don,
-                'ngay_hoa_don': ngay_hoa_don,
-                'tong_tien': Decimal(don.tong_thanh_toan or 0),
-                'da_thanh_toan': Decimal(don.da_thu or 0),
-                'con_no': con_no,
-                'han_thanh_toan': han_thanh_toan,
-                'so_ngay_qua_han': so_ngay_qua_han,
+            chi_tiet_cong_no.append({
+                'ma_hoa_don': hd.so_hoa_don, 'ngay_hoa_don': hd.ngay_lap,
+                'tong_tien': tong_hd, 'da_thanh_toan': da_thu, 'con_no': con_no,
+                'han_thanh_toan': han_thanh_toan, 'so_ngay_qua_han': so_ngay_qua_han,
                 'trang_thai': trang_thai,
-            }
-            chi_tiet_cong_no.append(row)
-            tong_chi_tiet['tong_tien'] += row['tong_tien']
-            tong_chi_tiet['da_thanh_toan'] += row['da_thanh_toan']
-            tong_chi_tiet['con_no'] += row['con_no']
+            })
+            tong_chi_tiet['tong_tien'] += tong_hd
+            tong_chi_tiet['da_thanh_toan'] += da_thu
 
-        # Sổ chi tiết công nợ theo kỳ: mô phỏng màn hình "Sổ chi tiết công nợ của một khách hàng"
+        # Sổ chi tiết phát sinh trong kỳ
         dong_so = 1
         phat_sinh_items = []
-
-        don_lich_su_qs = DonBan.objects.select_related('khach_hang').prefetch_related('hoa_don_lien_ket').filter(
-            khach_hang_id=selected_khach_hang_id_int,
-            hoa_don_lien_ket__tk_no='131',
-            hoa_don_lien_ket__trang_thai__in=('2', '3'),
-        ).distinct().order_by('ngay_ban', 'id')
-
-        for don in don_lich_su_qs:
-            hoa_don_lien_ket = don.hoa_don_lien_ket.order_by('-ngay_lap', '-id').first()
-            ngay_ct = hoa_don_lien_ket.ngay_lap if hoa_don_lien_ket and hoa_don_lien_ket.ngay_lap else (don.ngay_ban or don.ngay_chung_tu)
-            so_ct = hoa_don_lien_ket.so_hoa_don if hoa_don_lien_ket and hoa_don_lien_ket.so_hoa_don else don.so_don
-            tk_doi_ung = (hoa_don_lien_ket.tk_co if hoa_don_lien_ket and hoa_don_lien_ket.tk_co else '51111')
-            so_tien = Decimal(don.tong_thanh_toan or 0)
-
+        for hd in chi_tiet_hd_qs.order_by('ngay_lap', 'id'):
+            ngay_ct = hd.ngay_lap
+            so_tien = Decimal(hd.tong_cong or 0)
             if ngay_ct and ngay_ct < ky_tu_ngay:
                 so_du_dau_ky += so_tien
                 continue
             if ngay_ct and (ngay_ct < ky_tu_ngay or ngay_ct > ky_den_ngay):
                 continue
-
             phat_sinh_items.append({
-                'ngay_ghi_so': ngay_ct,
-                'ngay_lap': ngay_ct,
-                'ma_ct': 'HD',
-                'so_ct': so_ct,
-                'dien_giai': (don.ghi_chu or 'Ghi nhận doanh thu hóa đơn')[:200],
-                'tk_doi_ung': tk_doi_ung,
-                'phat_sinh_no': so_tien,
-                'phat_sinh_co': Decimal('0'),
+                'ngay_ghi_so': ngay_ct, 'ngay_lap': ngay_ct,
+                'ma_ct': 'HD', 'so_ct': hd.so_hoa_don,
+                'dien_giai': (hd.dien_giai or 'Ghi nhận doanh thu hóa đơn')[:200],
+                'tk_doi_ung': hd.tk_co or '511',
+                'phat_sinh_no': so_tien, 'phat_sinh_co': Decimal('0'),
             })
 
-        phieu_thu_lich_su_qs = PhieuThu.objects.select_related('khach_hang', 'don_ban').filter(
-            khach_hang_id=selected_khach_hang_id_int,
-            trang_thai='2',
+        phieu_thu_lich_su_qs = PhieuThu.objects.filter(
+            khach_hang_id=selected_khach_hang_id_int, trang_thai='2',
         ).order_by('ngay_thu', 'id')
-
         for pt in phieu_thu_lich_su_qs:
             so_tien = Decimal(pt.tong_thu or 0)
             ngay_ct = pt.ngay_thu
-            tk_doi_ung = '1121' if pt.hinh_thuc_thu == 'chuyen_khoan' else '1111'
-            dien_giai = (pt.ghi_chu or 'Thu tiền khách hàng')[:200]
-
             if ngay_ct and ngay_ct < ky_tu_ngay:
                 so_du_dau_ky -= so_tien
                 continue
             if ngay_ct and (ngay_ct < ky_tu_ngay or ngay_ct > ky_den_ngay):
                 continue
-
             phat_sinh_items.append({
-                'ngay_ghi_so': ngay_ct,
-                'ngay_lap': ngay_ct,
-                'ma_ct': 'PT',
-                'so_ct': pt.so_phieu,
-                'dien_giai': dien_giai,
-                'tk_doi_ung': tk_doi_ung,
-                'phat_sinh_no': Decimal('0'),
-                'phat_sinh_co': so_tien,
+                'ngay_ghi_so': ngay_ct, 'ngay_lap': ngay_ct,
+                'ma_ct': 'PT', 'so_ct': pt.so_phieu,
+                'dien_giai': (pt.ghi_chu or 'Thu tiền khách hàng')[:200],
+                'tk_doi_ung': '111',
+                'phat_sinh_no': Decimal('0'), 'phat_sinh_co': so_tien,
             })
 
         phat_sinh_items.sort(key=lambda x: (x['ngay_lap'] or date.min, x['ma_ct'], x['so_ct']))
@@ -2681,7 +2729,6 @@ def cong_no_kh(request):
             row['stt'] = dong_so
             dong_so += 1
             so_chi_tiet_cong_no.append(row)
-
         so_du_cuoi_ky = so_du_dau_ky + tong_ps_no - tong_ps_co
 
     query_without_selected = request.GET.copy()
@@ -2728,84 +2775,61 @@ def bao_cao_cong_no_kh_chi_tiet(request):
     if selected_khach_hang_id:
         khach_hang_duoc_chon = khach_hang_list.filter(pk=selected_khach_hang_id).first()
 
-    so_chi_tiet_cong_no = []
-    so_du_dau_ky = Decimal('0')
-    tong_ps_no = Decimal('0')
-    tong_ps_co = Decimal('0')
+    rows_hoa_don = []
+    tong_gia_tri_hd = Decimal('0')
+    tong_da_thu = Decimal('0')
+    tong_con_lai = Decimal('0')
 
     if khach_hang_duoc_chon:
-        don_lich_su_qs = DonBan.objects.select_related('khach_hang').prefetch_related('hoa_don_lien_ket').filter(
-            khach_hang_id=khach_hang_duoc_chon.pk,
-            hoa_don_lien_ket__tk_no='131',
-            hoa_don_lien_ket__trang_thai__in=('2', '3'),
-        ).distinct().order_by('ngay_ban', 'id')
-
-        for don in don_lich_su_qs:
-            hoa_don_lien_ket = don.hoa_don_lien_ket.order_by('-ngay_lap', '-id').first()
-            ngay_ct = hoa_don_lien_ket.ngay_lap if hoa_don_lien_ket and hoa_don_lien_ket.ngay_lap else (don.ngay_ban or don.ngay_chung_tu)
-            so_tien = Decimal(don.tong_thanh_toan or 0)
-            if ngay_ct and ngay_ct < tu_ngay:
-                so_du_dau_ky += so_tien
-                continue
-            if ngay_ct and (ngay_ct < tu_ngay or ngay_ct > den_ngay):
-                continue
-            so_chi_tiet_cong_no.append({
-                'ngay_ghi_so': ngay_ct,
-                'ngay_lap': ngay_ct,
-                'ma_ct': 'HD',
-                'so_ct': hoa_don_lien_ket.so_hoa_don if hoa_don_lien_ket and hoa_don_lien_ket.so_hoa_don else don.so_don,
-                'dien_giai': (don.ghi_chu or 'Ghi nhận doanh thu hóa đơn')[:200],
-                'tk_doi_ung': hoa_don_lien_ket.tk_co if hoa_don_lien_ket and hoa_don_lien_ket.tk_co else '51111',
-                'phat_sinh_no': so_tien,
-                'phat_sinh_co': Decimal('0'),
-            })
-
-        phieu_thu_qs = PhieuThu.objects.select_related('khach_hang', 'don_ban').filter(
+        # Lấy tất cả hóa đơn bán đã chuyển sổ cái (trang_thai=2) của khách hàng
+        # trong khoảng thời gian lọc
+        hoa_don_qs = HoaDonBan.objects.filter(
             khach_hang_id=khach_hang_duoc_chon.pk,
             trang_thai='2',
-        ).order_by('ngay_thu', 'id')
+            ngay_lap__gte=tu_ngay,
+            ngay_lap__lte=den_ngay,
+        ).order_by('ngay_lap', 'id')
 
-        for pt in phieu_thu_qs:
-            ngay_ct = pt.ngay_thu
-            so_tien = Decimal(pt.tong_thu or 0)
-            if ngay_ct and ngay_ct < tu_ngay:
-                so_du_dau_ky -= so_tien
-                continue
-            if ngay_ct and (ngay_ct < tu_ngay or ngay_ct > den_ngay):
-                continue
-            so_chi_tiet_cong_no.append({
-                'ngay_ghi_so': ngay_ct,
-                'ngay_lap': ngay_ct,
-                'ma_ct': 'PT',
-                'so_ct': pt.so_phieu,
-                'dien_giai': (pt.ghi_chu or 'Thu tiền khách hàng')[:200],
-                'tk_doi_ung': '1121' if pt.hinh_thuc_thu == 'chuyen_khoan' else '1111',
-                'phat_sinh_no': Decimal('0'),
-                'phat_sinh_co': so_tien,
+        for hd in hoa_don_qs:
+            # Tổng tiền hóa đơn
+            gia_tri_hd = Decimal(hd.tong_cong or 0)
+
+            # Tổng đã thu: tổng tất cả phiếu thu đã chuyển sổ cái liên kết với hóa đơn này
+            da_thu = PhieuThu.objects.filter(
+                hoa_don=hd,
+                trang_thai='2',
+            ).aggregate(total=Sum('tong_thu'))['total'] or Decimal('0')
+            da_thu = Decimal(da_thu)
+
+            con_lai = gia_tri_hd - da_thu
+
+            tong_gia_tri_hd += gia_tri_hd
+            tong_da_thu += da_thu
+            tong_con_lai += con_lai
+
+            rows_hoa_don.append({
+                'so_hoa_don': hd.so_hoa_don,
+                'ngay_lap': hd.ngay_lap,
+                'ten_kh': hd.ten_kh or (hd.khach_hang.ten_kh if hd.khach_hang else ''),
+                'dien_giai': hd.dien_giai or '',
+                'gia_tri_hd': gia_tri_hd,
+                'da_thu': da_thu,
+                'con_lai': con_lai,
+                'trang_thai_thu': 'Đã thu đủ' if con_lai <= 0 else ('Chưa thu' if da_thu <= 0 else 'Thu một phần'),
             })
 
-        so_chi_tiet_cong_no.sort(key=lambda x: (x['ngay_lap'] or date.min, x['ma_ct'], x['so_ct']))
-        for row in so_chi_tiet_cong_no:
-            tong_ps_no += row['phat_sinh_no']
-            tong_ps_co += row['phat_sinh_co']
-        for idx, row in enumerate(so_chi_tiet_cong_no, start=1):
-            row['stt'] = idx
-
-    so_du_cuoi_ky = so_du_dau_ky + tong_ps_no - tong_ps_co
-
     return render(request, 'ban_hang/bao_cao_cong_no_kh_chi_tiet.html', {
-        'page_title': 'Báo cáo công nợ chi tiết khách hàng',
+        'page_title': 'Báo cáo công nợ chi tiết theo hóa đơn',
         'active_menu': 'bao_cao_cong_no_kh_ct',
         'khach_hang_list': khach_hang_list,
         'khach_hang_duoc_chon': khach_hang_duoc_chon,
         'selected_khach_hang_id': selected_khach_hang_id,
         'tu_ngay': tu_ngay,
         'den_ngay': den_ngay,
-        'so_chi_tiet_cong_no': so_chi_tiet_cong_no,
-        'so_du_dau_ky': so_du_dau_ky,
-        'tong_ps_no': tong_ps_no,
-        'tong_ps_co': tong_ps_co,
-        'so_du_cuoi_ky': so_du_cuoi_ky,
+        'rows_hoa_don': rows_hoa_don,
+        'tong_gia_tri_hd': tong_gia_tri_hd,
+        'tong_da_thu': tong_da_thu,
+        'tong_con_lai': tong_con_lai,
     })
 
 
@@ -2886,10 +2910,18 @@ def don_ban_api_lookup(request):
 def hoa_don_ban_api_lookup(request):
     q = request.GET.get('q', '').strip()
     khach_hang_id = request.GET.get('khach_hang_id')
+    for_thu_tien = request.GET.get('for_thu_tien')
 
-    # Chi lay hoa don loai 2 (hoa don thuan) de ke thua vao phieu xuat
-    # Loai 1 (hoa don kiem phieu xuat) da tu dong tao phieu xuat, khong duoc chon lai
-    items = HoaDonBan.objects.select_related('khach_hang').exclude(trang_thai='4').filter(ma_giao_dich='2')
+    items = HoaDonBan.objects.select_related('khach_hang').exclude(trang_thai='4')
+    
+    if for_thu_tien:
+        # Lấy cả hóa đơn loại 1 và loại 2 để thu tiền, nhưng chỉ lấy hóa đơn đã Chuyển sổ cái (trạng thái = 2)
+        items = items.filter(trang_thai='2')
+    else:
+        # Dùng cho các chức năng khác (như kế thừa sang Phiếu xuất):
+        # Chi lay hoa don loai 2 (hoa don thuan) vi loai 1 da tu dong tao phieu xuat
+        items = items.filter(ma_giao_dich='2')
+        
     if q:
         items = items.filter(
             Q(so_hoa_don__icontains=q)
@@ -2961,7 +2993,6 @@ def don_ban_api_detail(request, pk):
         'mst': don.mst_kh or (don.khach_hang.ma_so_thue if don.khach_hang else ''),
         'nguoi_mua_hang': don.nguoi_mua_hang or '',
         'ma_nv_ban_hang': don.ma_nv_ban_hang or '',
-        'ma_ngoai_te': don.ma_ngoai_te or 'VND',
         'ty_gia': float(don.ty_gia or 1),
         'dien_giai': don.ghi_chu or '',
         'kho_id': don.kho_id,
@@ -3083,7 +3114,6 @@ def hoa_don_ban_them(request):
                 'ma_giao_dich': source.ma_giao_dich,
                 'ngay_lap': source.ngay_lap.isoformat(),
                 'ngay_hach_toan': source.ngay_hach_toan.isoformat(),
-                'ma_ngoai_te': source.ma_ngoai_te,
                 'ty_gia': str(source.ty_gia),
                 'khach_hang_id': str(source.khach_hang_id or ''),
                 'ten_kh': source.ten_kh or '',
@@ -3244,7 +3274,6 @@ def hoa_don_ban_import_excel(request):
             hoa_don.ma_giao_dich = str(ws.cell(row=first_row, column=header_map.get('Mã giao dịch', 0)).value or '1')[:5] if header_map.get('Mã giao dịch') else '1'
             hoa_don.ngay_lap = _parse_date(ws.cell(row=first_row, column=header_map.get('Ngày lập', 1)).value)
             hoa_don.ngay_hach_toan = _parse_date(ws.cell(row=first_row, column=header_map.get('Ngày hạch toán', 2)).value)
-            hoa_don.ma_ngoai_te = 'VND'
             hoa_don.ty_gia = Decimal('1')
             hoa_don.khach_hang = kh
             hoa_don.ten_kh = str(ws.cell(row=first_row, column=header_map.get('Tên khách', 0)).value or kh.ten_kh)
@@ -3304,6 +3333,7 @@ def hoa_don_ban_detail(request, pk):
         'chi_tiet': chi_tiet,
         'current_period': current_period,
         'hoa_don_trong_ky': hoa_don_trong_ky,
+        'has_doi_tra': hoa_don.phieu_doi_tra.exists(),
     })
 
 def hoa_don_ban_copy(request, pk):
@@ -3314,7 +3344,6 @@ def hoa_don_ban_copy(request, pk):
             so_hoa_don=_gen_so_hoa_don(),
             ngay_lap=date.today(),
             ngay_hach_toan=date.today(),
-            ma_ngoai_te=source.ma_ngoai_te,
             ty_gia=source.ty_gia,
             khach_hang=source.khach_hang,
             ten_kh=source.ten_kh,

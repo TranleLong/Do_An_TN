@@ -29,7 +29,7 @@
         font-size: 14px;
         margin-bottom: 0;
         table-layout: auto;
-        min-width: 1200px;
+        min-width: 900px;
     }
     .ledger-table thead th {
         background: #f4f7fb;
@@ -56,17 +56,23 @@
     }
     .ledger-summary-row td {
         padding: 12px 10px !important;
-        border-bottom: 1px solid #d7e2ef;
+        border-top: 2px solid #b6cbe1;
     }
     .text-amount {
         text-align: right;
         font-variant-numeric: tabular-nums;
     }
-    .erp-actionbar {
-        padding: 6px 10px;
-        border-top: 1px solid #d9e3ef;
-        border-bottom: 1px solid #d9e3ef;
-        background: linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
+    .badge-da-thu {
+        background: #d1fae5; color: #065f46; border-radius: 12px;
+        padding: 3px 10px; font-size: 12px; font-weight: 600;
+    }
+    .badge-chua-thu {
+        background: #fee2e2; color: #991b1b; border-radius: 12px;
+        padding: 3px 10px; font-size: 12px; font-weight: 600;
+    }
+    .badge-mot-phan {
+        background: #fef3c7; color: #92400e; border-radius: 12px;
+        padding: 3px 10px; font-size: 12px; font-weight: 600;
     }
     .lookup-wrap {
         position: relative;
@@ -137,6 +143,20 @@
     .kh-row-name {
         color: #30465f;
     }
+    .progress-bar-wrapper {
+        background: #e2e8f0;
+        border-radius: 4px;
+        height: 8px;
+        width: 120px;
+        display: inline-block;
+        vertical-align: middle;
+        overflow: hidden;
+    }
+    .progress-bar-fill {
+        height: 100%;
+        border-radius: 4px;
+        background: #22c55e;
+    }
 </style>
 {% endblock %}
 
@@ -188,68 +208,80 @@
 </div>
 
 <div class="report-box">
-    <div class="report-box-title">Sổ công nợ/Chi tiết công nợ</div>
+    <div class="report-box-title">Báo cáo công nợ chi tiết theo hóa đơn</div>
     <div class="report-filter-line">
-        Tài khoản: 1311, khách: {% if khach_hang_duoc_chon %}{{ khach_hang_duoc_chon.ma_kh }} - {{ khach_hang_duoc_chon.ten_kh }}{% else %}Tất cả{% endif %},
-        từ ngày {{ tu_ngay|date:'d/m/Y' }} đến ngày {{ den_ngay|date:'d/m/Y' }}
+        Khách hàng: {% if khach_hang_duoc_chon %}{{ khach_hang_duoc_chon.ma_kh }} - {{ khach_hang_duoc_chon.ten_kh }}{% else %}Chưa chọn{% endif %} &nbsp;|&nbsp;
+        Từ ngày {{ tu_ngay|date:'d/m/Y' }} đến ngày {{ den_ngay|date:'d/m/Y' }}
     </div>
     <div class="table-responsive">
         <table class="table table-sm ledger-table">
             <thead>
                 <tr>
-                    <th>Ngày ghi sổ</th>
-                    <th>Ngày ct</th>
-                    <th>Mã ct</th>
-                    <th>Số ct</th>
+                    <th style="width:40px">STT</th>
+                    <th>Số hóa đơn</th>
+                    <th>Ngày lập</th>
+                    <th>Khách hàng</th>
                     <th>Diễn giải</th>
-                    <th>Tk đối ứng</th>
-                    <th class="text-amount">Phát sinh nợ</th>
-                    <th class="text-amount">Phát sinh có</th>
+                    <th class="text-amount">Giá trị HĐ</th>
+                    <th class="text-amount">Đã thu</th>
+                    <th class="text-amount">Còn lại</th>
+                    <th style="text-align:center">Tiến độ thu</th>
+                    <th style="text-align:center">Trạng thái</th>
                 </tr>
             </thead>
             <tbody>
                 {% if khach_hang_duoc_chon %}
-                <tr class="ledger-summary-row">
-                    <td></td><td></td><td></td><td></td>
-                    <td>Đầu kỳ</td>
-                    <td></td>
-                    <td class="text-amount">{% if so_du_dau_ky > 0 %}{{ so_du_dau_ky|floatformat:0|vnd }}{% else %}-{% endif %}</td>
-                    <td class="text-amount">{% if so_du_dau_ky < 0 %}{{ so_du_dau_ky|floatformat:0|vnd|cut:'-' }}{% else %}-{% endif %}</td>
-                </tr>
-                <tr class="ledger-summary-row">
-                    <td></td><td></td><td></td><td></td>
-                    <td>Ps phát sinh trong kỳ</td>
-                    <td></td>
-                    <td class="text-amount">{{ tong_ps_no|floatformat:0|vnd }}</td>
-                    <td class="text-amount">{{ tong_ps_co|floatformat:0|vnd }}</td>
-                </tr>
-                <tr class="ledger-summary-row">
-                    <td></td><td></td><td></td><td></td>
-                    <td>Cuối kỳ</td>
-                    <td></td>
-                    <td class="text-amount">{% if so_du_cuoi_ky > 0 %}{{ so_du_cuoi_ky|floatformat:0|vnd }}{% else %}-{% endif %}</td>
-                    <td class="text-amount">{% if so_du_cuoi_ky < 0 %}{{ so_du_cuoi_ky|floatformat:0|vnd|cut:'-' }}{% else %}-{% endif %}</td>
-                </tr>
-                {% for row in so_chi_tiet_cong_no %}
-                <tr>
-                    <td>{{ row.ngay_ghi_so|date:'d/m/Y' }}</td>
-                    <td>{{ row.ngay_lap|date:'d/m/Y' }}</td>
-                    <td>{{ row.ma_ct }}</td>
-                    <td>{{ row.so_ct }}</td>
-                    <td>{{ row.dien_giai|default:'-' }}</td>
-                    <td>{{ row.tk_doi_ung|default:'-' }}</td>
-                    <td class="text-amount">{% if row.phat_sinh_no > 0 %}{{ row.phat_sinh_no|floatformat:0|vnd }}{% else %}-{% endif %}</td>
-                    <td class="text-amount">{% if row.phat_sinh_co > 0 %}{{ row.phat_sinh_co|floatformat:0|vnd }}{% else %}-{% endif %}</td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="8" class="text-center text-muted py-4">Không có phát sinh trong kỳ đã chọn.</td>
-                </tr>
-                {% endfor %}
+                    {% for row in rows_hoa_don %}
+                    <tr>
+                        <td class="text-muted text-center">{{ forloop.counter }}</td>
+                        <td><strong>{{ row.so_hoa_don }}</strong></td>
+                        <td>{{ row.ngay_lap|date:'d/m/Y' }}</td>
+                        <td>{{ row.ten_kh|default:'-' }}</td>
+                        <td>{{ row.dien_giai|default:'-'|truncatechars:60 }}</td>
+                        <td class="text-amount">{{ row.gia_tri_hd|floatformat:0|vnd }}</td>
+                        <td class="text-amount text-success">{{ row.da_thu|floatformat:0|vnd }}</td>
+                        <td class="text-amount {% if row.con_lai > 0 %}text-danger{% endif %}">
+                            {% if row.con_lai > 0 %}{{ row.con_lai|floatformat:0|vnd }}{% else %}–{% endif %}
+                        </td>
+                        <td style="text-align:center">
+                            {% if row.gia_tri_hd > 0 %}
+                            <span class="progress-bar-wrapper">
+                                <span class="progress-bar-fill" style="width:{% widthratio row.da_thu row.gia_tri_hd 100 %}%"></span>
+                            </span>
+                            <small class="ms-1 text-muted">{% widthratio row.da_thu row.gia_tri_hd 100 %}%</small>
+                            {% else %}-{% endif %}
+                        </td>
+                        <td style="text-align:center">
+                            {% if row.trang_thai_thu == 'Đã thu đủ' %}
+                                <span class="badge-da-thu">✓ Đã thu đủ</span>
+                            {% elif row.trang_thai_thu == 'Chưa thu' %}
+                                <span class="badge-chua-thu">Chưa thu</span>
+                            {% else %}
+                                <span class="badge-mot-phan">Thu một phần</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="10" class="text-center text-muted py-4">
+                            Không có hóa đơn nào đã chuyển sổ cái trong kỳ đã chọn.
+                        </td>
+                    </tr>
+                    {% endfor %}
+
+                    {% if rows_hoa_don %}
+                    <tr class="ledger-summary-row">
+                        <td colspan="5" class="text-end">Cộng</td>
+                        <td class="text-amount">{{ tong_gia_tri_hd|floatformat:0|vnd }}</td>
+                        <td class="text-amount text-success">{{ tong_da_thu|floatformat:0|vnd }}</td>
+                        <td class="text-amount text-danger">{{ tong_con_lai|floatformat:0|vnd }}</td>
+                        <td colspan="2"></td>
+                    </tr>
+                    {% endif %}
                 {% else %}
                 <tr>
-                    <td colspan="8" class="text-center text-muted py-4">
-                        Chọn khách hàng và kỳ báo cáo để xem chi tiết công nợ.
+                    <td colspan="10" class="text-center text-muted py-4">
+                        Vui lòng chọn khách hàng và kỳ báo cáo để xem công nợ chi tiết theo hóa đơn.
                     </td>
                 </tr>
                 {% endif %}
@@ -323,9 +355,7 @@
 
         function findByExactLabel(label) {
             const key = normalize(label);
-            if (!key) {
-                return null;
-            }
+            if (!key) return null;
             return customers.find(function (c) {
                 return normalize(customerLabel(c)) === key;
             }) || null;
@@ -333,11 +363,9 @@
 
         function findBestMatch(keyword) {
             const key = normalize(keyword);
-            if (!key) {
-                return null;
-            }
+            if (!key) return null;
             const list = customers.filter(function (c) {
-                return normalize(c.ma).includes(key) || normalize(c.ten).includes(key) || normalize(customerLabel(c)).includes(key);
+                return normalize(c.ma).includes(key) || normalize(c.ten).includes(key);
             });
             return list.length ? list[0] : null;
         }
@@ -362,39 +390,18 @@
         }
 
         if (input && hidden) {
-            input.addEventListener("input", function () {
-                hidden.value = "";
-            });
-
+            input.addEventListener("input", function () { hidden.value = ""; });
             input.addEventListener("keydown", function (event) {
-                if (event.key !== "Enter") {
-                    return;
-                }
+                if (event.key !== "Enter") return;
                 event.preventDefault();
-
                 const exact = findByExactLabel(input.value);
-                if (exact) {
-                    pickCustomer(exact);
-                    if (form) {
-                        form.submit();
-                    }
-                    return;
-                }
-
+                if (exact) { pickCustomer(exact); if (form) form.submit(); return; }
                 const best = findBestMatch(input.value);
-                if (best) {
-                    pickCustomer(best);
-                    if (form) {
-                        form.submit();
-                    }
-                }
+                if (best) { pickCustomer(best); if (form) form.submit(); }
             });
-
             input.addEventListener("blur", function () {
                 const exact = findByExactLabel(input.value);
-                if (exact) {
-                    pickCustomer(exact);
-                }
+                if (exact) pickCustomer(exact);
             });
         }
 
@@ -402,11 +409,7 @@
             btnOpen.addEventListener("click", function () {
                 renderModalList("");
                 bsModal.show();
-                setTimeout(function () {
-                    if (modalSearch) {
-                        modalSearch.focus();
-                    }
-                }, 100);
+                setTimeout(function () { if (modalSearch) modalSearch.focus(); }, 100);
             });
         }
 
@@ -419,14 +422,9 @@
         if (modalList) {
             modalList.addEventListener("click", function (event) {
                 const row = event.target.closest(".kh-row");
-                if (!row) {
-                    return;
-                }
+                if (!row) return;
                 const picked = customers.find(function (c) { return c.id === row.dataset.id; });
-                if (picked) {
-                    pickCustomer(picked);
-                    bsModal.hide();
-                }
+                if (picked) { pickCustomer(picked); bsModal.hide(); }
             });
         }
     })();

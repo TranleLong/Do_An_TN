@@ -59,6 +59,7 @@ urlpatterns = [
     path('phieu-thu/<int:pk>/so-cai/', views.phieu_thu_chuyen_so_cai, name='phieu_thu_chuyen_so_cai'),
     path('doi-tra/', views.phieu_doi_tra_list, name='phieu_doi_tra_list'),
     path('doi-tra/them/', views.phieu_doi_tra_them, name='phieu_doi_tra_them'),
+    path('doi-tra/<int:pk>/', views.phieu_doi_tra_detail, name='phieu_doi_tra_detail'),
     path('doi-tra/<int:pk>/sua/', views.phieu_doi_tra_sua, name='phieu_doi_tra_sua'),
     path('doi-tra/<int:pk>/xoa/', views.phieu_doi_tra_xoa, name='phieu_doi_tra_xoa'),
     path('doi-tra/xoa-nhieu/', views.phieu_doi_tra_xoa_nhieu, name='phieu_doi_tra_xoa_nhieu'),

@@ -45,7 +45,7 @@
                 <tbody>
                     {% for item in items %}
                     <tr>
-                        <td class="text-center"><input type="checkbox" name="selected_dt" value="{{ item.pk }}" class="erp-row-select" data-edit-url="{% url 'phieu_doi_tra_sua' item.pk %}" data-delete-url="{% url 'phieu_doi_tra_xoa' item.pk %}" data-hoa-don-id="{{ item.hoa_don_goc_id|default:'' }}" data-trang-thai="{{ item.trang_thai }}"></td>
+                        <td class="text-center"><input type="checkbox" name="selected_dt" value="{{ item.pk }}" class="erp-row-select" data-edit-url="{% url 'phieu_doi_tra_sua' item.pk %}" data-view-url="{% url 'phieu_doi_tra_detail' item.pk %}" data-delete-url="{% url 'phieu_doi_tra_xoa' item.pk %}" data-hoa-don-id="{{ item.hoa_don_goc_id|default:'' }}" data-trang-thai="{{ item.trang_thai }}"></td>
                         <td>{{ item.ngay_lap|date:'d/m/Y' }}</td>
                         <td><strong>{{ item.so_phieu }}</strong></td>
                         <td>{{ item.hoa_don_goc.so_hoa_don|default:'-' }}</td>
@@ -176,7 +176,7 @@
             alert('Vui lòng chọn đúng 1 phiếu để xem.');
             return;
         }
-        window.location.href = selected.dataset.editUrl;
+        window.location.href = selected.dataset.viewUrl;
     });
 
     document.getElementById('btnDtPrint').addEventListener('click', function() {

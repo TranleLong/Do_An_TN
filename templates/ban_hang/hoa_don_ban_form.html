@@ -222,7 +222,6 @@
                 <label class="form-label">Mã ngoại tệ</label>
                 <select name="ma_ngoai_te" id="ma_ngoai_te" class="form-control">
                     <option value="VND" {% if hoa_don.ma_ngoai_te|default:'VND' == 'VND' %}selected{% endif %}>VND</option>
-                    <option value="USD" {% if hoa_don.ma_ngoai_te == 'USD' %}selected{% endif %}>USD</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -978,13 +977,8 @@
     }
 
     function apDungQuyTacMaGiaoDich() {
-        const maGd = $('#ma_giao_dich').val();
-        if (maGd !== '2') {
-            $('#don_ban').val('');
-            $('#btnKeThuaDon').attr('title', 'Bấm để chuyển sang mã giao dịch 2 và kế thừa đơn hàng');
-        } else {
-            $('#btnKeThuaDon').attr('title', 'Kế thừa từ đơn hàng');
-        }
+        // Bỏ quy tắc tự động xóa đơn hàng khi mã giao dịch khác 2
+        // Cho phép cả Hóa đơn kiêm phiếu xuất (1) và Hóa đơn (2) đều được kế thừa đơn hàng
     }
 
     $(document).on('change', '#khach_hang', syncFromSelectedCustomer);
@@ -1150,9 +1144,6 @@
     });
 
     $('#btnKeThuaDon').on('click', function() {
-        if ($('#ma_giao_dich').val() !== '2') {
-            $('#ma_giao_dich').val('2').trigger('change');
-        }
         if (!donModal) {
             donModal = new bootstrap.Modal(document.getElementById('modalDonBan'));
         }
@@ -1273,7 +1264,6 @@
         {% if don_ban_prefill_id %}
         const prefillDonId = '{{ don_ban_prefill_id }}';
         if (prefillDonId) {
-            $('#ma_giao_dich').val('2').trigger('change');
             $.get('{% url "don_ban_api_detail" 0 %}'.replace('/0/', '/' + prefillDonId + '/'), function(resp) {
                 if (resp.khach_hang_id) {
                     const khId = String(resp.khach_hang_id);

@@ -39,8 +39,7 @@
                             <input type="checkbox" name="selected_kh" class="erp-row-select" value="{{ item.pk }}"
                                    data-edit-url="{% url 'kh_sua' item.pk %}"
                                    data-delete-url="{% url 'kh_xoa' item.pk %}"
-
-                                   # Đã loại bỏ url 'kh_lich_su_mua_hang' vì không còn app mua_hang
+                                   data-view-url="{% url 'kh_sua' item.pk %}"
                         </td>
                         <td><strong>{{ item.ma_kh }}</strong></td>
                         <td>
@@ -172,7 +171,7 @@
             alert('Vui lòng chọn đúng 1 khách hàng để xem lịch sử mua hàng.');
             return;
         }
-        window.location.href = selected[0].dataset.historyUrl;
+        window.location.href = selected[0].dataset.viewUrl || selected[0].dataset.editUrl;
     });
 
     document.getElementById('btnKhSearch').addEventListener('click', function() {

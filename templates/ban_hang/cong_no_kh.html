@@ -153,6 +153,9 @@
                 <input type="date" name="den_ngay" value="{{ filters.den_ngay }}" class="form-control">
             </div>
             <div class="col-12 d-flex justify-content-end gap-2 mt-2">
+                {% if selected_khach_hang_id %}
+                <input type="hidden" name="khach_hang" value="{{ selected_khach_hang_id }}">
+                {% endif %}
                 <a href="{% url 'cong_no_kh' %}" class="btn btn-light border">Bỏ lọc</a>
                 <button class="btn btn-primary" type="submit">Tìm kiếm</button>
             </div>
@@ -283,7 +286,13 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="8" class="text-center text-muted py-4">Chưa chọn khách hàng để xem chi tiết.</td>
+                    <td colspan="8" class="text-center text-muted py-4">
+                        {% if selected_khach_hang_id %}
+                            Khách hàng này chưa có hóa đơn nào đã vào sổ cái (Trạng thái 2).
+                        {% else %}
+                            Chưa chọn khách hàng để xem chi tiết. Hãy bấm nút <strong>Xem</strong> ở cột cuối.
+                        {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>

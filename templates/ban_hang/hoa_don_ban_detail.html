@@ -25,7 +25,11 @@
         <div class="d-flex gap-2">
             <a href="{% url 'hoa_don_ban_in' hoa_don.pk %}" target="_blank" class="btn btn-outline-secondary btn-sm"><i class="fas fa-print"></i> In</a>
             {% if hoa_don_trong_ky %}
-            <a href="{% url 'phieu_doi_tra_them' %}?hoa_don_goc={{ hoa_don.pk }}" class="btn btn-outline-warning btn-sm"><i class="fas fa-rotate-left"></i> Đổi trả</a>
+              {% if has_doi_tra %}
+              <button type="button" class="btn btn-outline-warning btn-sm" onclick="window.erpShowErrorDialog('Không thể đổi/trả', 'Hóa đơn này đã được lập phiếu đổi/trả. Mỗi hóa đơn chỉ được phép đổi trả 1 lần duy nhất.', 'fas fa-triangle-exclamation', 'warning')"><i class="fas fa-rotate-left"></i> Đổi trả</button>
+              {% else %}
+              <a href="{% url 'phieu_doi_tra_them' %}?hoa_don_goc={{ hoa_don.pk }}" class="btn btn-outline-warning btn-sm"><i class="fas fa-rotate-left"></i> Đổi trả</a>
+              {% endif %}
             {% else %}
             <button type="button" class="btn btn-outline-warning btn-sm" id="btnHoaDonDoiTra"><i class="fas fa-rotate-left"></i> Đổi trả</button>
             {% endif %}
