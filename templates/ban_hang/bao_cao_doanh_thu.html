@@ -3,383 +3,333 @@
 
 {% block extra_css %}
 <style>
-    /* ─── Layout ─── */
-    .report-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
-    .report-header h4 { margin:0; color:#1e3a5f; font-weight:700; }
-    .filter-panel {
-        background:#f8fbff; border:1px solid #d0dff0; border-radius:8px; padding:14px 16px; margin-bottom:16px;
-    }
-    /* ─── KPI Cards ─── */
-    .kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
-    .kpi-card {
-        background:#fff; border:1px solid #d0dff0; border-radius:10px; padding:16px;
-        display:flex; flex-direction:column; gap:4px;
-        box-shadow:0 1px 4px rgba(30,58,95,.06);
-        transition: box-shadow .15s;
-    }
-    .kpi-card:hover { box-shadow:0 4px 14px rgba(30,58,95,.12); }
-    .kpi-label { font-size:12px; color:#6b7d94; font-weight:600; text-transform:uppercase; letter-spacing:.4px; }
-    .kpi-value { font-size:22px; font-weight:800; color:#1e3a5f; }
-    .kpi-value.green  { color:#1b7a3e; }
-    .kpi-value.orange { color:#c8770a; }
-    .kpi-value.blue   { color:#0d47a1; }
-    .kpi-value.red    { color:#c62828; }
-    .kpi-sub { font-size:12px; color:#8a9baf; }
-    /* ─── Tabs ─── */
-    .report-tabs { border-bottom:2px solid #d0dff0; margin-bottom:12px; display:flex; gap:4px; }
-    .report-tab {
-        padding:8px 20px; border:1px solid transparent; border-bottom:0; border-radius:6px 6px 0 0;
-        background:transparent; cursor:pointer; font-size:14px; font-weight:600; color:#6b7d94; transition:all .12s;
-    }
-    .report-tab.active { background:#fff; border-color:#d0dff0; color:#1e3a5f; margin-bottom:-2px; }
-    .report-tab:hover:not(.active) { background:#f0f5fc; color:#1e3a5f; }
-    .tab-pane { display:none; }
-    .tab-pane.active { display:block; }
-    /* ─── Tables ─── */
-    .report-box { border:1px solid #cddcee; border-radius:8px; overflow:hidden; background:#fff; }
-    .report-box-header {
-        background:linear-gradient(180deg,#edf4ff,#dceeff); border-bottom:1px solid #c3d7f0;
-        padding:10px 14px; font-weight:700; color:#1e3a5f; font-size:14px;
-        display:flex; align-items:center; justify-content:space-between;
-    }
-    .ledger-table { font-size:13.5px; margin:0; }
-    .ledger-table thead th {
-        background:#f4f7fb; border-bottom:1px solid #c4d5e8; color:#3d5877;
-        font-weight:600; padding:10px 10px; white-space:nowrap; vertical-align:middle;
-    }
-    .ledger-table td { padding:9px 10px; border-color:#e4edf7; vertical-align:middle; }
-    .ledger-table tbody tr:hover { background:#f7f9ff; }
-    .ledger-total-row { background:#f0f5fb !important; font-weight:700; color:#1e3a5f; }
-    .ledger-total-row td { border-top:2px solid #c4d5e8 !important; }
     .text-amount { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
     .profit-positive { color:#1b7a3e; }
     .profit-negative { color:#c62828; }
-    /* ─── Xuất Excel btn ─── */
-    .export-btn {
-        display:inline-flex; align-items:center; gap:6px; padding:5px 13px;
-        background:linear-gradient(135deg,#1e7e34,#28a745); color:#fff; border:0;
-        border-radius:6px; font-size:13px; font-weight:600; cursor:pointer; text-decoration:none;
-    }
-    .export-btn:hover { color:#fff; opacity:.9; }
-    /* ─── Group by selector ─── */
-    .group-by-row { display:flex; align-items:center; gap:8px; }
-    .group-by-btn {
-        padding:4px 14px; border:1px solid #c3d7f0; border-radius:20px; background:#fff;
-        font-size:13px; font-weight:600; color:#3d5877; cursor:pointer; transition: all .12s;
-    }
-    .group-by-btn.active { background:#0d47a1; color:#fff; border-color:#0d47a1; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="report-header">
-    <h4><i class="fas fa-chart-line" style="color:var(--accent-color);"></i> Báo cáo doanh thu</h4>
-    <div class="d-flex gap-2">
-        <a href="?{{ export_params }}&report_type=summary" class="export-btn" id="btnExport">
-            <i class="fas fa-file-excel"></i> Xuất Excel
+<div class="card mb-3">
+    <div class="card-header d-flex justify-content-between align-items-center gap-2 flex-wrap">
+        <div class="card-title mb-0"><i class="fas fa-chart-line text-primary me-2"></i>Báo cáo doanh thu</div>
+        <a href="?{{ export_params }}&report_type=summary" class="btn btn-success btn-sm" id="btnExport">
+            <i class="fas fa-file-excel me-1"></i>Xuất Excel
         </a>
     </div>
-</div>
 
-<!-- BỘ LỌC -->
-<div class="filter-panel">
-    <form method="get" id="filterForm" class="row g-2 align-items-end">
-        <div class="col-md-2">
-            <label class="form-label fw-semibold mb-1">Từ ngày</label>
-            <input type="date" name="from_date" class="form-control"
-                value="{{ filters.from_date|date:'Y-m-d' }}">
-        </div>
-        <div class="col-md-2">
-            <label class="form-label fw-semibold mb-1">Đến ngày</label>
-            <input type="date" name="to_date" class="form-control"
-                value="{{ filters.to_date|date:'Y-m-d' }}">
-        </div>
-        <div class="col-md-2">
-            <label class="form-label fw-semibold mb-1">Loại ngày</label>
-            <select name="date_type" class="form-select">
-                <option value="chung_tu" {% if filters.date_type == 'chung_tu' %}selected{% endif %}>Ngày chứng từ</option>
-                <option value="hach_toan" {% if filters.date_type == 'hach_toan' %}selected{% endif %}>Ngày hạch toán</option>
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label fw-semibold mb-1">Khách hàng</label>
-            <select name="customer_id" class="form-select">
-                <option value="">-- Tất cả --</option>
-                {% for kh in khach_hang_list %}
-                <option value="{{ kh.pk }}" {% if filters.customer_id == kh.pk %}selected{% endif %}>{{ kh.ma_kh }} - {{ kh.ten_kh }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label fw-semibold mb-1">Nhân viên bán</label>
-            <select name="salesperson_code" class="form-select">
-                <option value="">-- Tất cả --</option>
-                {% for code in salesperson_codes %}
-                <option value="{{ code }}" {% if filters.salesperson_code == code %}selected{% endif %}>{{ code }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label fw-semibold mb-1">Kho</label>
-            <select name="warehouse_id" class="form-select">
-                <option value="">-- Tất cả --</option>
-                {% for k in kho_list %}
-                <option value="{{ k.pk }}" {% if filters.warehouse_id == k.pk %}selected{% endif %}>{{ k.ma_kho }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label fw-semibold mb-1">Nhóm hàng</label>
-            <select name="group_id" class="form-select">
-                <option value="">-- Tất cả --</option>
-                {% for nh in nhom_hang_list %}
-                <option value="{{ nh.pk }}" {% if filters.group_id == nh.pk %}selected{% endif %}>{{ nh.ten_nhom }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter me-1"></i>Lọc</button>
-        </div>
-        <div class="col-md-2">
-            <a href="{% url 'bao_cao_doanh_thu' %}" class="btn btn-light border w-100"><i class="fas fa-rotate-right me-1"></i>Xóa lọc</a>
-        </div>
-        <!-- Hidden group_by -->
-        <input type="hidden" name="group_by" id="groupByInput" value="{{ group_by }}">
-    </form>
-</div>
+    <div class="card-body bg-light border-bottom">
+        <form method="get" id="filterForm" class="row g-2 align-items-end">
+            <div class="col-md-2">
+                <label class="form-label mb-1">Từ ngày</label>
+                <input type="date" name="from_date" class="form-control form-control-sm" value="{{ filters.from_date|date:'Y-m-d' }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1">Đến ngày</label>
+                <input type="date" name="to_date" class="form-control form-control-sm" value="{{ filters.to_date|date:'Y-m-d' }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1">Loại ngày</label>
+                <select name="date_type" class="form-select form-select-sm">
+                    <option value="chung_tu" {% if filters.date_type == 'chung_tu' %}selected{% endif %}>Ngày chứng từ</option>
+                    <option value="hach_toan" {% if filters.date_type == 'hach_toan' %}selected{% endif %}>Ngày hạch toán</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1">Khách hàng</label>
+                <select name="customer_id" class="form-select form-select-sm">
+                    <option value="">-- Tất cả --</option>
+                    {% for kh in khach_hang_list %}
+                    <option value="{{ kh.pk }}" {% if filters.customer_id == kh.pk %}selected{% endif %}>{{ kh.ma_kh }} - {{ kh.ten_kh }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1">Nhân viên bán</label>
+                <select name="salesperson_code" class="form-select form-select-sm">
+                    <option value="">-- Tất cả --</option>
+                    {% for code in salesperson_codes %}
+                    <option value="{{ code }}" {% if filters.salesperson_code == code %}selected{% endif %}>{{ code }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1">Kho</label>
+                <select name="warehouse_id" class="form-select form-select-sm">
+                    <option value="">-- Tất cả --</option>
+                    {% for k in kho_list %}
+                    <option value="{{ k.pk }}" {% if filters.warehouse_id == k.pk %}selected{% endif %}>{{ k.ma_kho }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label mb-1">Nhóm hàng</label>
+                <select name="group_id" class="form-select form-select-sm">
+                    <option value="">-- Tất cả --</option>
+                    {% for nh in nhom_hang_list %}
+                    <option value="{{ nh.pk }}" {% if filters.group_id == nh.pk %}selected{% endif %}>{{ nh.ten_nhom }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary btn-sm w-100"><i class="fas fa-filter me-1"></i>Lọc</button>
+            </div>
+            <div class="col-md-2">
+                <a href="{% url 'bao_cao_doanh_thu' %}" class="btn btn-light btn-sm border w-100"><i class="fas fa-rotate-right me-1"></i>Xóa lọc</a>
+            </div>
+            <input type="hidden" name="group_by" id="groupByInput" value="{{ group_by }}">
+        </form>
+    </div>
 
-<!-- KPI CARDS -->
-{% with t=summary_data.totals %}
-<div class="kpi-row">
-    <div class="kpi-card">
-        <div class="kpi-label"><i class="fas fa-circle-dollar-sign me-1"></i>Doanh thu gộp</div>
-        <div class="kpi-value blue">{{ t.gross_revenue|floatformat:0 }} ₫</div>
-        <div class="kpi-sub">Tổng doanh số hóa đơn đã ghi sổ</div>
-    </div>
-    <div class="kpi-card">
-        <div class="kpi-label"><i class="fas fa-arrow-trend-down me-1"></i>Giảm trừ doanh thu</div>
-        <div class="kpi-value orange">{{ t.revenue_deduction|floatformat:0 }} ₫</div>
-        <div class="kpi-sub">Hàng đổi trả, khuyến mại</div>
-    </div>
-    <div class="kpi-card">
-        <div class="kpi-label"><i class="fas fa-chart-line me-1"></i>Doanh thu thuần</div>
-        <div class="kpi-value green">{{ t.net_revenue|floatformat:0 }} ₫</div>
-        <div class="kpi-sub">Gộp – Giảm trừ</div>
-    </div>
-    <div class="kpi-card">
-        <div class="kpi-label"><i class="fas fa-sack-dollar me-1"></i>Lợi nhuận gộp</div>
-        <div class="kpi-value {% if t.gross_profit >= 0 %}green{% else %}red{% endif %}">
-            {{ t.gross_profit|floatformat:0 }} ₫
-        </div>
-        <div class="kpi-sub">Thuần – Giá vốn {{ t.cogs|floatformat:0 }} ₫</div>
-    </div>
-</div>
-{% endwith %}
-
-<!-- TABS -->
-<div class="report-tabs">
-    <button type="button" class="report-tab active" data-tab="tab-summary">Tổng hợp</button>
-    <button type="button" class="report-tab" data-tab="tab-customer">Theo khách hàng</button>
-    <button type="button" class="report-tab" data-tab="tab-product">Theo mặt hàng</button>
-    <button type="button" class="report-tab" data-tab="tab-salesperson">Theo nhân viên</button>
-</div>
-
-<!-- TAB: TỔNG HỢP THEO KỲ -->
-<div id="tab-summary" class="tab-pane active">
-    <div class="report-box">
-        <div class="report-box-header">
-            <span><i class="fas fa-calendar-days me-2"></i>Doanh thu theo kỳ ({{ filters.from_date|date:'d/m/Y' }} – {{ filters.to_date|date:'d/m/Y' }})</span>
-            <div class="group-by-row">
-                <span class="text-muted small">Nhóm theo:</span>
-                <button type="button" class="group-by-btn {% if group_by == 'day' %}active{% endif %}" data-groupby="day">Ngày</button>
-                <button type="button" class="group-by-btn {% if group_by == 'month' %}active{% endif %}" data-groupby="month">Tháng</button>
-                <button type="button" class="group-by-btn {% if group_by == 'year' %}active{% endif %}" data-groupby="year">Năm</button>
+    <div class="card-body">
+        <!-- KPI CARDS -->
+        {% with t=summary_data.totals %}
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card h-100 border-primary shadow-sm">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted text-uppercase mb-2"><i class="fas fa-circle-dollar-sign me-1"></i>Doanh thu gộp</h6>
+                        <h4 class="text-primary fw-bold mb-1">{{ t.gross_revenue|floatformat:0|intcomma }} ₫</h4>
+                        <small class="text-muted">Tổng doanh số hóa đơn đã ghi sổ</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100 border-warning shadow-sm">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted text-uppercase mb-2"><i class="fas fa-arrow-trend-down me-1"></i>Giảm trừ doanh thu</h6>
+                        <h4 class="text-warning fw-bold mb-1">{{ t.revenue_deduction|floatformat:0|intcomma }} ₫</h4>
+                        <small class="text-muted">Hàng đổi trả, khuyến mại</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100 border-success shadow-sm">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted text-uppercase mb-2"><i class="fas fa-chart-line me-1"></i>Doanh thu thuần</h6>
+                        <h4 class="text-success fw-bold mb-1">{{ t.net_revenue|floatformat:0|intcomma }} ₫</h4>
+                        <small class="text-muted">Gộp – Giảm trừ</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card h-100 shadow-sm {% if t.gross_profit >= 0 %}border-success{% else %}border-danger{% endif %}">
+                    <div class="card-body text-center">
+                        <h6 class="text-muted text-uppercase mb-2"><i class="fas fa-sack-dollar me-1"></i>Lợi nhuận gộp</h6>
+                        <h4 class="fw-bold mb-1 {% if t.gross_profit >= 0 %}text-success{% else %}text-danger{% endif %}">
+                            {{ t.gross_profit|floatformat:0|intcomma }} ₫
+                        </h4>
+                        <small class="text-muted">Thuần – Giá vốn {{ t.cogs|floatformat:0|intcomma }} ₫</small>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="table-responsive">
-            <table class="table table-sm ledger-table">
-                <thead>
-                    <tr>
-                        <th>Kỳ</th>
-                        <th class="text-amount">Doanh thu gộp</th>
-                        <th class="text-amount">Giảm trừ DT</th>
-                        <th class="text-amount">Doanh thu thuần</th>
-                        <th class="text-amount">Giá vốn</th>
-                        <th class="text-amount">Lợi nhuận gộp</th>
-                        <th class="text-amount">Tỷ lệ LN (%)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in summary_data.rows %}
-                    <tr>
-                        <td><strong>{{ row.period }}</strong></td>
-                        <td class="text-amount">{{ row.gross_revenue|floatformat:0 }}</td>
-                        <td class="text-amount text-warning">{% if row.revenue_deduction %}({{ row.revenue_deduction|floatformat:0 }}){% else %}-{% endif %}</td>
-                        <td class="text-amount text-primary">{{ row.net_revenue|floatformat:0 }}</td>
-                        <td class="text-amount text-muted">{{ row.cogs|floatformat:0 }}</td>
-                        <td class="text-amount {% if row.gross_profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
-                            {{ row.gross_profit|floatformat:0 }}
-                        </td>
-                        <td class="text-amount">
-                            {% if row.net_revenue %}
-                                {% widthratio row.gross_profit row.net_revenue 100 %}%
-                            {% else %}-{% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="7" class="text-center text-muted py-5">Không có dữ liệu trong kỳ đã chọn.</td></tr>
-                    {% endfor %}
-                </tbody>
-                {% with t=summary_data.totals %}
-                {% if summary_data.rows %}
-                <tfoot>
-                    <tr class="ledger-total-row">
-                        <td><strong>Tổng cộng</strong></td>
-                        <td class="text-amount">{{ t.gross_revenue|floatformat:0 }}</td>
-                        <td class="text-amount">({{ t.revenue_deduction|floatformat:0 }})</td>
-                        <td class="text-amount text-primary"><strong>{{ t.net_revenue|floatformat:0 }}</strong></td>
-                        <td class="text-amount">{{ t.cogs|floatformat:0 }}</td>
-                        <td class="text-amount {% if t.gross_profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}"><strong>{{ t.gross_profit|floatformat:0 }}</strong></td>
-                        <td class="text-amount">
-                            {% if t.net_revenue %}{% widthratio t.gross_profit t.net_revenue 100 %}%{% else %}-{% endif %}
-                        </td>
-                    </tr>
-                </tfoot>
-                {% endif %}
-                {% endwith %}
-            </table>
-        </div>
-    </div>
-</div>
+        {% endwith %}
 
-<!-- TAB: THEO KHÁCH HÀNG -->
-<div id="tab-customer" class="tab-pane">
-    <div class="report-box">
-        <div class="report-box-header">
-            <span><i class="fas fa-users me-2"></i>Doanh thu theo khách hàng</span>
-            <a href="?{{ export_params }}&report_type=customer" class="export-btn"><i class="fas fa-file-excel"></i> Xuất Excel</a>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-sm ledger-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Mã KH</th>
-                        <th>Tên khách hàng</th>
-                        <th class="text-amount">Doanh thu gộp</th>
-                        <th class="text-amount">Giảm trừ</th>
-                        <th class="text-amount">Doanh thu thuần</th>
-                        <th class="text-amount">Giá vốn</th>
-                        <th class="text-amount">Lợi nhuận</th>
-                        <th class="text-amount">Tỷ lệ LN (%)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in customer_data.rows %}
-                    <tr>
-                        <td class="text-muted">{{ forloop.counter }}</td>
-                        <td><strong class="text-primary">{{ row.customer_code }}</strong></td>
-                        <td>{{ row.customer_name }}</td>
-                        <td class="text-amount">{{ row.gross_revenue|floatformat:0 }}</td>
-                        <td class="text-amount text-warning">{% if row.revenue_deduction %}({{ row.revenue_deduction|floatformat:0 }}){% else %}-{% endif %}</td>
-                        <td class="text-amount"><strong>{{ row.net_revenue|floatformat:0 }}</strong></td>
-                        <td class="text-amount text-muted">{{ row.cogs|floatformat:0 }}</td>
-                        <td class="text-amount {% if row.gross_profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">{{ row.gross_profit|floatformat:0 }}</td>
-                        <td class="text-amount">{% if row.net_revenue %}{% widthratio row.gross_profit row.net_revenue 100 %}%{% else %}-{% endif %}</td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="9" class="text-center text-muted py-5">Không có dữ liệu.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+        <!-- TABS -->
+        <ul class="nav nav-tabs mb-3" id="reportTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-semibold" id="summary-tab" data-bs-toggle="tab" data-bs-target="#tab-summary" type="button" role="tab" data-tab="summary">Tổng hợp</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold" id="customer-tab" data-bs-toggle="tab" data-bs-target="#tab-customer" type="button" role="tab" data-tab="customer">Theo khách hàng</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold" id="product-tab" data-bs-toggle="tab" data-bs-target="#tab-product" type="button" role="tab" data-tab="product">Theo mặt hàng</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-semibold" id="salesperson-tab" data-bs-toggle="tab" data-bs-target="#tab-salesperson" type="button" role="tab" data-tab="salesperson">Theo nhân viên</button>
+            </li>
+        </ul>
 
-<!-- TAB: THEO MẶT HÀNG -->
-<div id="tab-product" class="tab-pane">
-    <div class="report-box">
-        <div class="report-box-header">
-            <span><i class="fas fa-box me-2"></i>Doanh thu theo mặt hàng</span>
-            <a href="?{{ export_params }}&report_type=product" class="export-btn"><i class="fas fa-file-excel"></i> Xuất Excel</a>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-sm ledger-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Mã hàng</th>
-                        <th>Tên mặt hàng</th>
-                        <th>Nhóm hàng</th>
-                        <th class="text-amount">SL bán</th>
-                        <th class="text-amount">SL trả</th>
-                        <th class="text-amount">Doanh thu gộp</th>
-                        <th class="text-amount">Doanh thu thuần</th>
-                        <th class="text-amount">Giá vốn</th>
-                        <th class="text-amount">Lợi nhuận</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in product_data.rows %}
-                    <tr>
-                        <td class="text-muted">{{ forloop.counter }}</td>
-                        <td><strong class="text-primary">{{ row.product_code }}</strong></td>
-                        <td>{{ row.product_name }}</td>
-                        <td class="text-muted">{{ row.group_name|default:'-' }}</td>
-                        <td class="text-amount">{{ row.sold_qty|floatformat:0 }}</td>
-                        <td class="text-amount text-warning">{% if row.returned_qty %}({{ row.returned_qty|floatformat:0 }}){% else %}-{% endif %}</td>
-                        <td class="text-amount">{{ row.gross_revenue|floatformat:0 }}</td>
-                        <td class="text-amount"><strong>{{ row.net_revenue|floatformat:0 }}</strong></td>
-                        <td class="text-amount text-muted">{{ row.cogs|floatformat:0 }}</td>
-                        <td class="text-amount {% if row.gross_profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">{{ row.gross_profit|floatformat:0 }}</td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="10" class="text-center text-muted py-5">Không có dữ liệu.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
+        <div class="tab-content" id="reportTabsContent">
+            <!-- TAB: TỔNG HỢP THEO KỲ -->
+            <div class="tab-pane fade show active" id="tab-summary" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-semibold"><i class="fas fa-calendar-days text-muted me-2"></i>Doanh thu theo kỳ ({{ filters.from_date|date:'d/m/Y' }} – {{ filters.to_date|date:'d/m/Y' }})</span>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-secondary {% if group_by == 'day' %}active{% endif %} group-by-btn" data-groupby="day">Ngày</button>
+                        <button type="button" class="btn btn-outline-secondary {% if group_by == 'month' %}active{% endif %} group-by-btn" data-groupby="month">Tháng</button>
+                        <button type="button" class="btn btn-outline-secondary {% if group_by == 'year' %}active{% endif %} group-by-btn" data-groupby="year">Năm</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Kỳ</th>
+                                <th class="text-amount">Doanh thu gộp</th>
+                                <th class="text-amount">Giảm trừ DT</th>
+                                <th class="text-amount">Doanh thu thuần</th>
+                                <th class="text-amount">Giá vốn</th>
+                                <th class="text-amount">Lợi nhuận gộp</th>
+                                <th class="text-amount">Tỷ lệ LN (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in summary_data.rows %}
+                            <tr>
+                                <td><strong>{{ row.period }}</strong></td>
+                                <td class="text-amount">{{ row.gross_revenue|floatformat:0|intcomma }}</td>
+                                <td class="text-amount text-warning">{% if row.revenue_deduction %}({{ row.revenue_deduction|floatformat:0|intcomma }}){% else %}-{% endif %}</td>
+                                <td class="text-amount text-primary fw-semibold">{{ row.net_revenue|floatformat:0|intcomma }}</td>
+                                <td class="text-amount text-muted">{{ row.cogs|floatformat:0|intcomma }}</td>
+                                <td class="text-amount fw-semibold {% if row.gross_profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">
+                                    {{ row.gross_profit|floatformat:0|intcomma }}
+                                </td>
+                                <td class="text-amount">
+                                    {% if row.net_revenue %}
+                                        {% widthratio row.gross_profit row.net_revenue 100 %}%
+                                    {% else %}-{% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="7" class="text-center text-muted py-4">Không có dữ liệu trong kỳ đã chọn.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                        {% with t=summary_data.totals %}
+                        {% if summary_data.rows %}
+                        <tfoot class="table-light">
+                            <tr>
+                                <td><strong>Tổng cộng</strong></td>
+                                <td class="text-amount fw-bold">{{ t.gross_revenue|floatformat:0|intcomma }}</td>
+                                <td class="text-amount fw-bold text-warning">{% if t.revenue_deduction %}({{ t.revenue_deduction|floatformat:0|intcomma }}){% else %}-{% endif %}</td>
+                                <td class="text-amount fw-bold text-primary">{{ t.net_revenue|floatformat:0|intcomma }}</td>
+                                <td class="text-amount fw-bold text-muted">{{ t.cogs|floatformat:0|intcomma }}</td>
+                                <td class="text-amount fw-bold {% if t.gross_profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">{{ t.gross_profit|floatformat:0|intcomma }}</td>
+                                <td class="text-amount fw-bold">
+                                    {% if t.net_revenue %}{% widthratio t.gross_profit t.net_revenue 100 %}%{% else %}-{% endif %}
+                                </td>
+                            </tr>
+                        </tfoot>
+                        {% endif %}
+                        {% endwith %}
+                    </table>
+                </div>
+            </div>
 
-<!-- TAB: THEO NHÂN VIÊN -->
-<div id="tab-salesperson" class="tab-pane">
-    <div class="report-box">
-        <div class="report-box-header">
-            <span><i class="fas fa-user-tie me-2"></i>Doanh thu theo nhân viên bán hàng</span>
-            <a href="?{{ export_params }}&report_type=salesperson" class="export-btn"><i class="fas fa-file-excel"></i> Xuất Excel</a>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-sm ledger-table">
-                <thead>
-                    <tr>
-                        <th>#</th>
-                        <th>Mã NV</th>
-                        <th class="text-amount">Doanh thu gộp</th>
-                        <th class="text-amount">Giảm trừ</th>
-                        <th class="text-amount">Doanh thu thuần</th>
-                        <th class="text-amount">Giá vốn</th>
-                        <th class="text-amount">Lợi nhuận</th>
-                        <th class="text-amount">Tỷ lệ LN (%)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in salesperson_data.rows %}
-                    <tr>
-                        <td class="text-muted">{{ forloop.counter }}</td>
-                        <td><strong class="text-primary">{{ row.salesperson_code }}</strong></td>
-                        <td class="text-amount">{{ row.gross_revenue|floatformat:0 }}</td>
-                        <td class="text-amount text-warning">{% if row.revenue_deduction %}({{ row.revenue_deduction|floatformat:0 }}){% else %}-{% endif %}</td>
-                        <td class="text-amount"><strong>{{ row.net_revenue|floatformat:0 }}</strong></td>
-                        <td class="text-amount text-muted">{{ row.cogs|floatformat:0 }}</td>
-                        <td class="text-amount {% if row.gross_profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">{{ row.gross_profit|floatformat:0 }}</td>
-                        <td class="text-amount">{% if row.net_revenue %}{% widthratio row.gross_profit row.net_revenue 100 %}%{% else %}-{% endif %}</td>
-                    </tr>
-                    {% empty %}
-                    <tr><td colspan="8" class="text-center text-muted py-5">Không có dữ liệu.</td></tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <!-- TAB: THEO KHÁCH HÀNG -->
+            <div class="tab-pane fade" id="tab-customer" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-semibold"><i class="fas fa-users text-muted me-2"></i>Doanh thu theo khách hàng</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Mã KH</th>
+                                <th>Tên khách hàng</th>
+                                <th class="text-amount">Doanh thu gộp</th>
+                                <th class="text-amount">Giảm trừ</th>
+                                <th class="text-amount">Doanh thu thuần</th>
+                                <th class="text-amount">Giá vốn</th>
+                                <th class="text-amount">Lợi nhuận</th>
+                                <th class="text-amount">Tỷ lệ LN (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in customer_data.rows %}
+                            <tr>
+                                <td class="text-muted">{{ forloop.counter }}</td>
+                                <td><strong class="text-primary">{{ row.customer_code }}</strong></td>
+                                <td>{{ row.customer_name }}</td>
+                                <td class="text-amount">{{ row.gross_revenue|floatformat:0|intcomma }}</td>
+                                <td class="text-amount text-warning">{% if row.revenue_deduction %}({{ row.revenue_deduction|floatformat:0|intcomma }}){% else %}-{% endif %}</td>
+                                <td class="text-amount fw-semibold">{{ row.net_revenue|floatformat:0|intcomma }}</td>
+                                <td class="text-amount text-muted">{{ row.cogs|floatformat:0|intcomma }}</td>
+                                <td class="text-amount fw-semibold {% if row.gross_profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">{{ row.gross_profit|floatformat:0|intcomma }}</td>
+                                <td class="text-amount">{% if row.net_revenue %}{% widthratio row.gross_profit row.net_revenue 100 %}%{% else %}-{% endif %}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="9" class="text-center text-muted py-4">Không có dữ liệu.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB: THEO MẶT HÀNG -->
+            <div class="tab-pane fade" id="tab-product" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-semibold"><i class="fas fa-box text-muted me-2"></i>Doanh thu theo mặt hàng</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Mã hàng</th>
+                                <th>Tên mặt hàng</th>
+                                <th>Nhóm hàng</th>
+                                <th class="text-amount">SL bán</th>
+                                <th class="text-amount">SL trả</th>
+                                <th class="text-amount">Doanh thu gộp</th>
+                                <th class="text-amount">Doanh thu thuần</th>
+                                <th class="text-amount">Giá vốn</th>
+                                <th class="text-amount">Lợi nhuận</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in product_data.rows %}
+                            <tr>
+                                <td class="text-muted">{{ forloop.counter }}</td>
+                                <td><strong class="text-primary">{{ row.product_code }}</strong></td>
+                                <td>{{ row.product_name }}</td>
+                                <td class="text-muted">{{ row.group_name|default:'-' }}</td>
+                                <td class="text-amount">{{ row.sold_qty|floatformat:0|intcomma }}</td>
+                                <td class="text-amount text-warning">{% if row.returned_qty %}({{ row.returned_qty|floatformat:0|intcomma }}){% else %}-{% endif %}</td>
+                                <td class="text-amount">{{ row.gross_revenue|floatformat:0|intcomma }}</td>
+                                <td class="text-amount fw-semibold">{{ row.net_revenue|floatformat:0|intcomma }}</td>
+                                <td class="text-amount text-muted">{{ row.cogs|floatformat:0|intcomma }}</td>
+                                <td class="text-amount fw-semibold {% if row.gross_profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">{{ row.gross_profit|floatformat:0|intcomma }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="10" class="text-center text-muted py-4">Không có dữ liệu.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TAB: THEO NHÂN VIÊN -->
+            <div class="tab-pane fade" id="tab-salesperson" role="tabpanel">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-semibold"><i class="fas fa-user-tie text-muted me-2"></i>Doanh thu theo nhân viên bán hàng</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>#</th>
+                                <th>Mã NV</th>
+                                <th class="text-amount">Doanh thu gộp</th>
+                                <th class="text-amount">Giảm trừ</th>
+                                <th class="text-amount">Doanh thu thuần</th>
+                                <th class="text-amount">Giá vốn</th>
+                                <th class="text-amount">Lợi nhuận</th>
+                                <th class="text-amount">Tỷ lệ LN (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in salesperson_data.rows %}
+                            <tr>
+                                <td class="text-muted">{{ forloop.counter }}</td>
+                                <td><strong class="text-primary">{{ row.salesperson_code }}</strong></td>
+                                <td class="text-amount">{{ row.gross_revenue|floatformat:0|intcomma }}</td>
+                                <td class="text-amount text-warning">{% if row.revenue_deduction %}({{ row.revenue_deduction|floatformat:0|intcomma }}){% else %}-{% endif %}</td>
+                                <td class="text-amount fw-semibold">{{ row.net_revenue|floatformat:0|intcomma }}</td>
+                                <td class="text-amount text-muted">{{ row.cogs|floatformat:0|intcomma }}</td>
+                                <td class="text-amount fw-semibold {% if row.gross_profit >= 0 %}profit-positive{% else %}profit-negative{% endif %}">{{ row.gross_profit|floatformat:0|intcomma }}</td>
+                                <td class="text-amount">{% if row.net_revenue %}{% widthratio row.gross_profit row.net_revenue 100 %}%{% else %}-{% endif %}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="8" class="text-center text-muted py-4">Không có dữ liệu.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -388,20 +338,11 @@
 {% block extra_js %}
 <script>
 (function () {
-    // ─── Tab switching ──────────────────────────────────────────────
-    document.querySelectorAll('.report-tab').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            document.querySelectorAll('.report-tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-            btn.classList.add('active');
-            const pane = document.getElementById(btn.dataset.tab);
-            if (pane) pane.classList.add('active');
-            // Cập nhật nút xuất Excel theo tab đang chọn
-            const tabMap = {
-                'tab-summary': 'summary', 'tab-customer': 'customer',
-                'tab-product': 'product', 'tab-salesperson': 'salesperson'
-            };
-            const rtype = tabMap[btn.dataset.tab] || 'summary';
+    // ─── Tab switching for export button update ────────────────────────
+    const tabEls = document.querySelectorAll('button[data-bs-toggle="tab"]');
+    tabEls.forEach(function (tabEl) {
+        tabEl.addEventListener('shown.bs.tab', function (event) {
+            const rtype = event.target.dataset.tab || 'summary';
             const exportBtn = document.getElementById('btnExport');
             if (exportBtn) {
                 const base = exportBtn.href.split('&report_type=')[0];

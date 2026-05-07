@@ -274,6 +274,7 @@ class KiemKe(AccountingPeriodLockMixin, models.Model):
     ngay_kiem_ke = models.DateField(default=datetime.date.today, verbose_name='Ngày kiểm kê')
     kho = models.ForeignKey(Kho, on_delete=models.PROTECT, verbose_name='Kho')
     nhom_hang = models.ForeignKey(NhomHang, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Loại hàng hóa kiểm kê')
+    hang_hoa = models.ForeignKey(HangHoa, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='Hàng hóa kiểm kê')
     khu_vuc = models.CharField(max_length=120, blank=True, verbose_name='Khu vực kiểm kê')
     vi_tri_hang_loi = models.ForeignKey(
         ViTriKho,

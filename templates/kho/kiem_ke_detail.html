@@ -59,6 +59,7 @@
             <div class="col-md-3"><small class="text-muted">Khu vực</small><div>{{ kk.khu_vuc|default:'-' }}</div></div>
             <div class="col-md-3"><small class="text-muted">Vị trí hàng lỗi</small><div>{% if kk.vi_tri_hang_loi %}{{ kk.vi_tri_hang_loi.ma_vi_tri }}{% else %}-{% endif %}</div></div>
             <div class="col-md-3"><small class="text-muted">Nhóm hàng</small><div>{% if kk.nhom_hang %}{{ kk.nhom_hang.ten_nhom }}{% else %}Tất cả{% endif %}</div></div>
+            <div class="col-md-3"><small class="text-muted">Hàng hóa</small><div>{% if kk.hang_hoa %}{{ kk.hang_hoa.ten_hang }}{% else %}Tất cả{% endif %}</div></div>
         </div>
 
 

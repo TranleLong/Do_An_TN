@@ -329,19 +329,19 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(data => {
                 // Auto-populate form
-                tenKhInput.value = data.ten_kh || tenKhInput.value;
-                soDienThoaiInput.value = data.so_dien_thoai || soDienThoaiInput.value;
-                diaChiField.value = data.dia_chi || diaChiField.value;
-                emailInput.value = data.email || emailInput.value;
-                loaiKhField.value = data.loai_kh || loaiKhField.value;
-                hanMucInput.value = formatIntegerDots(data.han_muc_cong_no);
-                soNgayNoInput.value = formatIntegerDots(data.so_ngay_no_max);
-                chietKhauInput.value = formatDecimalDots(data.chiet_khau_mac_dinh);
-                ghiChuInput.value = data.ghi_chu || '';
-                if (data.nhom_kh_id) {
+                if (tenKhInput) tenKhInput.value = data.ten_kh || tenKhInput.value;
+                if (soDienThoaiInput) soDienThoaiInput.value = data.so_dien_thoai || soDienThoaiInput.value;
+                if (diaChiField) diaChiField.value = data.dia_chi || diaChiField.value;
+                if (emailInput) emailInput.value = data.email || emailInput.value;
+                if (loaiKhField) loaiKhField.value = data.loai_kh || loaiKhField.value;
+                if (hanMucInput) hanMucInput.value = formatIntegerDots(data.han_muc_cong_no);
+                if (soNgayNoInput) soNgayNoInput.value = formatIntegerDots(data.so_ngay_no_max);
+                if (chietKhauInput) chietKhauInput.value = formatDecimalDots(data.chiet_khau_mac_dinh);
+                if (ghiChuInput) ghiChuInput.value = data.ghi_chu || '';
+                if (data.nhom_kh_id && nhomKhField) {
                     nhomKhField.value = data.nhom_kh_id;
                 }
-                if (data.ma_so_thue) {
+                if (data.ma_so_thue && maSoThueInput) {
                     maSoThueInput.value = data.ma_so_thue;
                 }
 

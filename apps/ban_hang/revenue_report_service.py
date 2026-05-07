@@ -70,10 +70,11 @@ class RevenueReportService:
     """Tinh bao cao doanh thu theo nghiep vu ERP.
 
     Rule chinh:
-    - Doanh thu chi lay hoa don trang thai chuyen so cai (trang_thai='2').
-    - Giam tru doanh thu lay tu phieu doi/tra da hoan tat (trang_thai='2').
-    - Phieu thu, phieu xuat khong tao doanh thu.
-    - Gia von uu tien gia_von luu tren DonBan_CT (khong tinh lai ton kho hien tai).
+    - Doanh thu gop = tong tien hang + thue VAT (toan bo gia tri hoa don da ghi so).
+    - Giam tru doanh thu = tien hang tra lai + thue VAT cua phieu tra.
+    - Doanh thu thuan = Doanh thu gop - Giam tru.
+    - Loi nhuan gop = Doanh thu thuan - Gia von hang ban.
+    - Gia von uu tien gia_von luu tren DonBan_CT, neu khong co thi lay gia_von_tb tu TonKho.
     """
 
     POSTED_STATUS = '2'
@@ -82,6 +83,7 @@ class RevenueReportService:
     def __init__(self, filters: RevenueReportFilters) -> None:
         self.filters = filters
         self._unit_cost_map = self._build_unit_cost_map()
+        self._product_cost_map = self._build_product_cost_map()
 
     @property
     def _invoice_date_field(self) -> str:
@@ -112,6 +114,23 @@ class RevenueReportService:
             total_cost = Decimal(row['total_cost'] or 0)
             data[(int(row['don_ban_id']), int(row['hang_hoa_id']))] = total_cost / qty
         return data
+
+    def _build_product_cost_map(self) -> dict[int, Decimal]:
+        from apps.kho.models import TonKho
+        data: dict[int, Decimal] = {}
+        for tk in TonKho.objects.values('hang_hoa_id', 'gia_von_tb'):
+            hh_id = tk['hang_hoa_id']
+            if hh_id not in data or tk['gia_von_tb']:
+                data[int(hh_id)] = Decimal(tk['gia_von_tb'] or 0)
+        return data
+
+    def _get_unit_cost(self, don_ban_id: int | None, hang_hoa_id: int) -> Decimal:
+        db_id = int(don_ban_id) if don_ban_id else 0
+        hh_id = int(hang_hoa_id) if hang_hoa_id else 0
+        cost = self._unit_cost_map.get((db_id, hh_id), MONEY_ZERO)
+        if cost <= 0:
+            cost = self._product_cost_map.get(hh_id, MONEY_ZERO)
+        return cost
 
     def _invoice_detail_queryset(self):
         qs = (
@@ -166,27 +185,21 @@ class RevenueReportService:
         if self.filters.warehouse_id:
             qs = qs.filter(kho_id=self.filters.warehouse_id)
         if self.filters.salesperson_code:
-            # Neu phieu doi/tra khong tham chieu hoa don goc thi khong the gan cho NV ban.
             qs = qs.filter(phieu_tra__hoa_don_goc__ma_nv_ban_hang__iexact=self.filters.salesperson_code)
         return qs
-
-    def _invoice_line_cost(self, line: HoaDonBan_CT) -> Decimal:
-        don_ban_id = line.hoa_don.don_ban_id
-        if not don_ban_id:
-            return MONEY_ZERO
-        unit_cost = self._unit_cost_map.get((don_ban_id, line.hang_hoa_id), MONEY_ZERO)
-        return Decimal(line.so_luong or 0) * unit_cost
-
-    def _return_line_cost(self, line: PhieuTraHang_CT) -> Decimal:
-        don_ban_id = line.phieu_tra.hoa_don_goc.don_ban_id if line.phieu_tra.hoa_don_goc_id else None
-        if not don_ban_id:
-            return MONEY_ZERO
-        unit_cost = self._unit_cost_map.get((don_ban_id, line.hang_hoa_id), MONEY_ZERO)
-        return Decimal(line.so_luong or 0) * unit_cost
 
     @staticmethod
     def _safe_money(value: Decimal | None) -> Decimal:
         return Decimal(value or 0)
+
+    def _empty_bucket(self) -> dict[str, Decimal]:
+        return {
+            'gross_revenue': MONEY_ZERO,   # tien_hang + tien_thue (toan bo HD)
+            'revenue_deduction': MONEY_ZERO,  # tra lai + thue tra lai
+            'net_revenue': MONEY_ZERO,
+            'cogs': MONEY_ZERO,
+            'gross_profit': MONEY_ZERO,
+        }
 
     def get_revenue_summary(self, group_by: str = 'day') -> dict[str, Any]:
         if group_by not in ('day', 'month', 'year'):
@@ -198,7 +211,8 @@ class RevenueReportService:
                 'hoa_don__don_ban_id',
                 'hang_hoa_id',
                 'so_luong',
-                'tien_hang',
+                'thanh_tien',   # tien hang sau chiet khau, chua co thue
+                'tien_thue',    # thue VAT
             )
         )
         return_lines = list(
@@ -207,7 +221,9 @@ class RevenueReportService:
                 'phieu_tra__hoa_don_goc__don_ban_id',
                 'hang_hoa_id',
                 'so_luong',
-                'thanh_tien',
+                'thanh_tien',   # tien hang tra lai
+                'hoa_don_ct_goc__thue_suat',    # % thue cua dong tra tu hoa don goc
+                'don_gia',      # de tinh lai thue neu can
             )
         )
 
@@ -225,22 +241,14 @@ class RevenueReportService:
             if not dt:
                 continue
             key = period_key(dt)
-            bucket = period_map.setdefault(
-                key,
-                {
-                    'gross_revenue': MONEY_ZERO,
-                    'revenue_deduction': MONEY_ZERO,
-                    'net_revenue': MONEY_ZERO,
-                    'cogs': MONEY_ZERO,
-                    'gross_profit': MONEY_ZERO,
-                },
-            )
-            amount = self._safe_money(Decimal(row['tien_hang'] or 0))
-            bucket['gross_revenue'] += amount
-            unit_cost = self._unit_cost_map.get(
-                (int(row['hoa_don__don_ban_id']) if row['hoa_don__don_ban_id'] else 0, int(row['hang_hoa_id'])),
-                MONEY_ZERO,
-            )
+            bucket = period_map.setdefault(key, self._empty_bucket())
+
+            tien_hang = self._safe_money(row['thanh_tien'])
+            tien_thue = self._safe_money(row['tien_thue'])
+            # Doanh thu gop = tien hang + thue VAT
+            bucket['gross_revenue'] += tien_hang + tien_thue
+
+            unit_cost = self._get_unit_cost(row.get('hoa_don__don_ban_id'), row['hang_hoa_id'])
             bucket['cogs'] += self._safe_money(Decimal(row['so_luong'] or 0) * unit_cost)
 
         for row in return_lines:
@@ -248,25 +256,16 @@ class RevenueReportService:
             if not dt:
                 continue
             key = period_key(dt)
-            bucket = period_map.setdefault(
-                key,
-                {
-                    'gross_revenue': MONEY_ZERO,
-                    'revenue_deduction': MONEY_ZERO,
-                    'net_revenue': MONEY_ZERO,
-                    'cogs': MONEY_ZERO,
-                    'gross_profit': MONEY_ZERO,
-                },
-            )
-            amount = self._safe_money(Decimal(row['thanh_tien'] or 0))
-            bucket['revenue_deduction'] += amount
-            unit_cost = self._unit_cost_map.get(
-                (
-                    int(row['phieu_tra__hoa_don_goc__don_ban_id']) if row['phieu_tra__hoa_don_goc__don_ban_id'] else 0,
-                    int(row['hang_hoa_id']),
-                ),
-                MONEY_ZERO,
-            )
+            bucket = period_map.setdefault(key, self._empty_bucket())
+
+            tien_hang_tra = self._safe_money(row['thanh_tien'])
+            # Tinh thue cua phieu tra = tien_hang_tra * thue_suat%
+            thue_suat = self._safe_money(row.get('hoa_don_ct_goc__thue_suat') or 0)
+            tien_thue_tra = round(tien_hang_tra * thue_suat / Decimal('100'), 0)
+            # Giam tru = tien hang tra + thue tra
+            bucket['revenue_deduction'] += tien_hang_tra + tien_thue_tra
+
+            unit_cost = self._get_unit_cost(row.get('phieu_tra__hoa_don_goc__don_ban_id'), row['hang_hoa_id'])
             # Tra hang giam gia von
             bucket['cogs'] -= self._safe_money(Decimal(row['so_luong'] or 0) * unit_cost)
 
@@ -278,6 +277,7 @@ class RevenueReportService:
         for key in sorted(period_map.keys()):
             item = period_map[key]
             net_revenue = item['gross_revenue'] - item['revenue_deduction']
+            # Loi nhuan gop = Doanh thu thuan - Gia von
             gross_profit = net_revenue - item['cogs']
             rows.append({
                 'period': key,
@@ -315,7 +315,8 @@ class RevenueReportService:
                 'hoa_don__don_ban_id',
                 'hang_hoa_id',
                 'so_luong',
-                'tien_hang',
+                'thanh_tien',
+                'tien_thue',
             )
         )
         return_lines = list(
@@ -327,6 +328,7 @@ class RevenueReportService:
                 'hang_hoa_id',
                 'so_luong',
                 'thanh_tien',
+                'hoa_don_ct_goc__thue_suat',
             )
         )
 
@@ -338,35 +340,29 @@ class RevenueReportService:
                     'customer_id': int(key) if key.isdigit() else None,
                     'customer_code': ma,
                     'customer_name': ten,
-                    'gross_revenue': MONEY_ZERO,
-                    'revenue_deduction': MONEY_ZERO,
-                    'net_revenue': MONEY_ZERO,
-                    'cogs': MONEY_ZERO,
-                    'gross_profit': MONEY_ZERO,
+                    **self._empty_bucket(),
                 }
             return buckets[key]
 
         for row in invoice_lines:
             key = str(row['hoa_don__khach_hang_id'] or '0')
             bucket = ensure_bucket(key, row['hoa_don__khach_hang__ma_kh'] or '', row['hoa_don__khach_hang__ten_kh'] or 'Khach le')
-            bucket['gross_revenue'] += self._safe_money(Decimal(row['tien_hang'] or 0))
-            unit_cost = self._unit_cost_map.get(
-                (int(row['hoa_don__don_ban_id']) if row['hoa_don__don_ban_id'] else 0, int(row['hang_hoa_id'])),
-                MONEY_ZERO,
-            )
+            tien_hang = self._safe_money(row['thanh_tien'])
+            tien_thue = self._safe_money(row['tien_thue'])
+            bucket['gross_revenue'] += tien_hang + tien_thue
+            
+            unit_cost = self._get_unit_cost(row.get('hoa_don__don_ban_id'), row['hang_hoa_id'])
             bucket['cogs'] += self._safe_money(Decimal(row['so_luong'] or 0) * unit_cost)
 
         for row in return_lines:
             key = str(row['phieu_tra__khach_hang_id'] or '0')
             bucket = ensure_bucket(key, row['phieu_tra__khach_hang__ma_kh'] or '', row['phieu_tra__khach_hang__ten_kh'] or 'Khach le')
-            bucket['revenue_deduction'] += self._safe_money(Decimal(row['thanh_tien'] or 0))
-            unit_cost = self._unit_cost_map.get(
-                (
-                    int(row['phieu_tra__hoa_don_goc__don_ban_id']) if row['phieu_tra__hoa_don_goc__don_ban_id'] else 0,
-                    int(row['hang_hoa_id']),
-                ),
-                MONEY_ZERO,
-            )
+            tien_hang_tra = self._safe_money(row['thanh_tien'])
+            thue_suat = self._safe_money(row.get('hoa_don_ct_goc__thue_suat') or 0)
+            tien_thue_tra = round(tien_hang_tra * thue_suat / Decimal('100'), 0)
+            bucket['revenue_deduction'] += tien_hang_tra + tien_thue_tra
+            
+            unit_cost = self._get_unit_cost(row.get('phieu_tra__hoa_don_goc__don_ban_id'), row['hang_hoa_id'])
             bucket['cogs'] -= self._safe_money(Decimal(row['so_luong'] or 0) * unit_cost)
 
         rows: list[dict[str, Any]] = []
@@ -391,7 +387,8 @@ class RevenueReportService:
                 'hang_hoa__nhom_hang__ten_nhom',
                 'hoa_don__don_ban_id',
                 'so_luong',
-                'tien_hang',
+                'thanh_tien',
+                'tien_thue',
             )
         )
         return_lines = list(
@@ -403,6 +400,7 @@ class RevenueReportService:
                 'phieu_tra__hoa_don_goc__don_ban_id',
                 'so_luong',
                 'thanh_tien',
+                'hoa_don_ct_goc__thue_suat',
             )
         )
 
@@ -416,13 +414,9 @@ class RevenueReportService:
                     'product_code': row['hang_hoa__ma_hang'] or '',
                     'product_name': row['hang_hoa__ten_hang'] or '',
                     'group_name': row['hang_hoa__nhom_hang__ten_nhom'] or '',
-                    'gross_revenue': MONEY_ZERO,
-                    'revenue_deduction': MONEY_ZERO,
-                    'net_revenue': MONEY_ZERO,
-                    'cogs': MONEY_ZERO,
-                    'gross_profit': MONEY_ZERO,
                     'sold_qty': Decimal('0'),
                     'returned_qty': Decimal('0'),
+                    **self._empty_bucket(),
                 }
             return buckets[product_id]
 
@@ -430,25 +424,23 @@ class RevenueReportService:
             bucket = ensure_bucket(row)
             qty = Decimal(row['so_luong'] or 0)
             bucket['sold_qty'] += qty
-            bucket['gross_revenue'] += self._safe_money(Decimal(row['tien_hang'] or 0))
-            unit_cost = self._unit_cost_map.get(
-                (int(row['hoa_don__don_ban_id']) if row['hoa_don__don_ban_id'] else 0, int(row['hang_hoa_id'])),
-                MONEY_ZERO,
-            )
+            tien_hang = self._safe_money(row['thanh_tien'])
+            tien_thue = self._safe_money(row['tien_thue'])
+            bucket['gross_revenue'] += tien_hang + tien_thue
+            
+            unit_cost = self._get_unit_cost(row.get('hoa_don__don_ban_id'), row['hang_hoa_id'])
             bucket['cogs'] += self._safe_money(qty * unit_cost)
 
         for row in return_lines:
             bucket = ensure_bucket(row)
             qty = Decimal(row['so_luong'] or 0)
             bucket['returned_qty'] += qty
-            bucket['revenue_deduction'] += self._safe_money(Decimal(row['thanh_tien'] or 0))
-            unit_cost = self._unit_cost_map.get(
-                (
-                    int(row['phieu_tra__hoa_don_goc__don_ban_id']) if row['phieu_tra__hoa_don_goc__don_ban_id'] else 0,
-                    int(row['hang_hoa_id']),
-                ),
-                MONEY_ZERO,
-            )
+            tien_hang_tra = self._safe_money(row['thanh_tien'])
+            thue_suat = self._safe_money(row.get('hoa_don_ct_goc__thue_suat') or 0)
+            tien_thue_tra = round(tien_hang_tra * thue_suat / Decimal('100'), 0)
+            bucket['revenue_deduction'] += tien_hang_tra + tien_thue_tra
+            
+            unit_cost = self._get_unit_cost(row.get('phieu_tra__hoa_don_goc__don_ban_id'), row['hang_hoa_id'])
             bucket['cogs'] -= self._safe_money(qty * unit_cost)
 
         rows: list[dict[str, Any]] = []
@@ -471,7 +463,8 @@ class RevenueReportService:
                 'hoa_don__don_ban_id',
                 'hang_hoa_id',
                 'so_luong',
-                'tien_hang',
+                'thanh_tien',
+                'tien_thue',
             )
         )
         return_lines = list(
@@ -481,6 +474,7 @@ class RevenueReportService:
                 'hang_hoa_id',
                 'so_luong',
                 'thanh_tien',
+                'hoa_don_ct_goc__thue_suat',
             )
         )
 
@@ -491,33 +485,27 @@ class RevenueReportService:
             if key not in buckets:
                 buckets[key] = {
                     'salesperson_code': key,
-                    'gross_revenue': MONEY_ZERO,
-                    'revenue_deduction': MONEY_ZERO,
-                    'net_revenue': MONEY_ZERO,
-                    'cogs': MONEY_ZERO,
-                    'gross_profit': MONEY_ZERO,
+                    **self._empty_bucket(),
                 }
             return buckets[key]
 
         for row in invoice_lines:
             bucket = ensure_bucket(row['hoa_don__ma_nv_ban_hang'] or '')
-            bucket['gross_revenue'] += self._safe_money(Decimal(row['tien_hang'] or 0))
-            unit_cost = self._unit_cost_map.get(
-                (int(row['hoa_don__don_ban_id']) if row['hoa_don__don_ban_id'] else 0, int(row['hang_hoa_id'])),
-                MONEY_ZERO,
-            )
+            tien_hang = self._safe_money(row['thanh_tien'])
+            tien_thue = self._safe_money(row['tien_thue'])
+            bucket['gross_revenue'] += tien_hang + tien_thue
+            
+            unit_cost = self._get_unit_cost(row.get('hoa_don__don_ban_id'), row['hang_hoa_id'])
             bucket['cogs'] += self._safe_money(Decimal(row['so_luong'] or 0) * unit_cost)
 
         for row in return_lines:
             bucket = ensure_bucket(row['phieu_tra__hoa_don_goc__ma_nv_ban_hang'] or '')
-            bucket['revenue_deduction'] += self._safe_money(Decimal(row['thanh_tien'] or 0))
-            unit_cost = self._unit_cost_map.get(
-                (
-                    int(row['phieu_tra__hoa_don_goc__don_ban_id']) if row['phieu_tra__hoa_don_goc__don_ban_id'] else 0,
-                    int(row['hang_hoa_id']),
-                ),
-                MONEY_ZERO,
-            )
+            tien_hang_tra = self._safe_money(row['thanh_tien'])
+            thue_suat = self._safe_money(row.get('hoa_don_ct_goc__thue_suat') or 0)
+            tien_thue_tra = round(tien_hang_tra * thue_suat / Decimal('100'), 0)
+            bucket['revenue_deduction'] += tien_hang_tra + tien_thue_tra
+            
+            unit_cost = self._get_unit_cost(row.get('phieu_tra__hoa_don_goc__don_ban_id'), row['hang_hoa_id'])
             bucket['cogs'] -= self._safe_money(Decimal(row['so_luong'] or 0) * unit_cost)
 
         rows: list[dict[str, Any]] = []

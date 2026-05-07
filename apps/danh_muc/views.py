@@ -81,23 +81,36 @@ def _lookup_tax_code_external(ma_so_thue):
     if not normalized:
         return None
 
-    url = f'https://esgoo.net/api-mst/{normalized}.htm'
+    url_vietqr = f'https://api.vietqr.io/v2/business/{normalized}'
+    ten_kh, dia_chi, so_dien_thoai = '', '', ''
+
     try:
-        with urlopen(url, timeout=8) as response:
-            payload = json.loads(response.read().decode('utf-8'))
-    except (URLError, TimeoutError, ValueError, json.JSONDecodeError):
-        return None
+        from urllib.request import Request
+        # 1. Try VietQR API first (faster, no cold-start scraping delay)
+        req_v = Request(url_vietqr, headers={'User-Agent': 'Mozilla/5.0'})
+        with urlopen(req_v, timeout=10) as response:
+            payload_v = json.loads(response.read().decode('utf-8'))
+            if payload_v.get('code') == '00' and isinstance(payload_v.get('data'), dict):
+                data_v = payload_v['data']
+                ten_kh = (data_v.get('name') or '').strip()
+                dia_chi = (data_v.get('address') or '').strip()
+    except Exception:
+        pass
 
-    if not isinstance(payload, dict):
-        return None
-    data = payload.get('data')
-    if not isinstance(data, dict):
-        return None
-
-    ten_kh = (data.get('ten') or '').strip()
-    dia_chi = (data.get('dc') or '').strip()
-    so_dien_thoai = (data.get('dt') or '').strip()
-    mst = (data.get('mst') or normalized).strip()
+    # 2. If VietQR fails or returns empty name, fallback to esgoo
+    if not ten_kh:
+        url_esgoo = f'https://esgoo.net/api-mst/{normalized}.htm'
+        try:
+            req_e = Request(url_esgoo, headers={'User-Agent': 'Mozilla/5.0'})
+            with urlopen(req_e, timeout=15) as response:
+                payload_e = json.loads(response.read().decode('utf-8'))
+                if payload_e.get('error') == 0 and isinstance(payload_e.get('data'), dict):
+                    data_e = payload_e['data']
+                    ten_kh = (data_e.get('ten') or '').strip()
+                    dia_chi = (data_e.get('dc') or '').strip()
+                    so_dien_thoai = (data_e.get('dt') or '').strip()
+        except Exception:
+            pass
 
     if not ten_kh:
         return None
@@ -107,7 +120,7 @@ def _lookup_tax_code_external(ma_so_thue):
         'ma_kh': '',
         'ten_kh': ten_kh,
         'loai_kh': '2',
-        'ma_so_thue': mst,
+        'ma_so_thue': normalized,
         'dia_chi': '' if dia_chi.lower() == 'null' else dia_chi,
         'so_dien_thoai': '' if so_dien_thoai.lower() == 'null' else so_dien_thoai,
         'email': '',

@@ -404,6 +404,11 @@ def _save_hoa_don_from_request(request, hoa_don=None):
     # Cập nhật số lượng đã giao trên đơn hàng gốc (nếu hóa đơn kế thừa từ đơn)
     _cap_nhat_so_luong_da_giao_don(hoa_don)
 
+    # Kế toán: Nếu chuyển từ trạng thái 2,3 (đã ghi sổ) về 1 (lập chứng từ), ta phải hủy ghi sổ
+    if old_trang_thai in ('2', '3') and hoa_don.trang_thai == '1':
+        from apps.so_cai.models import JournalEntry
+        JournalEntry.objects.filter(document_type='hoa_don_ban', document_id=hoa_don.id).delete()
+
     return hoa_don
 
 
@@ -3410,6 +3415,8 @@ def hoa_don_ban_xoa(request, pk):
             with transaction.atomic():
                 if str(hoa_don.trang_thai or '').strip() in ('2', '3'):
                     _restore_ton_kho_from_hoa_don(hoa_don)
+                    from apps.so_cai.models import JournalEntry
+                    JournalEntry.objects.filter(document_type='hoa_don_ban', document_id=hoa_don.id).delete()
                 hoa_don.delete()
                 _recompute_don_ban_from_linked_hoa_don(don_lien_ket)
                 if don_lien_ket and don_lien_ket.pk:
@@ -3447,6 +3454,8 @@ def hoa_don_ban_xoa_nhieu(request):
             with transaction.atomic():
                 if str(hoa_don.trang_thai or '').strip() in ('2', '3'):
                     _restore_ton_kho_from_hoa_don(hoa_don)
+                    from apps.so_cai.models import JournalEntry
+                    JournalEntry.objects.filter(document_type='hoa_don_ban', document_id=hoa_don.id).delete()
                 hoa_don.delete()
                 _recompute_don_ban_from_linked_hoa_don(don_lien_ket)
                 if don_lien_ket and don_lien_ket.pk:

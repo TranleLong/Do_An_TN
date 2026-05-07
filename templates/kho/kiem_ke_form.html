@@ -66,12 +66,12 @@
                     <input type="hidden" name="kho" id="kho_value" value="{{ form_data.kho|default:'' }}">
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Khu vực kiểm kê *</label>
+                    <label class="form-label">Khu vực kiểm kê (Để trống: toàn kho)</label>
                     <div class="lookup-wrap">
-                        <input type="text" name="khu_vuc_display" id="khu_vuc_display" class="form-control lookup-input" list="khu_vuc_suggestions" placeholder="Gõ để gợi ý khu vực..." autocomplete="off" value="{{ form_data.khu_vuc_display|default:'' }}">
+                        <input type="text" name="khu_vuc_display" id="khu_vuc_display" class="form-control lookup-input" placeholder="Chọn khu vực..." readonly value="{{ form_data.khu_vuc_display|default:'' }}">
                         <button type="button" class="lookup-btn" data-lookup-field="khu_vuc" title="Chọn khu vực"><i class="fas fa-search"></i></button>
+                        <button type="button" class="lookup-btn" style="right: 32px;" onclick="document.getElementById('khu_vuc_display').value=''; document.getElementById('khu_vuc_value').value='';" title="Xóa khu vực"><i class="fas fa-times"></i></button>
                     </div>
-                    <datalist id="khu_vuc_suggestions"></datalist>
                     <input type="hidden" name="khu_vuc" id="khu_vuc_value" value="{{ form_data.khu_vuc|default:'' }}">
                 </div>
 
@@ -85,7 +85,7 @@
                     <input type="hidden" name="vi_tri_hang_loi" id="vi_tri_hang_loi_value" value="{{ form_data.vi_tri_hang_loi|default:'' }}">
                 </div>
 
-                <div class="col-md-6">
+                <div class="col-md-3">
                     <label class="form-label">Phạm vi nhóm hàng</label>
                     <div class="lookup-wrap">
                         <input type="text" name="nhom_hang_display" id="nhom_hang_display" class="form-control lookup-input" list="nhom_hang_suggestions" placeholder="Gõ để gợi ý nhóm hàng..." autocomplete="off" value="{{ form_data.nhom_hang_display|default:'' }}">
@@ -93,6 +93,16 @@
                     </div>
                     <datalist id="nhom_hang_suggestions"></datalist>
                     <input type="hidden" name="nhom_hang" id="nhom_hang_value" value="{{ form_data.nhom_hang|default:'' }}">
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label">Hàng hóa cụ thể</label>
+                    <div class="lookup-wrap">
+                        <input type="text" name="hang_hoa_display" id="hang_hoa_display" class="form-control lookup-input" list="hang_hoa_suggestions" placeholder="Gõ để gợi ý hàng hóa..." autocomplete="off" value="{{ form_data.hang_hoa_display|default:'' }}">
+                        <button type="button" class="lookup-btn" data-lookup-field="hang_hoa" title="Chọn hàng hóa"><i class="fas fa-search"></i></button>
+                    </div>
+                    <datalist id="hang_hoa_suggestions"></datalist>
+                    <input type="hidden" name="hang_hoa" id="hang_hoa_value" value="{{ form_data.hang_hoa|default:'' }}">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Người kiểm kê *</label>
@@ -149,12 +159,19 @@
             ],
             vi_tri_hang_loi: [
                 {% for vt in vi_tri_list %}
+                {% if "HL" in vt.ma_vi_tri %}
                 { id: '{{ vt.pk }}', khoId: '{{ vt.kho_id }}', code: '{{ vt.ma_vi_tri|escapejs }}', name: '{{ vt.ma_vi_tri|escapejs }}' },
+                {% endif %}
                 {% endfor %}
             ],
             nhom_hang: [
                 {% for n in nhom_hang_list %}
                 { id: '{{ n.pk }}', code: '{{ n.ma_nhom|escapejs }}', name: '{{ n.ten_nhom|escapejs }}' },
+                {% endfor %}
+            ],
+            hang_hoa: [
+                {% for hh in hang_hoa_list %}
+                { id: '{{ hh.pk }}', code: '{{ hh.ma_hang|escapejs }}', name: '{{ hh.ten_hang|escapejs }}' },
                 {% endfor %}
             ],
             nguoi_kiem: [
@@ -166,9 +183,10 @@
 
         const fields = {
             kho: { display: document.getElementById('kho_display'), hidden: document.getElementById('kho_value'), datalist: document.getElementById('kho_suggestions'), title: 'Chọn kho' },
-            khu_vuc: { display: document.getElementById('khu_vuc_display'), hidden: document.getElementById('khu_vuc_value'), datalist: document.getElementById('khu_vuc_suggestions'), title: 'Chọn khu vực kiểm kê' },
+            khu_vuc: { display: document.getElementById('khu_vuc_display'), hidden: document.getElementById('khu_vuc_value'), datalist: null, title: 'Chọn khu vực kiểm kê' },
             vi_tri_hang_loi: { display: document.getElementById('vi_tri_hang_loi_display'), hidden: document.getElementById('vi_tri_hang_loi_value'), datalist: document.getElementById('vi_tri_hang_loi_suggestions'), title: 'Chọn vị trí hàng lỗi' },
             nhom_hang: { display: document.getElementById('nhom_hang_display'), hidden: document.getElementById('nhom_hang_value'), datalist: document.getElementById('nhom_hang_suggestions'), title: 'Chọn nhóm hàng' },
+            hang_hoa: { display: document.getElementById('hang_hoa_display'), hidden: document.getElementById('hang_hoa_value'), datalist: document.getElementById('hang_hoa_suggestions'), title: 'Chọn hàng hóa' },
             nguoi_kiem: { display: document.getElementById('nguoi_kiem_display'), hidden: document.getElementById('nguoi_kiem_value'), datalist: document.getElementById('nguoi_kiem_suggestions'), title: 'Chọn người kiểm kê' }
         };
 
@@ -250,6 +268,25 @@
             if (!field) {
                 return;
             }
+
+            if (fieldKey === 'khu_vuc') {
+                if (!item) {
+                    field.display.value = '';
+                    field.hidden.value = '';
+                    return;
+                }
+                const label = getLabel(item);
+                let currentDisp = field.display.value.split(',').map(s => s.trim()).filter(Boolean);
+                let currentHidden = field.hidden.value.split(',').map(s => s.trim()).filter(Boolean);
+                if (!currentHidden.includes(String(item.id))) {
+                    currentDisp.push(label);
+                    currentHidden.push(item.id);
+                    field.display.value = currentDisp.join(', ');
+                    field.hidden.value = currentHidden.join(',');
+                }
+                return;
+            }
+
             if (!item) {
                 field.display.value = '';
                 field.hidden.value = '';
@@ -261,7 +298,6 @@
             if (fieldKey === 'kho') {
                 setFieldValue('khu_vuc', null);
                 setFieldValue('vi_tri_hang_loi', null);
-                renderDatalist('khu_vuc');
                 renderDatalist('vi_tri_hang_loi');
             }
         }
@@ -279,6 +315,7 @@
         }
 
         function syncHiddenByDisplay(fieldKey) {
+            if (fieldKey === 'khu_vuc') return;
             const field = fields[fieldKey];
             if (!field) {
                 return;
@@ -316,14 +353,16 @@
         }
 
         Object.keys(fields).forEach(function (fieldKey) {
-            renderDatalist(fieldKey);
-            const field = fields[fieldKey];
-            field.display.addEventListener('input', function () {
-                syncHiddenByDisplay(fieldKey);
-            });
-            field.display.addEventListener('blur', function () {
-                syncHiddenByDisplay(fieldKey);
-            });
+            if (fieldKey !== 'khu_vuc') {
+                renderDatalist(fieldKey);
+                const field = fields[fieldKey];
+                field.display.addEventListener('input', function () {
+                    syncHiddenByDisplay(fieldKey);
+                });
+                field.display.addEventListener('blur', function () {
+                    syncHiddenByDisplay(fieldKey);
+                });
+            }
         });
 
         document.querySelectorAll('[data-lookup-field]').forEach(function (btn) {
@@ -371,13 +410,12 @@
         });
 
         document.querySelector('form').addEventListener('submit', function (event) {
-            ['kho', 'khu_vuc', 'nguoi_kiem'].forEach(function (fieldKey) {
+            ['kho', 'nguoi_kiem', 'vi_tri_hang_loi'].forEach(function (fieldKey) {
                 syncHiddenByDisplay(fieldKey);
             });
             syncHiddenByDisplay('nhom_hang');
+            syncHiddenByDisplay('hang_hoa');
         });
-
-        renderDatalist('khu_vuc');
     })();
 </script>
 {% endblock %}
